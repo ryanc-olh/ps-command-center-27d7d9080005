@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Patient Support — Capacity vs Demand & Surge Model</title>
+<style>
+  :root{--ink:#0b0b0b;--sec:#52514e;--mut:#898781;--card:#f5f4f1;--bd:#e1e0d9;--bds:#c3c2b7;--red:#b42318;--amb:#9a6a00;--grn:#127a3e;--blue:#2a78d6;--panel:#fbfaf8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.5;padding:20px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:22px;font-weight:600;margin:0;}
+  .sub{font-size:13px;color:var(--sec);margin-top:3px;}
+  .sec{font-size:15px;font-weight:600;color:var(--ink);border-bottom:2px solid var(--bds);padding-bottom:6px;margin:28px 0 14px;}
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px;}
+  .btn{font-size:13px;padding:7px 13px;border:1px solid var(--bds);border-radius:7px;background:#fff;color:var(--ink);cursor:pointer;line-height:1.2;}
+  .btn:hover{border-color:var(--blue);}
+  .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .grid{display:grid;gap:12px;}
+  .inputs{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));}
+  .fieldcard{background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:12px 14px;}
+  .fieldcard h4{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--sec);text-transform:uppercase;letter-spacing:.03em;}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0;}
+  .row label{font-size:12.5px;color:var(--sec);flex:1;}
+  .row input,.row select{font-size:13px;padding:5px 7px;border:1px solid var(--bds);border-radius:6px;background:#fff;color:var(--ink);width:92px;text-align:right;}
+  .row select{width:120px;text-align:left;}
+  .hint{font-size:11px;color:var(--mut);margin:2px 0 8px;}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
+  .card{background:var(--card);border-radius:10px;padding:14px 16px;}
+  .card .k{font-size:12.5px;color:var(--sec);}
+  .card .v{font-size:26px;font-weight:600;margin-top:2px;}
+  .card .n{font-size:11.5px;color:var(--mut);margin-top:2px;}
+  .red{color:var(--red);} .amb{color:var(--amb);} .grn{color:var(--grn);} .blue{color:var(--blue);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px;}
+  th{font-weight:600;color:var(--sec);text-align:right;padding:7px 6px;}
+  td{text-align:right;padding:7px 6px;border-top:1px solid var(--bd);}
+  th:first-child,td:first-child{text-align:left;}
+  tr.tot td{border-top:1.5px solid var(--bds);font-weight:600;}
+  .charts{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;}
+  .cbox{position:relative;width:100%;height:250px;}
+  .lbl{font-size:13px;font-weight:600;color:var(--sec);margin:0 0 8px;}
+  .note{font-size:12px;color:var(--mut);margin-top:10px;}
+  .callout{background:var(--panel);border:1px solid var(--bd);border-left:3px solid var(--blue);border-radius:8px;padding:12px 14px;font-size:12.5px;color:var(--sec);margin-top:12px;}
+  .callout b{color:var(--ink);}
+  details{margin-top:10px;} summary{cursor:pointer;font-size:12.5px;color:var(--blue);}
+  .foot{font-size:11px;color:var(--mut);margin-top:28px;border-top:1px solid var(--bd);padding-top:10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Patient Support — Capacity vs Demand &amp; Surge Model</h1>
+  <div class="sub">Single source of truth for staffing. Enter demand → get required agents &amp; FTEs by channel, sized to the intraday peak. Erlang C for voice/chat, throughput+backlog for email. Works for any client.</div>
+
+  <div class="presets">
+    <span style="font-size:12.5px;color:var(--sec);align-self:center;">Presets:</span>
+    <button class="btn primary" onclick="loadPreset('launch')">Launch surge (example)</button>
+    <button class="btn" onclick="loadPreset('benchmark')">Generic benchmark</button>
+  </div>
+
+  <div class="sec">1 · Demand</div>
+  <div class="grid inputs">
+    <div class="fieldcard">
+      <h4>How to enter demand</h4>
+      <div class="row"><label>Mode</label><select id="mode" onchange="recompute()"><option value="patients">From patient panel</option><option value="volume">From volume forecast</option></select></div>
+      <div id="patientInputs">
+        <div class="row"><label>Total patients (panel)</label><input id="patients" type="number" value="100000" oninput="recompute()"></div>
+        <div class="row"><label>Contacts / patient / month</label><input id="contactRate" type="number" step="0.01" value="0.45" oninput="recompute()"></div>
+        <div class="hint">e.g. 45% of patients contact once/mo = 0.45. Bump for repeat contacts. Benchmark ~0.4–0.5 (≈5/yr).</div>
+      </div>
+      <div id="volumeInputs" style="display:none;">
+        <div class="row"><label>Total contacts</label><input id="volDirect" type="number" value="4400" oninput="recompute()"></div>
+        <div class="row"><label>per</label><select id="volPeriod" onchange="recompute()"><option value="day">day</option><option value="week">week</option><option value="month">month</option></select></div>
+      </div>
+      <div class="row"><label>Launch / surge multiplier ×</label><input id="surge" type="number" step="0.1" value="1.0" oninput="recompute()"></div>
+      <div class="hint">Scales all volume. Launches can grow ~1.5×/day. Use for "what Sales says is coming."</div>
+    </div>
+    <div class="fieldcard">
+      <h4>Channel mix (% of contacts)</h4>
+      <div class="row"><label>Voice / phone</label><input id="mixVoice" type="number" value="50" oninput="recompute()"></div>
+      <div class="row"><label>Chat</label><input id="mixChat" type="number" value="20" oninput="recompute()"></div>
+      <div class="row"><label>Email / async</label><input id="mixEmail" type="number" value="30" oninput="recompute()"></div>
+      <div class="hint" id="mixNote">Must total 100. Digital-health benchmark ≈ voice 50 / chat 20 / email 30.</div>
+    </div>
+    <div class="fieldcard">
+      <h4>Operating window &amp; staffing base</h4>
+      <div class="row"><label>Open from (hour, 0–23)</label><input id="opStart" type="number" value="6" oninput="recompute()"></div>
+      <div class="row"><label>Open to (hour, 0–23)</label><input id="opEnd" type="number" value="19" oninput="recompute()"></div>
+      <div class="row"><label>Operating days / week</label><input id="opDays" type="number" value="7" oninput="recompute()"></div>
+      <div class="row"><label>FTE shift hours</label><input id="shiftHrs" type="number" value="8" oninput="recompute()"></div>
+      <div class="row"><label>FTE work days / week</label><input id="workDays" type="number" value="5" oninput="recompute()"></div>
+    </div>
+    <div class="fieldcard">
+      <h4>Workforce efficiency</h4>
+      <div class="row"><label>Shrinkage %</label><input id="shrink" type="number" value="30" oninput="recompute()"></div>
+      <div class="hint">Breaks, training, PTO, meetings. Benchmark 30–35%.</div>
+      <div class="row"><label>Max occupancy %</label><input id="maxOcc" type="number" value="85" oninput="recompute()"></div>
+      <div class="hint">Ceiling for real-time channels. &gt;85% → burnout/attrition.</div>
+    </div>
+  </div>
+
+  <div class="sec">2 · Channel assumptions</div>
+  <div class="grid inputs">
+    <div class="fieldcard">
+      <h4>Voice</h4>
+      <div class="row"><label>AHT (minutes)</label><input id="vAht" type="number" step="0.1" value="6.0" oninput="recompute()"></div>
+      <div class="row"><label>Service level target %</label><input id="vSL" type="number" value="80" oninput="recompute()"></div>
+      <div class="row"><label>within (seconds)</label><input id="vThr" type="number" value="30" oninput="recompute()"></div>
+      <div class="hint">Healthcare voice AHT often 6–10 min. Common SLA 80% ≤30s.</div>
+    </div>
+    <div class="fieldcard">
+      <h4>Chat</h4>
+      <div class="row"><label>AHT (minutes / session)</label><input id="cAht" type="number" step="0.1" value="8.0" oninput="recompute()"></div>
+      <div class="row"><label>Concurrency (sessions/agent)</label><input id="cConc" type="number" step="0.5" value="3" oninput="recompute()"></div>
+      <div class="row"><label>Service level target %</label><input id="cSL" type="number" value="90" oninput="recompute()"></div>
+      <div class="row"><label>within (seconds)</label><input id="cThr" type="number" value="30" oninput="recompute()"></div>
+      <div class="hint">Concurrency cap ~3–4 (quality cliff). Common chat SLA 90% ≤30s.</div>
+    </div>
+    <div class="fieldcard">
+      <h4>Email / async</h4>
+      <div class="row"><label>Handle time (min / email)</label><input id="eAht" type="number" step="0.1" value="8.0" oninput="recompute()"></div>
+      <div class="row"><label>Response target (hours)</label><input id="eTarget" type="number" step="0.5" value="4" oninput="recompute()"></div>
+      <div class="row"><label>Starting backlog</label><input id="eBacklog" type="number" value="0" oninput="recompute()"></div>
+      <div class="hint">Handle time = agent touch (drives FTEs). Response target = SLA (drives max backlog). Healthcare email ~6–10 min touch.</div>
+    </div>
+  </div>
+
+  <div class="sec">3 · Required staffing</div>
+  <div class="grid kpis" id="summaryCards"></div>
+
+  <div class="lbl" style="margin-top:22px;">By channel</div>
+  <table id="channelTable">
+    <thead><tr><th>Channel</th><th>Daily volume</th><th>Peak-hr volume</th><th>Peak concurrent agents</th><th>Proj. service level</th><th>FTEs (loaded)</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <div class="note" id="fteNote"></div>
+
+  <div class="sec">4 · Surge — intraday & backlog</div>
+  <div class="grid charts">
+    <div><div class="lbl">Voice agents needed by hour (Central Time)</div><div class="cbox"><canvas id="staffChart"></canvas></div></div>
+    <div><div class="lbl">Email backlog projection (14 days at planned FTEs)</div><div class="cbox"><canvas id="backlogChart"></canvas></div></div>
+  </div>
+  <div class="callout" id="backlogNote"></div>
+
+  <div class="sec">5 · Sensitivity & hiring</div>
+  <div class="grid charts">
+    <div>
+      <div class="lbl">Total FTEs vs demand (volume multiplier)</div>
+      <table id="sensTable"><thead><tr><th>Scenario</th><th>Daily contacts</th><th>Voice FTE</th><th>Chat FTE</th><th>Email FTE</th><th>Total FTE</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div>
+      <div class="lbl">Hiring plan (annualized)</div>
+      <div class="fieldcard">
+        <div class="row"><label>Current headcount</label><input id="curHc" type="number" value="0" oninput="recompute()"></div>
+        <div class="row"><label>Annual attrition %</label><input id="attr" type="number" value="42" oninput="recompute()"></div>
+        <div class="row"><label>Ramp to productivity (weeks)</label><input id="ramp" type="number" value="6" oninput="recompute()"></div>
+      </div>
+      <div class="callout" id="hireNote"></div>
+    </div>
+  </div>
+
+  <details>
+    <summary>Method &amp; assumptions (what this models, and what it deliberately includes)</summary>
+    <div class="note" id="methodNote"></div>
+  </details>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+// ============ Verified WFM math (calibrated + reference-checked) ============
+// Telehealth voice intraday distribution (Central Time), calibrated on real launch data; sums to 1.0.
+var INTRADAY_VOICE = [0.002580,0.000516,0.001032,0.000516,0.001548,0.003096,0.015480,0.034572,0.065015,0.077399,0.081011,0.094943,0.087719,0.097007,0.070175,0.079979,0.087203,0.057276,0.043860,0.040248,0.026832,0.019608,0.006192,0.006192];
+
+function offeredLoad(callsPerHr, ahtSec){ return callsPerHr*(ahtSec/3600); }
+function erlangB(A,N){ var B=1.0; for(var m=1;m<=N;m++){ B=(A*B)/(m+A*B); } return B; }
+function erlangC(A,N){ if(N<=A) return 1.0; var B=erlangB(A,N); var rho=A/N; return B/(1-rho*(1-B)); }
+function serviceLevel(callsPerHr,ahtSec,N,T){ var A=offeredLoad(callsPerHr,ahtSec); if(N<=A) return 0; var Pw=erlangC(A,N); var sl=1-Pw*Math.exp(-(N-A)*(T/ahtSec)); return Math.max(0,Math.min(1,sl)); }
+function asa(callsPerHr,ahtSec,N){ var A=offeredLoad(callsPerHr,ahtSec); if(N<=A) return Infinity; return erlangC(A,N)*ahtSec/(N-A); }
+// Minimum integer agents for targetSL within T sec, capped at maxOcc (0..1). Returns 0 if no load.
+function requiredAgents(callsPerHr,ahtSec,targetSL,T,maxOcc){
+  var A=offeredLoad(callsPerHr,ahtSec);
+  if(A<=0) return 0;
+  var N=Math.floor(A)+1;
+  var guard=0;
+  while(serviceLevel(callsPerHr,ahtSec,N,T)<targetSL){ N++; if(++guard>100000) break; }
+  if(maxOcc>0){ while(A/N>maxOcc) N++; }
+  return N;
+}
+
+var num=function(id){ return parseFloat(document.getElementById(id).value)||0; };
+var fmt=function(n){ return n.toLocaleString(undefined,{maximumFractionDigits:0}); };
+var fmt1=function(n){ return n.toLocaleString(undefined,{maximumFractionDigits:1}); };
+
+// Core compute for a given volume multiplier. Returns everything needed.
+function compute(volMult){
+  var mode=document.getElementById('mode').value;
+  var surge=num('surge')*(volMult===undefined?1:volMult);
+  // daily contacts (all channels)
+  var daily;
+  if(mode==='patients'){
+    var monthly=num('patients')*num('contactRate');
+    daily=monthly/30.4;
+  } else {
+    var v=num('volDirect'); var p=document.getElementById('volPeriod').value;
+    daily = p==='day'? v : (p==='week'? v/7 : v/30.4);
+  }
+  daily=daily*surge;
+  var mv=num('mixVoice')/100, mc=num('mixChat')/100, me=num('mixEmail')/100;
+  var dVoice=daily*mv, dChat=daily*mc, dEmail=daily*me;
+
+  var shrink=num('shrink')/100, maxOcc=num('maxOcc')/100;
+  var opStart=Math.max(0,Math.min(23,Math.round(num('opStart')))), opEnd=Math.max(opStart+1,Math.min(24,Math.round(num('opEnd'))));
+  var opDays=num('opDays'), shiftHrs=num('shiftHrs'), workDays=num('workDays');
+  var netProdHrsWk=shiftHrs*workDays*(1-shrink); // productive hrs per FTE per week
+  var netProdSecDay=shiftHrs*3600*(1-shrink);    // productive sec per FTE per day (email)
+
+  // ---- VOICE: per-hour Erlang across operating window ----
+  var vAhtSec=num('vAht')*60, vSL=num('vSL')/100, vThr=num('vThr');
+  var vAgentsByHour=new Array(24).fill(0);
+  var vInWindow=0;
+  for(var h=0;h<24;h++){
+    var frac=INTRADAY_VOICE[h];
+    var vol=dVoice*frac; // calls in that hour
+    if(h>=opStart && h<opEnd){
+      vInWindow+=vol;
+      vAgentsByHour[h]=requiredAgents(vol,vAhtSec,vSL,vThr,maxOcc);
+    }
+  }
+  var vPeakAgents=Math.max.apply(null,vAgentsByHour);
+  var vPeakHourVol=dVoice*Math.max.apply(null,INTRADAY_VOICE.slice(opStart,opEnd));
+  var vAgentHrsDay=vAgentsByHour.reduce(function(a,b){return a+b;},0);
+  var vFTE = netProdHrsWk>0 ? (vAgentHrsDay*opDays)/netProdHrsWk : 0;
+  var vPeakSL = vPeakHourVol>0 ? serviceLevel(vPeakHourVol,vAhtSec,vPeakAgents,vThr) : 1;
+
+  // ---- CHAT: Erlang on concurrency-adjusted load, same intraday shape ----
+  var cAhtSec=num('cAht')*60, cConc=Math.max(1,num('cConc')), cSL=num('cSL')/100, cThr=num('cThr');
+  var cAhtEff=cAhtSec/cConc;
+  var cAgentsByHour=new Array(24).fill(0);
+  for(var h2=0;h2<24;h2++){
+    if(h2>=opStart && h2<opEnd){
+      var cvol=dChat*INTRADAY_VOICE[h2];
+      cAgentsByHour[h2]=requiredAgents(cvol,cAhtEff,cSL,cThr,maxOcc);
+    }
+  }
+  var cPeakAgents=Math.max.apply(null,cAgentsByHour);
+  var cPeakHourVol=dChat*Math.max.apply(null,INTRADAY_VOICE.slice(opStart,opEnd));
+  var cAgentHrsDay=cAgentsByHour.reduce(function(a,b){return a+b;},0);
+  var cFTE = netProdHrsWk>0 ? (cAgentHrsDay*opDays)/netProdHrsWk : 0;
+  var cPeakSL = cPeakHourVol>0 ? serviceLevel(cPeakHourVol,cAhtEff,cPeakAgents,cThr) : 1;
+
+  // ---- EMAIL: throughput FTE + backlog ----
+  var eAhtSec=num('eAht')*60, eTargetHrs=num('eTarget');
+  var eWorkSecDay=dEmail*eAhtSec;
+  var eCapPerFTEDay=netProdSecDay;                  // async: shrinkage is the haircut; no phone-style occupancy
+  var eFTEraw = eCapPerFTEDay>0 ? eWorkSecDay/eCapPerFTEDay : 0;
+  // email is deferrable; hire for weekly coverage (inflow lands opDays, FTEs work workDays)
+  var eFTE = eFTEraw * (opDays/Math.max(1,workDays));
+  var eDailyCap = Math.ceil(eFTE) * (Math.max(1,workDays)/Math.max(1,opDays)) * netProdSecDay / eAhtSec; // emails the hired team clears per operating day
+  // max backlog to hold response target (Little's Law): L = lambda * W, over the operating window
+  var eLambdaPerHr = (opEnd-opStart)>0 ? dEmail/(opEnd-opStart) : dEmail/13;
+  var eMaxBacklog = eLambdaPerHr*eTargetHrs;
+
+  return {daily:daily,dVoice:dVoice,dChat:dChat,dEmail:dEmail,
+    vPeakAgents:vPeakAgents,vPeakHourVol:vPeakHourVol,vFTE:vFTE,vPeakSL:vPeakSL,vAgentsByHour:vAgentsByHour,
+    cPeakAgents:cPeakAgents,cPeakHourVol:cPeakHourVol,cFTE:cFTE,cPeakSL:cPeakSL,
+    dEmailVol:dEmail,eFTE:eFTE,eCapPerFTEDay:eCapPerFTEDay/eAhtSec,eDailyCap:eDailyCap,eMaxBacklog:eMaxBacklog,eAhtSec:eAhtSec,netProdSecDay:netProdSecDay,maxOcc:maxOcc,
+    totalFTE:vFTE+cFTE+eFTE, opStart:opStart, opEnd:opEnd, vInWindow:vInWindow};
+}
+
+var staffChart, backlogChart;
+function recompute(){
+  // toggle demand inputs
+  var mode=document.getElementById('mode').value;
+  document.getElementById('patientInputs').style.display = mode==='patients'?'':'none';
+  document.getElementById('volumeInputs').style.display = mode==='volume'?'':'none';
+  // mix validation
+  var mixSum=num('mixVoice')+num('mixChat')+num('mixEmail');
+  document.getElementById('mixNote').innerHTML = (Math.abs(mixSum-100)>0.5)
+    ? '<span style="color:var(--red)">Channel mix totals '+mixSum+'% — should be 100%.</span>'
+    : 'Digital-health benchmark ≈ voice 50 / chat 20 / email 30.';
+
+  var r=compute(1);
+
+  // summary cards
+  var cards=[
+    ['Total FTEs','v',fmt1(r.totalFTE),'loaded (shrinkage-adjusted)'],
+    ['Voice FTEs','',fmt1(r.vFTE),'peak '+r.vPeakAgents+' concurrent'],
+    ['Chat FTEs','',fmt1(r.cFTE),'peak '+r.cPeakAgents+' concurrent'],
+    ['Email FTEs','',fmt1(r.eFTE),fmt(r.dEmailVol)+' emails/day'],
+    ['Daily contacts','',fmt(r.daily),'all channels']
+  ];
+  document.getElementById('summaryCards').innerHTML=cards.map(function(c){
+    return '<div class="card"><div class="k">'+c[0]+'</div><div class="v '+(c[0]==='Total FTEs'?'blue':'')+'">'+c[2]+'</div><div class="n">'+c[3]+'</div></div>';
+  }).join('');
+
+  // channel table
+  function slCls(sl,t){ return sl>=t?'grn':(sl>=t-0.1?'amb':'red'); }
+  var vt=num('vSL')/100, ct=num('cSL')/100;
+  var rows=[
+    ['Voice',r.dVoice,r.vPeakHourVol,r.vPeakAgents,'<td class="'+slCls(r.vPeakSL,vt)+'">'+Math.round(r.vPeakSL*100)+'%</td>',r.vFTE],
+    ['Chat',r.dChat,r.cPeakHourVol,r.cPeakAgents,'<td class="'+slCls(r.cPeakSL,ct)+'">'+Math.round(r.cPeakSL*100)+'%</td>',r.cFTE],
+    ['Email',r.dEmail,'—','—','<td>async</td>',r.eFTE]
+  ];
+  var tb=document.querySelector('#channelTable tbody');
+  tb.innerHTML=rows.map(function(x){
+    return '<tr><td>'+x[0]+'</td><td>'+fmt(x[1])+'</td><td>'+(typeof x[2]==='number'?fmt(x[2]):x[2])+'</td><td>'+(typeof x[3]==='number'?x[3]:x[3])+'</td>'+x[4]+'<td>'+fmt1(x[5])+'</td></tr>';
+  }).join('') + '<tr class="tot"><td>Total</td><td>'+fmt(r.daily)+'</td><td>—</td><td>—</td><td>—</td><td>'+fmt1(r.totalFTE)+'</td></tr>';
+
+  document.getElementById('fteNote').innerHTML='<b>FTEs (loaded)</b> = staff to hire, incl. '+num('shrink')+'% shrinkage. Voice/chat sized per-hour with Erlang C (occupancy capped '+num('maxOcc')+'%) then summed to agent-hours; email sized by throughput. Peak concurrent = busiest hour ('+(r.opStart)+':00–'+(r.opEnd)+':00 CT). <b>Note:</b> voice/chat size to the <b>peak day</b> you enter; email is deferrable, so it sizes to whatever daily rate you enter as a <b>sustained</b> average — enter your typical email/day, not the peak, or it will oversize email.';
+
+  // staff-by-hour chart
+  var labels=[]; for(var h=0;h<24;h++){ labels.push(((h%12)===0?12:h%12)+(h<12?'a':'p')); }
+  var vcfg={type:'bar',data:{labels:labels,datasets:[{label:'Agents',data:r.vAgentsByHour,backgroundColor:'#2a78d6',borderRadius:3,maxBarThickness:18}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:function(t){return t[0].label+' CT';},label:function(t){return t.raw+' agents';}}}},scales:{x:{grid:{display:false},ticks:{color:'#898781',font:{size:10},maxRotation:0,autoSkip:false,callback:function(v,i){return i%3===0?labels[i]:'';}}},y:{grid:{color:'rgba(137,135,129,0.2)'},ticks:{color:'#898781',precision:0}}}}};
+  if(staffChart){ staffChart.data.datasets[0].data=r.vAgentsByHour; staffChart.update(); } else { staffChart=new Chart(document.getElementById('staffChart'),vcfg); }
+
+  // backlog projection (14 days)
+  var days=14, open=num('eBacklog'), inflow=r.dEmailVol, cap=r.eDailyCap;
+  var series=[]; var openArr=[];
+  for(var d=0;d<days;d++){ var avail=open+inflow; var resolved=Math.min(avail,cap); open=Math.max(0,avail-resolved); openArr.push(Math.round(open)); series.push(d+1); }
+  var bcfg={type:'line',data:{labels:series,datasets:[{label:'Open backlog',data:openArr,borderColor:'#b42318',backgroundColor:'#b42318',borderWidth:2,tension:0.2,pointRadius:2},{label:'SLA max',data:series.map(function(){return Math.round(r.eMaxBacklog);}),borderColor:'#127a3e',borderWidth:1.5,borderDash:[6,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#52514e',font:{size:11},boxWidth:12}}},scales:{x:{grid:{display:false},title:{display:true,text:'day',color:'#898781',font:{size:10}},ticks:{color:'#898781'}},y:{grid:{color:'rgba(137,135,129,0.2)'},ticks:{color:'#898781',precision:0}}}}};
+  if(backlogChart){ backlogChart.data.labels=series; backlogChart.data.datasets[0].data=openArr; backlogChart.data.datasets[1].data=series.map(function(){return Math.round(r.eMaxBacklog);}); backlogChart.update(); } else { backlogChart=new Chart(document.getElementById('backlogChart'),bcfg); }
+  var trend = openArr[days-1] > openArr[0] ? '<span class="red">compounding — capacity below inflow; add email FTEs.</span>' : (openArr[days-1]<=r.eMaxBacklog? '<span class="grn">drains to within the SLA ceiling.</span>' : '<span class="amb">stable but above the SLA backlog ceiling — add capacity to drain it.</span>');
+  document.getElementById('backlogNote').innerHTML='<b>Email backlog</b>: daily capacity ≈ '+fmt(cap)+' vs inflow '+fmt(inflow)+'/day. SLA ceiling (Little\'s Law, '+num('eTarget')+'h) ≈ '+fmt(r.eMaxBacklog)+' open. Over 14 days it '+trend;
+
+  // sensitivity
+  var mults=[0.5,1,1.5,2,3];
+  var stb=document.querySelector('#sensTable tbody');
+  stb.innerHTML=mults.map(function(m){
+    var rr=compute(m);
+    var cls=m===1?' class="tot"':'';
+    return '<tr'+cls+'><td>'+(m===1?'Base':(m+'×'))+'</td><td>'+fmt(rr.daily)+'</td><td>'+fmt1(rr.vFTE)+'</td><td>'+fmt1(rr.cFTE)+'</td><td>'+fmt1(rr.eFTE)+'</td><td>'+fmt1(rr.totalFTE)+'</td></tr>';
+  }).join('');
+
+  // hiring
+  var netHc=r.totalFTE, cur=num('curHc'), attrition=num('attr')/100, ramp=num('ramp');
+  var growth=Math.max(0,netHc-cur), backfill=cur*attrition, gross=growth+backfill;
+  document.getElementById('hireNote').innerHTML='To reach <b>'+fmt1(netHc)+' FTEs</b> from '+fmt(cur)+' today: <b>'+fmt1(growth)+'</b> net new + <b>'+fmt1(backfill)+'</b> attrition backfill (@'+num('attr')+'%/yr) = <b>~'+Math.ceil(gross)+' hires</b> over the year. Start <b>'+ramp+' weeks</b> ahead of need (ramp to productivity); new hires deliver partial output while ramping.';
+
+  document.getElementById('methodNote').innerHTML=[
+    '<b>Voice</b> — Erlang C (M/M/N), numerically stable via the Erlang B recurrence; verified against the Call Centre Helper reference (200 calls/hr, 180s AHT, 80/20 → 14 agents). Sized per hour on the intraday curve, capped at the occupancy ceiling, summed to agent-hours, grossed up for shrinkage.',
+    '<b>Chat</b> — Erlang C on a concurrency-adjusted load (effective AHT = AHT ÷ concurrency). Cap concurrency ~3–4; beyond that quality/AHT degrade (not modeled as free capacity).',
+    '<b>Email</b> — async throughput (not Erlang): FTE = volume × handle-time ÷ (productive seconds × occupancy). Backlog projected day-by-day; SLA → max backlog via Little\'s Law (L = λ × target).',
+    '<b>Deliberately included</b> (things basic models miss): shrinkage, occupancy ceiling, chat concurrency, staffing to the intraday PEAK not the daily average, launch-surge multiplier, and ramp + attrition hiring lead time.',
+    '<b>Not yet modeled</b> (add when data lands): agent-efficiency/productivity, reason-for-contact-level AHT, abandonment (Erlang A), repeat-contact feedback loop, blended/skills-based routing. Intraday curve calibrated on real telehealth launch data (Central Time) — re-derive per client if patterns differ.'
+  ].map(function(s){return '• '+s;}).join('<br><br>');
+
+  document.getElementById('foot').textContent='Intraday curve calibrated on real telehealth launch data (Central Time). Erlang C reference-verified. Defaults are industry benchmarks — replace with your own AHT / contact-rate / efficiency data as it lands. All figures are planning estimates.';
+}
+
+function setV(id,val){ document.getElementById(id).value=val; }
+function loadPreset(which){
+  if(which==='launch'){
+    setV('mode','volume'); setV('volDirect','3000'); setV('volPeriod','day'); setV('surge','1.0');
+    setV('mixVoice','60'); setV('mixChat','5'); setV('mixEmail','35');
+    setV('opStart','6'); setV('opEnd','19'); setV('opDays','7'); setV('shiftHrs','8'); setV('workDays','5');
+    setV('shrink','30'); setV('maxOcc','85');
+    setV('vAht','8'); setV('vSL','80'); setV('vThr','30');
+    setV('cAht','8'); setV('cConc','3'); setV('cSL','90'); setV('cThr','30');
+    setV('eAht','8'); setV('eTarget','4'); setV('eBacklog','0');
+    setV('curHc','0'); setV('attr','42'); setV('ramp','6');
+  } else {
+    setV('mode','patients'); setV('patients','100000'); setV('contactRate','0.45'); setV('surge','1.0');
+    setV('mixVoice','50'); setV('mixChat','20'); setV('mixEmail','30');
+    setV('opStart','6'); setV('opEnd','19'); setV('opDays','7'); setV('shiftHrs','8'); setV('workDays','5');
+    setV('shrink','30'); setV('maxOcc','85');
+    setV('vAht','6'); setV('vSL','80'); setV('vThr','30');
+    setV('cAht','8'); setV('cConc','3'); setV('cSL','90'); setV('cThr','30');
+    setV('eAht','8'); setV('eTarget','4'); setV('eBacklog','0');
+    setV('curHc','0'); setV('attr','42'); setV('ramp','6');
+  }
+  recompute();
+}
+recompute();
+</script>
+</body>
+</html>

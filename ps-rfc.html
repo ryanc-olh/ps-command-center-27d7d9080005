@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>OpenLoop PS — Reasons for Contact (RFC)</title>
+<style>
+  :root{--ink:#0b0b0b;--sec:#52514e;--mut:#898781;--card:#f5f4f1;--bd:#e1e0d9;--bds:#c3c2b7;--red:#b42318;--amb:#9a6a00;--grn:#127a3e;--blue:#2a78d6;--panel:#fbfaf8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.5;padding:18px;}
+  .wrap{max-width:1040px;margin:0 auto;}
+  h1{font-size:21px;font-weight:600;margin:0;}
+  .proto{display:inline-block;font-size:11px;font-weight:600;color:#fff;background:var(--amb);border-radius:5px;padding:2px 7px;margin-left:8px;vertical-align:middle;}
+  .sub{font-size:13px;color:var(--sec);margin-top:3px;}
+  .sec{font-size:16px;font-weight:600;color:var(--ink);border-bottom:2px solid var(--bds);padding-bottom:7px;margin:30px 0 14px;}
+  .grid{display:grid;gap:12px;}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));}
+  .card{background:var(--card);border-radius:10px;padding:14px 16px;}
+  .card .k{font-size:12.5px;color:var(--sec);}
+  .card .v{font-size:25px;font-weight:600;margin-top:2px;}
+  .card .n{font-size:11.5px;color:var(--mut);margin-top:2px;}
+  .red{color:var(--red);} .amb{color:var(--amb);} .grn{color:var(--grn);} .blue{color:var(--blue);}
+  .cbox{position:relative;width:100%;height:300px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px;}
+  th{font-weight:600;color:var(--sec);text-align:right;padding:8px 7px;cursor:pointer;user-select:none;}
+  td{text-align:right;padding:8px 7px;border-top:1px solid var(--bd);vertical-align:middle;}
+  th:first-child,td:first-child{text-align:left;}
+  th:nth-child(2),td:nth-child(2){text-align:left;}
+  .bar{position:relative;background:#eceae5;border-radius:4px;height:16px;min-width:60px;}
+  .bar>span{position:absolute;left:0;top:0;bottom:0;background:var(--blue);border-radius:4px;}
+  .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;}
+  .pill.g{background:#e4f2ea;color:var(--grn);} .pill.a{background:#f6efdc;color:var(--amb);} .pill.n{background:#ecebe6;color:var(--sec);}
+  .lbl{font-size:13px;font-weight:600;color:var(--sec);margin:18px 0 6px;}
+  .note{font-size:12px;color:var(--mut);margin-top:10px;}
+  .defl{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:6px;}
+  .db{border:1px solid var(--bd);border-radius:10px;padding:13px 15px;background:var(--panel);}
+  .db .t{font-size:12.5px;font-weight:600;}
+  .db .b{font-size:22px;font-weight:600;margin-top:3px;}
+  .foot{font-size:11px;color:var(--mut);margin-top:26px;border-top:1px solid var(--bd);padding-top:10px;}
+  @media(max-width:640px){.defl{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>OpenLoop PS — Reasons for Contact <span class="proto">v0 · CALLS ONLY</span></h1>
+  <div class="sub">Why patients contact us, ranked. Snapshot: <b>week of Jun 14, 2026</b> · phone channel only · ~21,790 categorized calls · de-identified aggregates. Source: Code Yellow "Inbound Patient Support Needs."</div>
+
+  <div class="sec" style="margin-top:22px;">Headline</div>
+  <div class="grid kpis">
+    <div class="card"><div class="k">Categorized calls (wk)</div><div class="v">21,790</div><div class="n">week of Jun 14 · phone only</div></div>
+    <div class="card"><div class="k">Top driver</div><div class="v blue">23%</div><div class="n">Scheduling &amp; Appointments</div></div>
+    <div class="card"><div class="k">Top 3 = share</div><div class="v amb">60%</div><div class="n">Scheduling · Cancellation · Refund</div></div>
+    <div class="card"><div class="k">High-deflection volume</div><div class="v grn">~40%</div><div class="n">self-serve/automation candidates</div></div>
+    <div class="card"><div class="k">Clinical (never deflect)</div><div class="v red">~10%</div><div class="n">Med concern · labs · complaints</div></div>
+  </div>
+
+  <div class="sec">Top reasons by volume</div>
+  <div class="cbox"><canvas id="rfcChart"></canvas></div>
+
+  <div class="sec">Full taxonomy</div>
+  <table id="rfcTable">
+    <thead><tr>
+      <th onclick="sortT(0,true)">#</th>
+      <th onclick="sortT(1,true)">Category</th>
+      <th onclick="sortT(2)">Calls</th>
+      <th onclick="sortT(3)">% of calls</th>
+      <th>Share</th>
+      <th onclick="sortT(5,true)">Owning queue</th>
+      <th onclick="sortT(6,true)">Deflection</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+  <div class="note">Deflection: <span class="pill g">High</span> proven/near-term self-serve · <span class="pill a">Partial</span> some sub-reasons automatable · <span class="pill n">Low</span> clinical / eligibility-gated — keep human. Volumes are single-week phone calls; the % denominator includes no-category calls.</div>
+
+  <div class="sec">Deflection leverage (v0 estimate)</div>
+  <div class="defl">
+    <div class="db"><div class="t grn">High — self-serve wins</div><div class="b">~8,700 calls / wk</div><div class="note" style="margin-top:4px;">Scheduling (IVR proven, MEDVi) · Order Status (Narvar pending) · General/insurance FAQ · Portal login · Info updates.</div></div>
+    <div class="db"><div class="t amb">Partial — some automatable</div><div class="b">~10,300 calls / wk</div><div class="note" style="margin-top:4px;">Cancellation (Chargebee/IVR in progress) · Refund status · Billing (Stripe self-serve) · Refill/intake resend.</div></div>
+    <div class="db"><div class="t red">Low — keep human</div><div class="b">~2,300 calls / wk</div><div class="note" style="margin-top:4px;">Medication concerns (RN/CMA) · labs incl. critical results · complaints (PETE). Clinical or eligibility-gated.</div></div>
+  </div>
+
+  <div class="note" style="margin-top:14px;"><b>Disposition ≠ reason.</b> These are <i>outcomes</i>, not reasons-for-contact, and belong in a separate tagging dimension (v1 fix): No Category 2,820 · HeyRevia Transfer 508 · Disconnected 399 · Queued–No Answer 343 · Agent Ghosted 165 · Queue Unstaffed 161 · Customer Ghosted 79 · IVR Disconnect 76 · External 34.</div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+// RFC categories — Code Yellow week of Jun 14 2026 (calls only). d = deflection: g/a/n
+var RFC=[
+  {n:"Scheduling & Appointments", c:5114, p:23.47, q:"PS-Tier1", d:"g"},
+  {n:"Cancellation (Account)",     c:4068, p:18.67, q:"Retention / PS-Tier1", d:"a"},
+  {n:"Refund",                     c:3932, p:18.04, q:"Billing / Refund", d:"a"},
+  {n:"Order Status",               c:2581, p:11.84, q:"PS-Tier1", d:"g"},
+  {n:"Medication Concern",         c:1683, p:7.72,  q:"RN / CMA", d:"n"},
+  {n:"Billing",                    c:1453, p:6.67,  q:"Billing", d:"a"},
+  {n:"General Question",           c:868,  p:3.98,  q:"PS-Tier1", d:"g"},
+  {n:"Refill / Intake Form",       c:819,  p:3.76,  q:"PS-Tier1 / Async", d:"a"},
+  {n:"Labs",                       c:466,  p:2.14,  q:"Lab team", d:"n"},
+  {n:"Complaint / Supervisor",     c:79,   p:0.36,  q:"PETE", d:"n"},
+  {n:"Portal / Login",             c:66,   p:0.30,  q:"PS-Tier1", d:"g"},
+  {n:"Patient Info Update",        c:65,   p:0.30,  q:"PS-Tier1", d:"g"},
+  {n:"Non-patient Inquiries",      c:41,   p:0.19,  q:"Route out", d:"g"},
+  {n:"Medical Records Request",    c:30,   p:0.14,  q:"PS-Tier1 / CMA", d:"a"}
+];
+var DEFL={g:"High",a:"Partial",n:"Low"};
+var max=Math.max.apply(null,RFC.map(function(r){return r.c;}));
+function pill(d){return '<span class="pill '+d+'">'+DEFL[d]+'</span>';}
+function render(){
+  var tb=document.querySelector('#rfcTable tbody');
+  tb.innerHTML=RFC.map(function(r,i){
+    var w=Math.round(r.c/max*100);
+    return '<tr><td>'+(i+1)+'</td><td>'+r.n+'</td><td>'+r.c.toLocaleString()+'</td><td>'+r.p.toFixed(1)+'%</td>'+
+      '<td><div class="bar"><span style="width:'+w+'%"></span></div></td>'+
+      '<td>'+r.q+'</td><td>'+pill(r.d)+'</td></tr>';
+  }).join('');
+}
+render();
+var col={g:'#127a3e',a:'#9a6a00',n:'#b42318'};
+var top=RFC.slice(0,9);
+new Chart(document.getElementById('rfcChart'),{type:'bar',data:{labels:top.map(function(r){return r.n;}),
+  datasets:[{data:top.map(function(r){return r.c;}),backgroundColor:top.map(function(r){return col[r.d];}),borderRadius:4,maxBarThickness:26}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+    tooltip:{callbacks:{label:function(t){var r=top[t.dataIndex];return r.c.toLocaleString()+' calls · '+r.p.toFixed(1)+'% · '+DEFL[r.d]+' deflection';}}}},
+  scales:{x:{grid:{color:'rgba(137,135,129,0.2)'},ticks:{color:'#898781',font:{size:11}}},
+          y:{grid:{display:false},ticks:{color:'#52514e',font:{size:11.5}}}}}});
+function sortT(c,txt){
+  var tb=document.querySelector('#rfcTable tbody');var rows=[].slice.call(tb.querySelectorAll('tr'));
+  var asc=tb.getAttribute('data-asc')===c+'';
+  rows.sort(function(a,b){var x=a.children[c].textContent.replace(/[,%]/g,''),y=b.children[c].textContent.replace(/[,%]/g,'');
+    if(txt)return asc?y.localeCompare(x):x.localeCompare(y);return asc?(parseFloat(y)-parseFloat(x)):(parseFloat(x)-parseFloat(y));});
+  tb.setAttribute('data-asc',asc?'':c+'');rows.forEach(function(r){tb.appendChild(r);});
+}
+document.getElementById('foot').textContent='RFC v0 — calls only, week of Jun 14 2026 (Code Yellow "Inbound Patient Support Needs"; Zoho Analytics view 2713211000068740630). Email/chat/text drivers not yet included — RFC mix will shift when added. Deflection tiers are v0 estimates for planning. De-identified aggregate counts; no PHI. v1: live reason mix from CRM/Desk ticket categories + all channels.';
+</script>
+</body>
+</html>

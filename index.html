@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>OpenLoop PS — Operations Command Center (Prototype)</title>
+<style>
+  :root{--ink:#0b0b0b;--sec:#52514e;--mut:#898781;--card:#f5f4f1;--bd:#e1e0d9;--bds:#c3c2b7;--red:#b42318;--amb:#9a6a00;--grn:#127a3e;--blue:#2a78d6;--panel:#fbfaf8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.5;padding:18px;}
+  .wrap{max-width:1140px;margin:0 auto;}
+  h1{font-size:21px;font-weight:600;margin:0;}
+  .sub{font-size:13px;color:var(--sec);margin-top:3px;}
+  .proto{display:inline-block;font-size:11px;font-weight:600;color:#fff;background:var(--amb);border-radius:5px;padding:2px 7px;margin-left:8px;vertical-align:middle;}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0 6px;padding:12px 14px;background:var(--panel);border:1px solid var(--bd);border-radius:10px;}
+  .bar label{font-size:12px;color:var(--sec);}
+  .bar input,.bar select{font-size:13px;padding:6px 9px;border:1px solid var(--bds);border-radius:7px;background:#fff;color:var(--ink);}
+  #q{min-width:220px;}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;margin:16px 0 0;border-bottom:2px solid var(--bds);}
+  .tab{font-size:14px;font-weight:600;padding:9px 15px;border:none;background:none;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;}
+  .tab.active{color:var(--ink);border-bottom-color:var(--blue);}
+  .panel{display:none;padding-top:18px;}
+  .panel.active{display:block;}
+  .grid{display:grid;gap:12px;}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
+  .card{background:var(--card);border-radius:10px;padding:14px 16px;}
+  .card .k{font-size:12.5px;color:var(--sec);}
+  .card .v{font-size:25px;font-weight:600;margin-top:2px;}
+  .card .n{font-size:11.5px;color:var(--mut);margin-top:2px;}
+  .red{color:var(--red);} .amb{color:var(--amb);} .grn{color:var(--grn);} .blue{color:var(--blue);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px;}
+  th{font-weight:600;color:var(--sec);text-align:right;padding:8px 7px;cursor:pointer;user-select:none;}
+  td{text-align:right;padding:8px 7px;border-top:1px solid var(--bd);}
+  th:first-child,td:first-child{text-align:left;}
+  tr.hide{display:none;}
+  .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;}
+  .pill.g{background:#e4f2ea;color:var(--grn);} .pill.a{background:#f6efdc;color:var(--amb);} .pill.r{background:#f7e4e2;color:var(--red);}
+  .lbl{font-size:13px;font-weight:600;color:var(--sec);margin:20px 0 6px;}
+  .fresh{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:6px;}
+  .fbox{background:var(--panel);border:1px solid var(--bd);border-radius:9px;padding:11px 13px;font-size:12.5px;}
+  .fbox .h{font-weight:600;color:var(--ink);}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+  .dot.live{background:var(--grn);} .dot.daily{background:var(--amb);} .dot.off{background:var(--red);}
+  .note{font-size:12px;color:var(--mut);margin-top:10px;}
+  iframe{width:100%;height:1400px;border:1px solid var(--bd);border-radius:10px;margin-top:8px;}
+  .foot{font-size:11px;color:var(--mut);margin-top:26px;border-top:1px solid var(--bd);padding-top:10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>OpenLoop PS — Operations Command Center <span class="proto">PROTOTYPE · v0</span></h1>
+  <div class="sub">All clients · all channels · capacity + live ops + SLAs, one screen. Snapshot as of <b>Jul 12, 2026</b> (de-identified aggregates). Filter/search below applies to the client &amp; BPO tables.</div>
+
+  <div class="bar">
+    <label>Search</label><input id="q" placeholder="client or BPO…" oninput="applyFilter()">
+    <label>Channel</label><select id="chan" onchange="applyFilter()"><option>All</option><option>Voice</option><option>Chat</option><option>Email</option></select>
+    <label>BPO</label><select id="bpo" onchange="applyFilter()"><option>All</option><option>RESPONSE</option><option>TTEC</option><option>NEXTVAS</option><option>NARITH</option></select>
+    <label>SLA</label><select id="sla" onchange="applyFilter()"><option>All</option><option>Breaching</option><option>Meeting</option></select>
+    <span id="filterStat" style="font-size:12px;color:var(--mut);margin-left:auto;"></span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab(0)">Live Ops</button>
+    <button class="tab" onclick="showTab(1)">SLAs — all clients</button>
+    <button class="tab" onclick="showTab(2)">Capacity vs Demand</button>
+    <button class="tab" onclick="showTab(3)">By BPO &amp; Client</button>
+    <button class="tab" onclick="showTab(4)">Client Dashboards</button>
+    <button class="tab" onclick="showTab(5)">Reasons for Contact</button>
+  </div>
+
+  <!-- ===== LIVE OPS ===== -->
+  <div class="panel active" id="p0">
+    <div class="lbl" style="margin-top:0;">Data freshness by source — what's live vs batch</div>
+    <div class="fresh">
+      <div class="fbox"><div class="h"><span class="dot live"></span>Email / chat / ticket queues</div>Zoho Desk API — <b>LIVE</b>. Newest ticket pulled at 18:05:37 UTC today (real-time). Backlog, oldest-waiting, replies available now.</div>
+      <div class="fbox"><div class="h"><span class="dot daily"></span>Voice volume · AHT · SLA</div>Amazon Connect → Zoho Analytics — <b>daily batch</b> (through ~04:29 CT today). Fine for trends/capacity, not intraday.</div>
+      <div class="fbox"><div class="h"><span class="dot off"></span>Live voice floor (ASA, queue depth, agents-available-now)</div>Amazon Connect API — <b>not connected</b>. Needs IAM access (in progress). This is the only true-live gap.</div>
+    </div>
+
+    <div class="lbl">Current snapshot — headline</div>
+    <div class="grid kpis">
+      <div class="card"><div class="k">Voice service level (wk)</div><div class="v amb">71%</div><div class="n">all clients, vol-weighted · target 80% ≤30s · 9% abandon</div></div>
+      <div class="card"><div class="k">Clients below SLA target</div><div class="v red">4</div><div class="n">Embody 36 · WC-Embody 51 · ElixaMD 72 · Fridays 78 (&lt;80%)</div></div>
+      <div class="card"><div class="k">Email queue (Embody)</div><div class="v red">~512</div><div class="n">open · live via Desk</div></div>
+      <div class="card"><div class="k">Active BPO agents (voice)</div><div class="v">926</div><div class="n">Response 421 · NextVas 223 · Narith 143 · TTEC 139</div></div>
+      <div class="card"><div class="k">Live email feed</div><div class="v grn">✓</div><div class="n">connected · Zoho Desk API</div></div>
+    </div>
+    <div class="note">Live ticket <b>drill-down</b> (who's waiting, by patient) is the gated v1 feature — this prototype shows de-identified aggregates only. Voice "live floor" arrives with the Amazon Connect IAM hookup.</div>
+  </div>
+
+  <!-- ===== SLAs ===== -->
+  <div class="panel" id="p1">
+    <div class="lbl" style="margin-top:0;">Voice service level by client — last 7 days (Jul 5–12)</div>
+    <table id="clientTable">
+      <thead><tr><th onclick="sortT('clientTable',0,true)">Client</th><th onclick="sortT('clientTable',1)">Offered</th><th onclick="sortT('clientTable',2)">Answered</th><th onclick="sortT('clientTable',3)">SL ≤30s</th><th onclick="sortT('clientTable',4)">Abandon</th><th>Status</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="note">Target: <b>80% answered ≤30s</b>, abandon <b>&lt;5%</b>. RAG = meeting / near / breaching. Chat &amp; email SLA-by-client come from Zoho Desk (live) in v1; today Embody email = ~18% ≤1hr / 44% ≤4hr, chat = 94% ≤30s. Note: "MEDVi"/"Medvi" are a casing duplicate to merge.</div>
+  </div>
+
+  <!-- ===== CAPACITY ===== -->
+  <div class="panel" id="p2">
+    <div class="lbl" style="margin-top:0;">Capacity vs Demand &amp; Surge model — embedded</div>
+    <div class="note">The full staffing model (Erlang C voice · concurrency chat · throughput/backlog email · intraday surge · sensitivity · hiring). Enter demand → required FTEs by channel. Per-BPO AHT from the By-BPO tab feeds the efficiency assumptions.</div>
+    <iframe src="ps-capacity-model.html" title="Capacity model"></iframe>
+  </div>
+
+  <!-- ===== BY BPO & CLIENT ===== -->
+  <div class="panel" id="p3">
+    <div class="lbl" style="margin-top:0;">Agent efficiency by BPO — voice, Jul MTD</div>
+    <table id="bpoTable">
+      <thead><tr><th onclick="sortT('bpoTable',0,true)">BPO</th><th onclick="sortT('bpoTable',1)">Agents</th><th onclick="sortT('bpoTable',2)">Answered</th><th onclick="sortT('bpoTable',3)">AHT (min)</th><th onclick="sortT('bpoTable',4)">Talk</th><th onclick="sortT('bpoTable',5)">ACW (s)</th><th onclick="sortT('bpoTable',6)">Contacts/agent</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="note">Response is the efficient BPO (5.5m AHT, 84/agent); TTEC slow (11.2m, long talk). NextVas &amp; the untagged bucket show implausible ACW (271s/427s) — likely ACW-state parking; verify. "Untagged" ≈ in-house/clinical (Provider Outreach, RN/CMA), not BPO. Feeds the capacity model's per-BPO AHT.</div>
+  </div>
+
+  <!-- ===== CLIENT DASHBOARDS ===== -->
+  <div class="panel" id="p4">
+    <div class="lbl" style="margin-top:0;">Client-facing performance dashboards — live</div>
+    <div class="picker" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 12px;padding:11px 14px;background:var(--panel);border:1px solid var(--bd);border-radius:10px;">
+      <span style="font-size:13px;color:var(--sec);">Client</span>
+      <div id="cdBtns" style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button type="button" class="tab cdbtn active" style="border:1px solid var(--bds);border-radius:7px;padding:6px 13px;" onclick="showClient('embody')">Embody</button>
+        <button type="button" class="tab cdbtn" style="border:1px solid var(--bds);border-radius:7px;padding:6px 13px;" onclick="showClient('medvi')">Medvi</button>
+        <button type="button" class="tab cdbtn" style="border:1px solid var(--bds);border-radius:7px;padding:6px 13px;" onclick="showClient('elixa')">Elixa</button>
+      </div>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+        <input id="cdUrl" readonly style="font-size:12px;padding:6px 9px;border:1px solid var(--bds);border-radius:7px;background:#fff;color:var(--sec);min-width:340px;">
+        <button type="button" onclick="copyClientLink()" style="font-size:13px;font-weight:600;padding:6px 13px;border:1px solid var(--blue);border-radius:7px;background:var(--blue);color:#fff;cursor:pointer;">Copy link</button>
+        <a id="cdOpen" href="#" target="_blank" style="font-size:12.5px;color:var(--blue);text-decoration:none;">Open ↗</a>
+      </span>
+      <span id="cdCopied" style="font-size:12px;color:var(--grn);font-weight:600;display:none;">✓ Copied</span>
+    </div>
+    <div class="note" style="margin:0 0 8px;">This is the exact link the client sees — share it if they ask. Public but unlisted (no-index); shows aggregate performance only, no internal/BPO detail. Auto-refreshes every 4 hours.</div>
+    <iframe id="cdFrame" title="client dashboard" style="height:1500px;"></iframe>
+  </div>
+
+  <!-- ===== REASONS FOR CONTACT ===== -->
+  <div class="panel" id="p5">
+    <div class="lbl" style="margin-top:0;">Reasons for Contact (RFC) — why patients contact PS</div>
+    <div class="note" style="margin:0 0 8px;">Ranked contact drivers, owning queues, and deflection potential. v0 = phone channel only (Code Yellow, wk of Jun 14). Email/chat reasons pending a live classifier. Internal planning view — not client-facing.</div>
+    <iframe src="ps-rfc.html" title="Reasons for Contact"></iframe>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+// ---- real snapshot data (de-identified aggregates) ----
+var CLIENTS=[
+  {c:"MEDVi",o:7921,a:7565,sl:81,ab:4},
+  {c:"Embody",o:4676,a:3577,sl:36,ab:24},
+  {c:"White Coat - Embody",o:1735,a:1415,sl:51,ab:18},
+  {c:"Agile Telehealth - HealthEquity",o:1192,a:1161,sl:86,ab:3},
+  {c:"Medvi",o:1177,a:1133,sl:82,ab:4},
+  {c:"XMD Wellness",o:773,a:761,sl:94,ab:2},
+  {c:"Taurus",o:411,a:404,sl:95,ab:2},
+  {c:"RemedyMeds",o:320,a:305,sl:87,ab:5},
+  {c:"Pharmacy Line (Olh)",o:269,a:258,sl:95,ab:4},
+  {c:"ElixaMD",o:262,a:238,sl:72,ab:9},
+  {c:"White Coat - AltRx",o:250,a:241,sl:88,ab:4},
+  {c:"Cma Triage Support Line",o:237,a:235,sl:98,ab:1},
+  {c:"RedBox Rx",o:228,a:216,sl:90,ab:5},
+  {c:"Gala GLP-1",o:219,a:214,sl:87,ab:2},
+  {c:"Fridays",o:192,a:166,sl:78,ab:14}
+];
+var BPOS=[
+  {b:"RESPONSE",ag:421,an:35225,aht:5.5,talk:4.0,acw:57,cpa:83.7},
+  {b:"TTEC",ag:139,an:9369,aht:11.2,talk:9.1,acw:34,cpa:67.4},
+  {b:"NEXTVAS",ag:223,an:5763,aht:5.7,talk:1.2,acw:271,cpa:25.8},
+  {b:"NARITH",ag:143,an:3082,aht:9.5,talk:5.9,acw:93,cpa:21.6}
+];
+function slPill(sl){ if(sl>=80) return '<span class="pill g">Meeting</span>'; if(sl>=65) return '<span class="pill a">Near</span>'; return '<span class="pill r">Breaching</span>'; }
+function cls(sl){ return sl>=80?'grn':(sl>=65?'amb':'red'); }
+
+function renderClients(){
+  var tb=document.querySelector('#clientTable tbody');
+  tb.innerHTML=CLIENTS.map(function(r){
+    return '<tr data-name="'+r.c.toLowerCase()+'" data-sl="'+r.sl+'"><td>'+r.c+'</td><td>'+r.o.toLocaleString()+'</td><td>'+r.a.toLocaleString()+'</td><td class="'+cls(r.sl)+'">'+r.sl+'%</td><td class="'+(r.ab>5?'red':'grn')+'">'+r.ab+'%</td><td>'+slPill(r.sl)+'</td></tr>';
+  }).join('');
+}
+function renderBpos(){
+  var tb=document.querySelector('#bpoTable tbody');
+  tb.innerHTML=BPOS.map(function(r){
+    return '<tr data-name="'+r.b.toLowerCase()+'"><td>'+r.b+'</td><td>'+r.ag+'</td><td>'+r.an.toLocaleString()+'</td><td>'+r.aht+'</td><td>'+r.talk+'</td><td class="'+(r.acw>150?'amb':'')+'">'+r.acw+'</td><td>'+r.cpa+'</td></tr>';
+  }).join('');
+}
+function applyFilter(){
+  var q=document.getElementById('q').value.toLowerCase().trim();
+  var chan=document.getElementById('chan').value;
+  var bpo=document.getElementById('bpo').value;
+  var sla=document.getElementById('sla').value;
+  var shown=0,total=0;
+  document.querySelectorAll('#clientTable tbody tr').forEach(function(tr){
+    total++;
+    var name=tr.getAttribute('data-name'), sl=+tr.getAttribute('data-sl');
+    var ok = (!q||name.indexOf(q)>=0) && (sla==='All'||(sla==='Breaching'&&sl<80)||(sla==='Meeting'&&sl>=80)) && (chan==='All'||chan==='Voice');
+    tr.classList.toggle('hide',!ok); if(ok) shown++;
+  });
+  document.querySelectorAll('#bpoTable tbody tr').forEach(function(tr){
+    var name=tr.getAttribute('data-name');
+    var ok=(!q||name.indexOf(q)>=0)&&(bpo==='All'||name===bpo.toLowerCase());
+    tr.classList.toggle('hide',!ok);
+  });
+  var cn=chan!=='Voice'&&chan!=='All'?' · (client SLA table is voice; '+chan+' by-client = v1)':'';
+  document.getElementById('filterStat').textContent=shown+' / '+total+' clients'+cn;
+}
+function showTab(i){
+  document.querySelectorAll('.tabs .tab').forEach(function(t,j){t.classList.toggle('active',j===i);});
+  document.querySelectorAll('.panel').forEach(function(p,j){p.classList.toggle('active',j===i);});
+}
+// ---- client dashboards ----
+var CLIENT_URLS={
+  embody:"https://ryanc-olh.github.io/embody-ps-perf-c4bfe7d68d/",
+  medvi:"https://ryanc-olh.github.io/medvi-ps-perf-5bfa85220008/",
+  elixa:"https://ryanc-olh.github.io/elixa-ps-perf-e7f27bbecb14/"
+};
+function showClient(c){
+  var url=CLIENT_URLS[c];
+  document.getElementById('cdFrame').src=url+'?cb='+Date.now();   // cache-buster → always fetch latest published build
+  document.getElementById('cdUrl').value=url;                     // clean URL for copying to clients
+  document.getElementById('cdOpen').href=url;
+  document.getElementById('cdCopied').style.display='none';
+  document.querySelectorAll('#cdBtns .cdbtn').forEach(function(b){b.classList.remove('active');});
+  var btns=document.querySelectorAll('#cdBtns .cdbtn');
+  ['embody','medvi','elixa'].forEach(function(k,i){ if(k===c) btns[i].classList.add('active'); });
+}
+function copyClientLink(){
+  var u=document.getElementById('cdUrl').value;
+  var done=function(){var m=document.getElementById('cdCopied');m.style.display='inline';setTimeout(function(){m.style.display='none';},1800);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u).then(done,function(){fallbackCopy(u);done();});}
+  else{fallbackCopy(u);done();}
+}
+function fallbackCopy(u){var i=document.getElementById('cdUrl');i.focus();i.select();try{document.execCommand('copy');}catch(e){}}
+showClient('embody');
+function sortT(id,col,txt){
+  var tb=document.querySelector('#'+id+' tbody');
+  var rows=[].slice.call(tb.querySelectorAll('tr'));
+  var asc=tb.getAttribute('data-asc')===col+'';
+  rows.sort(function(a,b){
+    var x=a.children[col].textContent.replace(/[,%$m]/g,''),y=b.children[col].textContent.replace(/[,%$m]/g,'');
+    if(txt) return asc? y.localeCompare(x):x.localeCompare(y);
+    return asc? (parseFloat(y)-parseFloat(x)):(parseFloat(x)-parseFloat(y));
+  });
+  tb.setAttribute('data-asc',asc?'':col+'');
+  rows.forEach(function(r){tb.appendChild(r);});
+}
+renderClients(); renderBpos(); applyFilter();
+document.getElementById('foot').textContent='Prototype v0 — real snapshot data (voice by client last 7d; agent efficiency by BPO Jul MTD; Embody email/chat from Desk). Live email feed proven via Zoho Desk API. Not auto-refreshing, not gated — v1 adds a backend poller + login. All figures planning/ops estimates; de-identified.';
+</script>
+</body>
+</html>
