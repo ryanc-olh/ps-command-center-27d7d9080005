@@ -108,12 +108,22 @@
 
   <!-- ===== BY BPO & CLIENT ===== -->
   <div class="panel" id="p3">
-    <div class="lbl" style="margin-top:0;">Agent efficiency by BPO — voice, Jul MTD (through 7/16, all clients)</div>
+    <div class="lbl" style="margin-top:0;">Agent efficiency by BPO — voice, Jul MTD (through 7/16)</div>
+    <div class="picker" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 10px;padding:9px 13px;background:var(--panel);border:1px solid var(--bd);border-radius:9px;">
+      <span style="font-size:13px;color:var(--sec);">Client</span>
+      <div id="bpoClientBtns" style="display:flex;gap:5px;flex-wrap:wrap;">
+        <button type="button" class="cdbtn active" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;" onclick="renderBpos('all')">All clients</button>
+        <button type="button" class="cdbtn" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;" onclick="renderBpos('embody')">Embody</button>
+        <button type="button" class="cdbtn" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;" onclick="renderBpos('medvi')">Medvi</button>
+        <button type="button" class="cdbtn" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;" onclick="renderBpos('elixa')">Elixa</button>
+      </div>
+      <span id="bpoClientStat" style="font-size:12px;color:var(--mut);margin-left:auto;"></span>
+    </div>
     <table id="bpoTable">
-      <thead><tr><th onclick="sortT('bpoTable',0,true)">BPO</th><th onclick="sortT('bpoTable',1)">Agents</th><th onclick="sortT('bpoTable',2)">Answered</th><th onclick="sortT('bpoTable',3)">AHT (min)</th><th onclick="sortT('bpoTable',4)">Talk</th><th onclick="sortT('bpoTable',5)">ACW (s)</th><th onclick="sortT('bpoTable',6)">Contacts/agent</th></tr></thead>
+      <thead><tr><th onclick="sortT('bpoTable',0,true)">BPO</th><th onclick="sortT('bpoTable',1)">Agents</th><th onclick="sortT('bpoTable',2)">Answered</th><th onclick="sortT('bpoTable',3)">AHT (min)</th><th onclick="sortT('bpoTable',4)">ACW (s)</th><th onclick="sortT('bpoTable',5)">Contacts/agent</th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="note">Response is the efficient BPO (5.5m AHT, 84/agent); TTEC slow (11.2m, long talk). NextVas &amp; the untagged bucket show implausible ACW (271s/427s) — likely ACW-state parking; verify. "Untagged" ≈ in-house/clinical (Provider Outreach, RN/CMA), not BPO. Feeds the capacity model's per-BPO AHT.</div>
+    <div class="note"><b>Slice by client above.</b> Response is the efficient BPO (5.5m AHT, ~118/agent); TTEC is the laggard (11.3m). <b>Key finding:</b> Embody is served mostly by TTEC + Narith (the slow BPOs) → its low SLA; Medvi runs mostly on Response (efficient) → its strong SLA. NextVas shows implausibly high ACW (~295s) — likely ACW-state parking; verify before trusting. BPO = Amazon Connect hierarchy L1; in-house/clinical (NULL hierarchy) excluded. Voice only; email-agent attribution (Zoho Desk) not yet included. Feeds the capacity model's per-BPO AHT.</div>
   </div>
 
   <!-- ===== CLIENT DASHBOARDS ===== -->
@@ -166,12 +176,34 @@ var CLIENTS=[
   {c:"Gala GLP-1",o:219,a:214,sl:87,ab:2},
   {c:"Fridays",o:192,a:166,sl:78,ab:14}
 ];
-var BPOS=[
-  {b:"RESPONSE",ag:433,an:51173,aht:5.5,talk:4.0,acw:58,cpa:118.2},
-  {b:"TTEC",ag:148,an:15087,aht:11.3,talk:8.7,acw:58,cpa:101.9},
-  {b:"NEXTVAS",ag:242,an:7594,aht:6.1,talk:1.2,acw:295,cpa:31.4},
-  {b:"NARITH",ag:165,an:7290,aht:10.0,talk:6.4,acw:92,cpa:44.2}
-];
+// Agent efficiency by BPO × client — voice, Jul MTD through 7/16 (Amazon Connect Logs Adj, hierarchy L1)
+var BPOS_BY_CLIENT={
+  all:[
+    {b:"RESPONSE",ag:433,an:51173,aht:5.5,acw:58,cpa:118.2},
+    {b:"TTEC",ag:148,an:15087,aht:11.3,acw:58,cpa:101.9},
+    {b:"NEXTVAS",ag:242,an:7594,aht:6.1,acw:295,cpa:31.4},
+    {b:"NARITH",ag:165,an:7290,aht:10.0,acw:92,cpa:44.2}
+  ],
+  embody:[
+    {b:"TTEC",ag:125,an:6318,aht:10.0,acw:30,cpa:50.5},
+    {b:"NARITH",ag:101,an:5644,aht:10.4,acw:96,cpa:55.9},
+    {b:"RESPONSE",ag:303,an:3265,aht:6.3,acw:63,cpa:10.8},
+    {b:"NEXTVAS",ag:98,an:724,aht:1.8,acw:28,cpa:7.4}
+  ],
+  medvi:[
+    {b:"RESPONSE",ag:362,an:25162,aht:5.6,acw:59,cpa:69.5},
+    {b:"TTEC",ag:110,an:6257,aht:13.1,acw:99,cpa:56.9},
+    {b:"NEXTVAS",ag:126,an:1493,aht:3.1,acw:96,cpa:11.8},
+    {b:"NARITH",ag:66,an:239,aht:3.5,acw:42,cpa:3.6}
+  ],
+  elixa:[
+    {b:"NARITH",ag:68,an:316,aht:10.9,acw:105,cpa:4.6},
+    {b:"RESPONSE",ag:96,an:264,aht:8.7,acw:77,cpa:2.8},
+    {b:"TTEC",ag:45,an:152,aht:11.2,acw:29,cpa:3.4},
+    {b:"NEXTVAS",ag:38,an:107,aht:1.3,acw:13,cpa:2.8}
+  ]
+};
+var BPO_CLIENT_LABEL={all:"all clients",embody:"Embody",medvi:"Medvi",elixa:"Elixa"};
 function slPill(sl){ if(sl>=80) return '<span class="pill g">Meeting</span>'; if(sl>=65) return '<span class="pill a">Near</span>'; return '<span class="pill r">Breaching</span>'; }
 function cls(sl){ return sl>=80?'grn':(sl>=65?'amb':'red'); }
 
@@ -181,11 +213,19 @@ function renderClients(){
     return '<tr data-name="'+r.c.toLowerCase()+'" data-sl="'+r.sl+'"><td>'+r.c+'</td><td>'+r.o.toLocaleString()+'</td><td>'+r.a.toLocaleString()+'</td><td class="'+cls(r.sl)+'">'+r.sl+'%</td><td class="'+(r.ab>5?'red':'grn')+'">'+r.ab+'%</td><td>'+slPill(r.sl)+'</td></tr>';
   }).join('');
 }
-function renderBpos(){
+var bpoClient='all';
+function renderBpos(cl){
+  if(cl){bpoClient=cl;}
+  var rows=BPOS_BY_CLIENT[bpoClient]||BPOS_BY_CLIENT.all;
   var tb=document.querySelector('#bpoTable tbody');
-  tb.innerHTML=BPOS.map(function(r){
-    return '<tr data-name="'+r.b.toLowerCase()+'"><td>'+r.b+'</td><td>'+r.ag+'</td><td>'+r.an.toLocaleString()+'</td><td>'+r.aht+'</td><td>'+r.talk+'</td><td class="'+(r.acw>150?'amb':'')+'">'+r.acw+'</td><td>'+r.cpa+'</td></tr>';
+  tb.innerHTML=rows.map(function(r){
+    return '<tr data-name="'+r.b.toLowerCase()+'"><td>'+r.b+'</td><td>'+r.ag+'</td><td>'+r.an.toLocaleString()+'</td><td>'+r.aht+'</td><td class="'+(r.acw>150?'amb':'')+'">'+r.acw+'</td><td>'+r.cpa+'</td></tr>';
   }).join('');
+  var tot=rows.reduce(function(s,r){return s+r.an;},0);
+  document.getElementById('bpoClientStat').textContent=BPO_CLIENT_LABEL[bpoClient]+' · '+tot.toLocaleString()+' answered voice contacts';
+  var btns=document.querySelectorAll('#bpoClientBtns .cdbtn');
+  ['all','embody','medvi','elixa'].forEach(function(k,i){ if(btns[i]) btns[i].classList.toggle('active',k===bpoClient); });
+  applyFilter();
 }
 function applyFilter(){
   var q=document.getElementById('q').value.toLowerCase().trim();
