@@ -108,7 +108,13 @@
 
   <!-- ===== BY BPO & CLIENT ===== -->
   <div class="panel" id="p3">
-    <div class="lbl" style="margin-top:0;">Agent efficiency by BPO — voice, Jul MTD (through 7/16)</div>
+    <div class="lbl" style="margin-top:0;">Who staffs whom — client × BPO, voice, Jul MTD</div>
+    <div class="note" style="margin:0 0 8px;">Each cell: <b>answered volume</b> · avg handle time (green ≤7m / amber 7–10m / red &gt;10m). Bold = that client's dominant BPO. Shows routing + efficiency in one view.</div>
+    <div style="overflow-x:auto;"><table id="bpoMatrix">
+      <thead><tr><th>Client</th><th>RESPONSE</th><th>TTEC</th><th>NEXTVAS</th><th>NARITH</th><th>Total</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="lbl">Agent efficiency by BPO — voice, Jul MTD (through 7/16)</div>
     <div class="picker" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 10px;padding:9px 13px;background:var(--panel);border:1px solid var(--bd);border-radius:9px;">
       <span style="font-size:13px;color:var(--sec);">Client</span>
       <div id="bpoClientBtns" style="display:flex;gap:5px;flex-wrap:wrap;">
@@ -213,6 +219,23 @@ function renderClients(){
     return '<tr data-name="'+r.c.toLowerCase()+'" data-sl="'+r.sl+'"><td>'+r.c+'</td><td>'+r.o.toLocaleString()+'</td><td>'+r.a.toLocaleString()+'</td><td class="'+cls(r.sl)+'">'+r.sl+'%</td><td class="'+(r.ab>5?'red':'grn')+'">'+r.ab+'%</td><td>'+slPill(r.sl)+'</td></tr>';
   }).join('');
 }
+function renderMatrix(){
+  var order=["RESPONSE","TTEC","NEXTVAS","NARITH"];
+  var clients=[["embody","Embody"],["medvi","Medvi"],["elixa","Elixa"],["all","All clients"]];
+  var ahtCls=function(a){return a<=7?'grn':(a<=10?'amb':'red');};
+  var tb=document.querySelector('#bpoMatrix tbody');
+  tb.innerHTML=clients.map(function(c){
+    var rows=BPOS_BY_CLIENT[c[0]], byB={}, tot=0, max=0;
+    rows.forEach(function(r){byB[r.b]=r; tot+=r.an; if(r.an>max)max=r.an;});
+    var cells=order.map(function(b){
+      var r=byB[b]; if(!r) return '<td>—</td>';
+      var dom=(r.an===max&&c[0]!=='all');
+      return '<td'+(dom?' style="background:#eef4fb;"':'')+'>'+(dom?'<b>':'')+r.an.toLocaleString()+(dom?'</b>':'')+
+        ' <span class="'+ahtCls(r.aht)+'" style="font-size:11px;">'+r.aht+'m</span></td>';
+    }).join('');
+    return '<tr'+(c[0]==='all'?' class="tot"':'')+'><td>'+c[1]+'</td>'+cells+'<td><b>'+tot.toLocaleString()+'</b></td></tr>';
+  }).join('');
+}
 var bpoClient='all';
 function renderBpos(cl){
   if(cl){bpoClient=cl;}
@@ -287,7 +310,7 @@ function sortT(id,col,txt){
   tb.setAttribute('data-asc',asc?'':col+'');
   rows.forEach(function(r){tb.appendChild(r);});
 }
-renderClients(); renderBpos(); applyFilter();
+renderClients(); renderMatrix(); renderBpos(); applyFilter();
 document.getElementById('foot').textContent='Prototype v0 — real snapshot data (voice by client last 7d; agent efficiency by BPO Jul MTD; Embody email/chat from Desk). Live email feed proven via Zoho Desk API. Not auto-refreshing, not gated — v1 adds a backend poller + login. All figures planning/ops estimates; de-identified.';
 </script>
 </body>
