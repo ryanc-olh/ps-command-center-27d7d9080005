@@ -83,7 +83,7 @@
       <div class="card"><div class="k">Voice service level (wk)</div><div class="v amb">71%</div><div class="n">all clients, vol-weighted · target 80% ≤30s · 9% abandon</div></div>
       <div class="card"><div class="k">Clients below SLA target</div><div class="v red">4</div><div class="n">Embody 36 · WC-Embody 51 · ElixaMD 72 · Fridays 78 (&lt;80%)</div></div>
       <div class="card"><div class="k">Email queue (Embody)</div><div class="v red">~512</div><div class="n">open · live via Desk</div></div>
-      <div class="card"><div class="k">Active BPO agents (voice)</div><div class="v">926</div><div class="n">Response 421 · NextVas 223 · Narith 143 · TTEC 139</div></div>
+      <div class="card"><div class="k">Active BPO agents (voice)</div><div class="v">988</div><div class="n">Response 433 · NextVas 242 · Narith 165 · TTEC 148 · Jul MTD</div></div>
       <div class="card"><div class="k">Live email feed</div><div class="v grn">✓</div><div class="n">connected · Zoho Desk API</div></div>
     </div>
     <div class="note">Live ticket <b>drill-down</b> (who's waiting, by patient) is the gated v1 feature — this prototype shows de-identified aggregates only. Voice "live floor" arrives with the Amazon Connect IAM hookup.</div>
@@ -108,7 +108,7 @@
 
   <!-- ===== BY BPO & CLIENT ===== -->
   <div class="panel" id="p3">
-    <div class="lbl" style="margin-top:0;">Agent efficiency by BPO — voice, Jul MTD</div>
+    <div class="lbl" style="margin-top:0;">Agent efficiency by BPO — voice, Jul MTD (through 7/16, all clients)</div>
     <table id="bpoTable">
       <thead><tr><th onclick="sortT('bpoTable',0,true)">BPO</th><th onclick="sortT('bpoTable',1)">Agents</th><th onclick="sortT('bpoTable',2)">Answered</th><th onclick="sortT('bpoTable',3)">AHT (min)</th><th onclick="sortT('bpoTable',4)">Talk</th><th onclick="sortT('bpoTable',5)">ACW (s)</th><th onclick="sortT('bpoTable',6)">Contacts/agent</th></tr></thead>
       <tbody></tbody>
@@ -167,10 +167,10 @@ var CLIENTS=[
   {c:"Fridays",o:192,a:166,sl:78,ab:14}
 ];
 var BPOS=[
-  {b:"RESPONSE",ag:421,an:35225,aht:5.5,talk:4.0,acw:57,cpa:83.7},
-  {b:"TTEC",ag:139,an:9369,aht:11.2,talk:9.1,acw:34,cpa:67.4},
-  {b:"NEXTVAS",ag:223,an:5763,aht:5.7,talk:1.2,acw:271,cpa:25.8},
-  {b:"NARITH",ag:143,an:3082,aht:9.5,talk:5.9,acw:93,cpa:21.6}
+  {b:"RESPONSE",ag:433,an:51173,aht:5.5,talk:4.0,acw:58,cpa:118.2},
+  {b:"TTEC",ag:148,an:15087,aht:11.3,talk:8.7,acw:58,cpa:101.9},
+  {b:"NEXTVAS",ag:242,an:7594,aht:6.1,talk:1.2,acw:295,cpa:31.4},
+  {b:"NARITH",ag:165,an:7290,aht:10.0,talk:6.4,acw:92,cpa:44.2}
 ];
 function slPill(sl){ if(sl>=80) return '<span class="pill g">Meeting</span>'; if(sl>=65) return '<span class="pill a">Near</span>'; return '<span class="pill r">Breaching</span>'; }
 function cls(sl){ return sl>=80?'grn':(sl>=65?'amb':'red'); }
