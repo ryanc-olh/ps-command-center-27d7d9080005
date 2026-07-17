@@ -108,8 +108,12 @@
 
   <!-- ===== BY BPO & CLIENT ===== -->
   <div class="panel" id="p3">
-    <div class="lbl" style="margin-top:0;">Who staffs whom — client × BPO, voice, Jul MTD</div>
-    <div class="note" style="margin:0 0 8px;">Each cell: <b>answered volume</b> · <b>ASA</b> time-to-answer (green ≤30s / amber ≤2m / red &gt;2m) · AHT handle time. Bold = client's dominant BPO. <b>Read:</b> Narith's ~15-min ASA + Embody's Narith/TTEC routing = Embody's low SLA; Medvi on fast Response (18s) = high SLA.</div>
+    <div class="lbl" style="margin-top:0;">Who staffs whom — client × BPO <span id="mxChanLbl" style="font-weight:400;color:var(--mut);">· voice · Jul MTD</span></div>
+    <div style="display:flex;gap:6px;margin:0 0 8px;">
+      <button type="button" id="mxVoiceBtn" class="cdbtn active" style="border:1px solid var(--bds);border-radius:6px;padding:5px 14px;background:#fff;cursor:pointer;font-size:13px;" onclick="setMatrixChan('voice')">Voice</button>
+      <button type="button" id="mxEmailBtn" class="cdbtn" style="border:1px solid var(--bds);border-radius:6px;padding:5px 14px;background:#fff;cursor:pointer;font-size:13px;" onclick="setMatrixChan('email')">Email</button>
+    </div>
+    <div class="note" id="mxNote" style="margin:0 0 8px;">Each cell: <b>answered volume</b> · <b>ASA</b> time-to-answer (green ≤30s / amber ≤2m / red &gt;2m) · AHT handle time. Bold = client's dominant BPO. <b>Read:</b> Narith's ~15-min ASA + Embody's Narith/TTEC routing = Embody's low SLA; Medvi on fast Response (18s) = high SLA.</div>
     <div style="overflow-x:auto;"><table id="bpoMatrix">
       <thead><tr><th>Client</th><th>RESPONSE</th><th>TTEC</th><th>NEXTVAS</th><th>NARITH</th><th>Total</th></tr></thead>
       <tbody></tbody>
@@ -222,23 +226,45 @@ function renderClients(){
     return '<tr data-name="'+r.c.toLowerCase()+'" data-sl="'+r.sl+'"><td>'+r.c+'</td><td>'+r.o.toLocaleString()+'</td><td>'+r.a.toLocaleString()+'</td><td class="'+cls(r.sl)+'">'+r.sl+'%</td><td class="'+(r.ab>5?'red':'grn')+'">'+r.ab+'%</td><td>'+slPill(r.sl)+'</td></tr>';
   }).join('');
 }
+// email replies + first-response ≤4hr% by client×BPO (Jul 10-16, roster join)
+var BPOS_EMAIL_BY_CLIENT={
+  all:[{b:"NARITH",rep:7677,frp:59},{b:"TTEC",rep:4967,frp:61},{b:"RESPONSE",rep:3834,frp:76},{b:"NEXTVAS",rep:13,frp:75}],
+  embody:[{b:"NARITH",rep:6887,frp:60},{b:"TTEC",rep:4588,frp:64},{b:"RESPONSE",rep:159,frp:59}],
+  medvi:[{b:"RESPONSE",rep:3671,frp:77},{b:"NARITH",rep:537,frp:57},{b:"TTEC",rep:379,frp:27},{b:"NEXTVAS",rep:12,frp:73}],
+  elixa:[{b:"NARITH",rep:253,frp:47},{b:"RESPONSE",rep:4,frp:0},{b:"NEXTVAS",rep:1,frp:100}]
+};
+var matrixChan='voice';
+function frpCls(p){return p>=70?'grn':(p>=50?'amb':'red');}
 function renderMatrix(){
   var order=["RESPONSE","TTEC","NEXTVAS","NARITH"];
   var clients=[["embody","Embody"],["medvi","Medvi"],["elixa","Elixa"],["all","All clients"]];
   var ahtCls=function(a){return a<=7?'grn':(a<=10?'amb':'red');};
   var tb=document.querySelector('#bpoMatrix tbody');
+  var email=(matrixChan==='email');
+  var SRC=email?BPOS_EMAIL_BY_CLIENT:BPOS_BY_CLIENT;
   tb.innerHTML=clients.map(function(c){
-    var rows=BPOS_BY_CLIENT[c[0]], byB={}, tot=0, max=0;
-    rows.forEach(function(r){byB[r.b]=r; tot+=r.an; if(r.an>max)max=r.an;});
+    var rows=SRC[c[0]]||[], byB={}, tot=0, max=0;
+    rows.forEach(function(r){var v=email?r.rep:r.an; byB[r.b]=r; tot+=v; if(v>max)max=v;});
     var cells=order.map(function(b){
       var r=byB[b]; if(!r) return '<td>—</td>';
-      var dom=(r.an===max&&c[0]!=='all');
-      return '<td'+(dom?' style="background:#eef4fb;"':'')+'>'+(dom?'<b>':'')+r.an.toLocaleString()+(dom?'</b>':'')+
-        '<br><span class="'+asaCls(r.asa)+'" style="font-size:11px;">'+asaFmt(r.asa)+'</span>'+
-        '<span style="font-size:11px;color:var(--mut);"> · '+r.aht+'m</span></td>';
+      var v=email?r.rep:r.an, dom=(v===max&&c[0]!=='all');
+      var body = email
+        ? (dom?'<b>':'')+r.rep.toLocaleString()+(dom?'</b>':'')+'<br><span class="'+frpCls(r.frp)+'" style="font-size:11px;">'+r.frp+'% ≤4h</span>'
+        : (dom?'<b>':'')+r.an.toLocaleString()+(dom?'</b>':'')+'<br><span class="'+asaCls(r.asa)+'" style="font-size:11px;">'+asaFmt(r.asa)+'</span><span style="font-size:11px;color:var(--mut);"> · '+r.aht+'m</span>';
+      return '<td'+(dom?' style="background:#eef4fb;"':'')+'>'+body+'</td>';
     }).join('');
     return '<tr'+(c[0]==='all'?' class="tot"':'')+'><td>'+c[1]+'</td>'+cells+'<td><b>'+tot.toLocaleString()+'</b></td></tr>';
   }).join('');
+}
+function setMatrixChan(ch){
+  matrixChan=ch;
+  document.getElementById('mxVoiceBtn').classList.toggle('active',ch==='voice');
+  document.getElementById('mxEmailBtn').classList.toggle('active',ch==='email');
+  document.getElementById('mxChanLbl').textContent = ch==='email' ? '· email · Jul 10–16' : '· voice · Jul MTD';
+  document.getElementById('mxNote').innerHTML = ch==='email'
+    ? 'Each cell: <b>email replies</b> · first-response ≤4hr% (green ≥70 / amber ≥50 / red &lt;50). Bold = client\'s dominant BPO. Attributed via the BPO roster (agent email→BPO). <b>Read:</b> Embody email is 92% Narith+TTEC (the slow BPOs) — same routing problem as voice; Medvi rides Response (77% ≤4hr).'
+    : 'Each cell: <b>answered volume</b> · <b>ASA</b> time-to-answer (green ≤30s / amber ≤2m / red &gt;2m) · AHT handle time. Bold = client\'s dominant BPO. <b>Read:</b> Narith\'s ~15-min ASA + Embody\'s Narith/TTEC routing = Embody\'s low SLA; Medvi on fast Response (18s) = high SLA.';
+  renderMatrix();
 }
 var bpoClient='all';
 function renderBpos(cl){
