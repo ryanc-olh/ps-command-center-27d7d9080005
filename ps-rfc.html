@@ -61,7 +61,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>OpenLoop PS — Reasons for Contact <span class="proto">v1.3 · DIAG</span></h1>
+  <h1>OpenLoop PS — Reasons for Contact <span class="proto">v1.4</span></h1>
   <div class="sub">Why patients contact us, ranked &amp; de-identified. Pick a channel:</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 6px;">
     <button id="chPhone" class="chtab active" onclick="showChannel('phone')">📞 Phone</button>
@@ -177,7 +177,7 @@ function render(){
 }
 render();
 var col={g:'#127a3e',a:'#9a6a00',n:'#b42318'};
-var top=RFC.slice(0,9);
+var topR=RFC.slice(0,9);   // NOT 'top' — that's a read-only window.* built-in in browsers
 function htmlBars(elId, items, maxv, labelFn, valFn, dispFn, colorFn){
   var el=document.getElementById(elId); if(!el) return;
   el.innerHTML=items.map(function(r){
@@ -189,9 +189,8 @@ function htmlBars(elId, items, maxv, labelFn, valFn, dispFn, colorFn){
   var el=document.getElementById('rfcBars');
   if(!el){return;}
   try{
-    htmlBars('rfcBars', top, max, function(r){return r.n;}, function(r){return r.c;},
+    htmlBars('rfcBars', topR, max, function(r){return r.n;}, function(r){return r.c;},
       function(r){return r.c.toLocaleString()+' · '+r.p.toFixed(1)+'%';}, function(r){return col[r.d];});
-    if(!el.innerHTML){ el.textContent='(rfcBars rendered empty — top len='+(top&&top.length)+', max='+max+')'; }
   }catch(e){ el.textContent='rfcBars error: '+e.message; el.style.color='#b42318'; }
 })();
 function sortT(c,txt){
