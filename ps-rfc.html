@@ -94,7 +94,7 @@
   </div><!-- /phoneView -->
 
   <div id="emailView" style="display:none">
-    <div class="sub" style="margin-top:10px;">Email sample: <b>week of Jul 11–17, 2026</b> · 100 random tickets/client, reason classified by reading each ticket body · de-identified. "All built" = the 5 clients with dashboards (n=500).</div>
+    <div class="sub" style="margin-top:10px;">Email sample: <b>week of Jul 6–12, 2026</b> · 100 random tickets/client, reason classified by reading each ticket body · de-identified. "All built" = the 5 clients with dashboards (n=500).</div>
     <div class="lbl" style="margin-top:16px;">Client</div>
     <div id="emBtns" style="display:flex;gap:6px;flex-wrap:wrap;">
       <button class="cdbtn2 active" onclick="renderEmail('all')">All built</button>
@@ -166,14 +166,7 @@ function sortT(c,txt){
   tb.setAttribute('data-asc',asc?'':c+'');rows.forEach(function(r){tb.appendChild(r);});
 }
 // ===== EMAIL RFC — sampled 100 tickets/client, week of Jul 11-17 2026, classified from ticket bodies =====
-var EMAIL={
- embody:{"Order & shipping":30,"Medication":20,"Onboarding/admin":13,"Scheduling":12,"Account/access":5,"Billing complaint":5,"Non-patient/noise":5,"Cancellation":4,"Pricing question":3,"Other":3},
- medvi:{"Order & shipping":21,"Billing complaint":15,"Cancellation":14,"Non-patient/noise":11,"Medication":11,"Pricing question":9,"Account/access":7,"Onboarding/admin":4,"Labs":3,"Other":3,"Scheduling":2},
- elixa:{"Order & shipping":21,"Medication":17,"Scheduling":10,"Onboarding/admin":9,"Account/access":8,"Pricing question":8,"Cancellation":8,"Labs":8,"Care coaching":4,"Billing complaint":3,"Other":2,"Product quality":1,"Non-patient/noise":1},
- altrx:{"Order & shipping":21,"Medication":20,"Scheduling":18,"Onboarding/admin":12,"Billing complaint":10,"Account/access":6,"Pricing question":6,"Cancellation":3,"Non-patient/noise":2,"Labs":1,"Care coaching":1},
- trinity:{"Order & shipping":30,"Medication":17,"Scheduling":16,"Pricing question":10,"Onboarding/admin":10,"Billing complaint":6,"Cancellation":5,"Other":3,"Account/access":2,"Non-patient/noise":1},
- other:{"Non-patient/noise":71,"Medication":9,"Order & shipping":5,"Labs":5,"Cancellation":4,"Account/access":2,"Scheduling":2,"Care coaching":1,"Billing complaint":1}
-};
+var EMAIL={"embody":{"Medication":26,"Billing complaint":7,"Other":2,"Pricing question":8,"Onboarding/admin":11,"Cancellation":10,"Order & shipping":7,"Labs":3,"Scheduling":15,"Account/access":8,"Care coaching":1,"Product quality":1,"Non-patient/noise":1},"medvi":{"Non-patient/noise":14,"Other":4,"Account/access":7,"Billing complaint":15,"Scheduling":4,"Order & shipping":13,"Medication":19,"Care coaching":1,"Cancellation":16,"Pricing question":5,"Onboarding/admin":1,"Labs":1},"elixa":{"Billing complaint":5,"Order & shipping":23,"Labs":7,"Account/access":9,"Medication":22,"Scheduling":7,"Pricing question":1,"Non-patient/noise":6,"Other":7,"Onboarding/admin":6,"Product quality":1,"Care coaching":1,"Cancellation":4},"altrx":{"Account/access":12,"Order & shipping":19,"Medication":16,"Billing complaint":6,"Other":7,"Pricing question":5,"Scheduling":20,"Care coaching":4,"Cancellation":7,"Onboarding/admin":3,"Non-patient/noise":1},"trinity":{"Account/access":9,"Medication":22,"Billing complaint":11,"Onboarding/admin":12,"Scheduling":5,"Cancellation":7,"Non-patient/noise":3,"Other":5,"Order & shipping":14,"Pricing question":11,"Care coaching":1},"other":{"Non-patient/noise":26,"Medication":22,"Billing complaint":6,"Scheduling":4,"Cancellation":9,"Order & shipping":8,"Onboarding/admin":13,"Labs":6,"Account/access":2,"Care coaching":1,"Other":3}};
 var EMMETA={"Order & shipping":{q:"PS-Tier1 / Narvar",d:"g"},"Medication":{q:"RN / CMA",d:"n"},"Scheduling":{q:"PS-Tier1",d:"g"},"Onboarding/admin":{q:"PS-Tier1 / Async",d:"a"},"Billing complaint":{q:"Billing",d:"a"},"Cancellation":{q:"Retention",d:"a"},"Pricing question":{q:"PS-Tier1",d:"g"},"Account/access":{q:"PS-Tier1",d:"g"},"Labs":{q:"Lab team",d:"n"},"Care coaching":{q:"Clinical",d:"n"},"Product quality":{q:"PS-Tier1",d:"a"},"Non-patient/noise":{q:"Route out / filter",d:"g"},"Other":{q:"PS-Tier1",d:"a"}};
 var EMNAME={all:"All built clients",embody:"Embody",medvi:"Medvi",elixa:"Elixa",altrx:"AltRx",trinity:"Trinity",other:"Other (unbuilt)"};
 var BUILT=["embody","medvi","elixa","altrx","trinity"];
