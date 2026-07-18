@@ -61,7 +61,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>OpenLoop PS — Reasons for Contact <span class="proto">v1.2 · BARS · 7/18</span></h1>
+  <h1>OpenLoop PS — Reasons for Contact <span class="proto">v1.3 · DIAG</span></h1>
   <div class="sub">Why patients contact us, ranked &amp; de-identified. Pick a channel:</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 6px;">
     <button id="chPhone" class="chtab active" onclick="showChannel('phone')">📞 Phone</button>
@@ -185,8 +185,15 @@ function htmlBars(elId, items, maxv, labelFn, valFn, dispFn, colorFn){
     return '<div class="hbar"><span class="hbl">'+labelFn(r)+'</span><span class="hbt"><span class="hbf" style="width:'+w+'%;background:'+colorFn(r)+'"></span></span><span class="hbv">'+dispFn(r)+'</span></div>';
   }).join('');
 }
-htmlBars('rfcBars', top, max, function(r){return r.n;}, function(r){return r.c;},
-  function(r){return r.c.toLocaleString()+' · '+r.p.toFixed(1)+'%';}, function(r){return col[r.d];});
+(function(){
+  var el=document.getElementById('rfcBars');
+  if(!el){return;}
+  try{
+    htmlBars('rfcBars', top, max, function(r){return r.n;}, function(r){return r.c;},
+      function(r){return r.c.toLocaleString()+' · '+r.p.toFixed(1)+'%';}, function(r){return col[r.d];});
+    if(!el.innerHTML){ el.textContent='(rfcBars rendered empty — top len='+(top&&top.length)+', max='+max+')'; }
+  }catch(e){ el.textContent='rfcBars error: '+e.message; el.style.color='#b42318'; }
+})();
 function sortT(c,txt){
   var tb=document.querySelector('#rfcTable tbody');var rows=[].slice.call(tb.querySelectorAll('tr'));
   var asc=tb.getAttribute('data-asc')===c+'';
