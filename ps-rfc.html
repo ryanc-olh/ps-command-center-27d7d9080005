@@ -121,6 +121,12 @@
       <button class="cdbtn2" onclick="renderEmail('trinity')">Trinity</button>
       <button class="cdbtn2" onclick="renderEmail('other')">Other (unbuilt)</button>
     </div>
+    <div class="sec">Headline — <span id="emTitleH">All built clients</span></div>
+    <div class="grid kpis">
+      <div class="card"><div class="k">Tickets classified</div><div class="v" id="emKpiN">—</div><div class="n">random sample · Jul 6–12</div></div>
+      <div class="card"><div class="k">Top driver</div><div class="v blue" id="emKpiTopPct">—</div><div class="n" id="emKpiTopName">—</div></div>
+      <div class="card"><div class="k">Top 3 = share</div><div class="v amb" id="emKpiTop3">—</div><div class="n" id="emKpiTop3Names">—</div></div>
+    </div>
     <div class="sec">Top reasons by volume — <span id="emTitle">All built clients</span></div>
     <div id="emailBars" class="bars"></div>
     <div class="sec">Full taxonomy</div>
@@ -209,7 +215,16 @@ function renderEmail(client){
   var btns=document.querySelectorAll('#emBtns .cdbtn2');
   btns.forEach(function(b){b.classList.remove('active');}); if(btns[order.indexOf(client)])btns[order.indexOf(client)].classList.add('active');
   document.getElementById('emTitle').textContent=EMNAME[client];
+  document.getElementById('emTitleH').textContent=EMNAME[client];
   var D=emailData(client), mx=Math.max.apply(null,D.arr.map(function(r){return r.c;}))||1;
+  // headline KPIs (data-based)
+  var a=D.arr, tot=D.tot||1;
+  document.getElementById('emKpiN').textContent=tot.toLocaleString();
+  document.getElementById('emKpiTopPct').textContent=a[0]?Math.round(a[0].c/tot*100)+'%':'—';
+  document.getElementById('emKpiTopName').textContent=a[0]?a[0].n:'—';
+  var t3=a.slice(0,3), t3sum=t3.reduce(function(s,r){return s+r.c;},0);
+  document.getElementById('emKpiTop3').textContent=Math.round(t3sum/tot*100)+'%';
+  document.getElementById('emKpiTop3Names').textContent=t3.map(function(r){return r.n;}).join(' · ');
   document.querySelector('#emailTable tbody').innerHTML=D.arr.map(function(r,i){
     return '<tr><td>'+(i+1)+'</td><td>'+r.n+'</td><td>'+r.c+'</td><td>'+r.p.toFixed(1)+'%</td>'+
       '<td><div class="bar"><span style="width:'+Math.round(r.c/mx*100)+'%"></span></div></td><td>'+r.q+'</td></tr>';
