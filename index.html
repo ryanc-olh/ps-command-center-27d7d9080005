@@ -68,6 +68,15 @@
   .m{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;margin-top:5px;white-space:nowrap;}
   .m .k{font-weight:500;opacity:.7;margin-right:3px;}
   .m.g{background:#e4f2ea;color:#0f6b37;} .m.a{background:#f7efd9;color:#8a5d00;} .m.r{background:#f8e3e1;color:#a11d13;} .m.n{background:#eceae5;color:var(--sec);}
+  /* methodology explainer */
+  .method{border:1px solid var(--bd);background:var(--panel);border-radius:10px;padding:0 15px;margin:8px 0 16px;font-size:13px;}
+  .method summary{cursor:pointer;font-weight:600;color:var(--sec);padding:12px 0;list-style:none;}
+  .method summary::-webkit-details-marker{display:none;}
+  .method summary::before{content:'\24D8  ';font-size:14px;}
+  .method[open] summary{border-bottom:1px solid var(--bd);}
+  .method ul{margin:10px 0 14px;padding-left:18px;line-height:1.65;}
+  .method li{margin:5px 0;color:var(--ink);}
+  .method b{color:#0b0b0b;}
   /* heatmap */
   .hmctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0;}
   .hmctl .hclab{font-size:12px;font-weight:600;color:var(--sec);width:52px;}
@@ -215,6 +224,16 @@
   <!-- ===== INTRADAY BY HOUR ===== -->
   <div class="panel" id="p6">
     <div class="lbl" style="margin-top:0;">Volume heatmap — day of week × hour <span style="font-weight:400;color:var(--mut);" id="hmWin">· previous week (Jul 6–12)</span></div>
+    <details class="method">
+      <summary>How this is measured</summary>
+      <ul>
+        <li><b>Window:</b> the previous complete week, bucketed by <b>day-of-week × hour</b>. Voice comes from Amazon Connect, email from Zoho Desk. Phone hours are <b>Central</b>; email hours are the stored (offshore-heavy) time zone — directional, not exact.</li>
+        <li><b>Inbound volume</b> = total demand offered to the queues (calls offered / emails received). This is <b>whole-client demand and is NOT attributable to a specific BPO</b> — a contact isn't "owned" by a vendor until an agent picks it up. That's why the <b>BPO filter is greyed out on Inbound</b> and only applies to Handled &amp; Gap.</li>
+        <li><b>Handled</b> = calls answered / emails replied, <b>by BPO</b> — the only metric that splits by vendor (the BPO buttons sum to "All").</li>
+        <li><b>Gap</b> = Inbound − Handled = unmet demand (abandoned calls / unanswered emails). Shown per hour so you can see <i>when</i> coverage falls short. Gap is a total (not per-BPO), for the same reason Inbound is.</li>
+        <li><b>Scope:</b> patient inbound only. Back-office / clinical lines (pharmacy, CMA triage, retention, prior-auth, etc.) are excluded. <b>"Other"</b> = patient clients without a built dashboard.</li>
+      </ul>
+    </details>
     <div class="hmctl"><span class="hclab">Show</span>
       <button class="hbtn active" data-g="metric" data-v="inbound" onclick="setHM('metric','inbound')">Inbound volume</button>
       <button class="hbtn" data-g="metric" data-v="handled" onclick="setHM('metric','handled')">Handled</button>

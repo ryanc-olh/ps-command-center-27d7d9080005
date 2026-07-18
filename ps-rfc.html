@@ -42,6 +42,14 @@
   .chtab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
   .cdbtn2{font-size:12.5px;font-weight:600;padding:5px 11px;border:1px solid var(--bds);border-radius:6px;background:#fff;color:var(--ink);cursor:pointer;}
   .cdbtn2.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .method{border:1px solid var(--bd);background:var(--panel);border-radius:10px;padding:0 15px;margin:14px 0 4px;font-size:13px;}
+  .method summary{cursor:pointer;font-weight:600;color:var(--sec);padding:12px 0;list-style:none;}
+  .method summary::-webkit-details-marker{display:none;}
+  .method summary::before{content:'\24D8  ';font-size:14px;}
+  .method[open] summary{border-bottom:1px solid var(--bd);}
+  .method ul{margin:10px 0 14px;padding-left:18px;line-height:1.65;}
+  .method li{margin:5px 0;color:var(--ink);}
+  .method b{color:#0b0b0b;}
 </style>
 </head>
 <body>
@@ -52,6 +60,17 @@
     <button id="chPhone" class="chtab active" onclick="showChannel('phone')">📞 Phone</button>
     <button id="chEmail" class="chtab" onclick="showChannel('email')">✉️ Email</button>
   </div>
+
+  <details class="method">
+    <summary>How these numbers are pulled</summary>
+    <ul>
+      <li><b>Email reasons (all clients):</b> each week we take a <b>random sample of 100 tickets per client</b> from the previous complete week and <b>read every ticket's actual message</b> to classify why the patient contacted us. We don't use Zoho's built-in "category" field — it's blank on ~all email — so reasons are read from the real text.</li>
+      <li><b>What the % means:</b> a reason's share of that client's 100-ticket sample (so columns total ~100%). It's a representative sample, not every ticket — directional for the mix, not an exact count.</li>
+      <li><b>Refresh:</b> automatically every <b>Monday</b>. De-identified aggregates only — no patient info.</li>
+      <li><b>Phone reasons:</b> a one-time manual tagging exercise (Code Yellow, week of Jun 14), <b>calls only</b> — not yet auto-refreshed. Phone and email mixes differ, so compare within a channel.</li>
+      <li><b>"Other" client:</b> patient clients that don't have their own dashboard yet. ~71% of it is non-patient noise (vendor/marketing/system), so treat its patient reasons as a thin slice.</li>
+    </ul>
+  </details>
 
   <div id="phoneView">
   <div class="sub" style="margin-top:10px;">Phone snapshot: <b>week of Jun 14, 2026</b> · phone only · ~21,790 categorized calls. Source: Code Yellow "Inbound Patient Support Needs."</div>
