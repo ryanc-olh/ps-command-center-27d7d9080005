@@ -61,7 +61,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>OpenLoop PS — Reasons for Contact <span class="proto">v1.4</span></h1>
+  <h1>OpenLoop PS — Reasons for Contact <span class="proto">v1 · PHONE + EMAIL</span></h1>
   <div class="sub">Why patients contact us, ranked &amp; de-identified. Pick a channel:</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 6px;">
     <button id="chPhone" class="chtab active" onclick="showChannel('phone')">📞 Phone</button>
@@ -76,7 +76,6 @@
       <li><b>Refresh:</b> automatically every <b>Monday</b>. De-identified aggregates only — no patient info.</li>
       <li><b>Phone reasons:</b> a one-time manual tagging exercise (Code Yellow, week of Jun 14), <b>calls only</b> — not yet auto-refreshed. Phone and email mixes differ, so compare within a channel.</li>
       <li><b>"Other" client:</b> patient clients that don't have their own dashboard yet. ~71% of it is non-patient noise (vendor/marketing/system), so treat its patient reasons as a thin slice.</li>
-      <li><b>"Deflection":</b> how handle-able a reason is <b>without a live agent</b> (self-serve / automation potential). <b>High</b> = proven self-serve wins (order status, scheduling, portal login); <b>Partial</b> = some sub-reasons automatable (cancellation, billing, refill); <b>Low</b> = clinical / eligibility-gated, must stay human (medication, labs, complaints).</li>
     </ul>
   </details>
 
@@ -87,8 +86,6 @@
     <div class="card"><div class="k">Categorized calls (wk)</div><div class="v">21,790</div><div class="n">week of Jun 14 · phone only</div></div>
     <div class="card"><div class="k">Top driver</div><div class="v blue">23%</div><div class="n">Scheduling &amp; Appointments</div></div>
     <div class="card"><div class="k">Top 3 = share</div><div class="v amb">60%</div><div class="n">Scheduling · Cancellation · Refund</div></div>
-    <div class="card"><div class="k">High-deflection volume</div><div class="v grn">~40%</div><div class="n">self-serve/automation candidates</div></div>
-    <div class="card"><div class="k">Clinical (never deflect)</div><div class="v red">~10%</div><div class="n">Med concern · labs · complaints</div></div>
   </div>
 
   <div class="sec">Top reasons by volume</div>
@@ -103,18 +100,10 @@
       <th onclick="sortT(3)">% of calls</th>
       <th>Share</th>
       <th onclick="sortT(5,true)">Owning queue</th>
-      <th onclick="sortT(6,true)">Deflection</th>
     </tr></thead>
     <tbody></tbody>
   </table>
-  <div class="note">Deflection: <span class="pill g">High</span> proven/near-term self-serve · <span class="pill a">Partial</span> some sub-reasons automatable · <span class="pill n">Low</span> clinical / eligibility-gated — keep human. Volumes are single-week phone calls; the % denominator includes no-category calls.</div>
-
-  <div class="sec">Deflection leverage (v0 estimate)</div>
-  <div class="defl">
-    <div class="db"><div class="t grn">High — self-serve wins</div><div class="b">~8,700 calls / wk</div><div class="note" style="margin-top:4px;">Scheduling (IVR proven, MEDVi) · Order Status (Narvar pending) · General/insurance FAQ · Portal login · Info updates.</div></div>
-    <div class="db"><div class="t amb">Partial — some automatable</div><div class="b">~10,300 calls / wk</div><div class="note" style="margin-top:4px;">Cancellation (Chargebee/IVR in progress) · Refund status · Billing (Stripe self-serve) · Refill/intake resend.</div></div>
-    <div class="db"><div class="t red">Low — keep human</div><div class="b">~2,300 calls / wk</div><div class="note" style="margin-top:4px;">Medication concerns (RN/CMA) · labs incl. critical results · complaints (PETE). Clinical or eligibility-gated.</div></div>
-  </div>
+  <div class="note">Volumes are single-week phone calls; the % denominator includes no-category calls.</div>
 
   <div class="note" style="margin-top:14px;"><b>Disposition ≠ reason.</b> These are <i>outcomes</i>, not reasons-for-contact, and belong in a separate tagging dimension (v1 fix): No Category 2,820 · HeyRevia Transfer 508 · Disconnected 399 · Queued–No Answer 343 · Agent Ghosted 165 · Queue Unstaffed 161 · Customer Ghosted 79 · IVR Disconnect 76 · External 34.</div>
 
@@ -136,10 +125,10 @@
     <div id="emailBars" class="bars"></div>
     <div class="sec">Full taxonomy</div>
     <table id="emailTable">
-      <thead><tr><th>#</th><th>Category</th><th>Tickets</th><th>% of sample</th><th>Share</th><th>Owning queue</th><th>Deflection</th></tr></thead>
+      <thead><tr><th>#</th><th>Category</th><th>Tickets</th><th>% of sample</th><th>Share</th><th>Owning queue</th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="note">Reason mix from a random 100-ticket sample per client (% = share of that client's sample). Bodies read &amp; classified individually — not from the (largely blank) ticket category field. <b>"Other"</b> = clients without a built dashboard, and it's ~71% non-patient noise (vendor/marketing/system), so treat its patient reasons as a thin slice. Deflection tiers are planning estimates.</div>
+    <div class="note">Reason mix from a random 100-ticket sample per client (% = share of that client's sample). Bodies read &amp; classified individually — not from the (largely blank) ticket category field. <b>"Other"</b> = clients without a built dashboard, and it's ~71% non-patient noise (vendor/marketing/system), so treat its patient reasons as a thin slice.</div>
   </div>
 
   <div class="foot" id="foot"></div>
@@ -172,7 +161,7 @@ function render(){
     var w=Math.round(r.c/max*100);
     return '<tr><td>'+(i+1)+'</td><td>'+r.n+'</td><td>'+r.c.toLocaleString()+'</td><td>'+r.p.toFixed(1)+'%</td>'+
       '<td><div class="bar"><span style="width:'+w+'%"></span></div></td>'+
-      '<td>'+r.q+'</td><td>'+pill(r.d)+'</td></tr>';
+      '<td>'+r.q+'</td></tr>';
   }).join('');
 }
 render();
@@ -190,7 +179,7 @@ function htmlBars(elId, items, maxv, labelFn, valFn, dispFn, colorFn){
   if(!el){return;}
   try{
     htmlBars('rfcBars', topR, max, function(r){return r.n;}, function(r){return r.c;},
-      function(r){return r.c.toLocaleString()+' · '+r.p.toFixed(1)+'%';}, function(r){return col[r.d];});
+      function(r){return r.c.toLocaleString()+' · '+r.p.toFixed(1)+'%';}, function(){return '#2a78d6';});
   }catch(e){ el.textContent='rfcBars error: '+e.message; el.style.color='#b42318'; }
 })();
 function sortT(c,txt){
@@ -223,11 +212,11 @@ function renderEmail(client){
   var D=emailData(client), mx=Math.max.apply(null,D.arr.map(function(r){return r.c;}))||1;
   document.querySelector('#emailTable tbody').innerHTML=D.arr.map(function(r,i){
     return '<tr><td>'+(i+1)+'</td><td>'+r.n+'</td><td>'+r.c+'</td><td>'+r.p.toFixed(1)+'%</td>'+
-      '<td><div class="bar"><span style="width:'+Math.round(r.c/mx*100)+'%"></span></div></td><td>'+r.q+'</td><td>'+pill(r.d)+'</td></tr>';
+      '<td><div class="bar"><span style="width:'+Math.round(r.c/mx*100)+'%"></span></div></td><td>'+r.q+'</td></tr>';
   }).join('');
   var top=D.arr.slice(0,10);
   htmlBars('emailBars', top, (top[0]?top[0].c:1), function(r){return r.n;}, function(r){return r.c;},
-    function(r){return r.c+' · '+r.p.toFixed(1)+'%';}, function(r){return col[r.d];});
+    function(r){return r.c+' · '+r.p.toFixed(1)+'%';}, function(){return '#2a78d6';});
   emailChart=true;  // rendered flag (kept so showChannel renders once, then preserves client selection)
 }
 function showChannel(ch){
@@ -237,7 +226,7 @@ function showChannel(ch){
   document.getElementById('chEmail').classList.toggle('active',ch==='email');
   if(ch==='email' && !emailChart) renderEmail('all');
 }
-document.getElementById('foot').textContent='RFC v1 — Phone: Code Yellow week of Jun 14 2026 (calls, view 2713211000068740630). Email: sampled 100 random tickets/client for week of Jul 11-17 2026, reason classified by reading each ticket body via Zoho Desk (n=600). De-identified aggregate counts; no PHI. Deflection tiers are planning estimates. Refresh cadence: weekly (sampled).';
+document.getElementById('foot').textContent='RFC v1 — Phone: Code Yellow week of Jun 14 2026 (calls, view 2713211000068740630). Email: sampled 100 random tickets/client for week of Jul 11-17 2026, reason classified by reading each ticket body via Zoho Desk (n=600). De-identified aggregate counts; no PHI. Refresh cadence: weekly (sampled).';
 </script>
 </body>
 </html>
