@@ -74,11 +74,11 @@
   .hbtn{font-size:12.5px;padding:5px 11px;border:1px solid var(--bds);border-radius:6px;background:#fff;color:var(--ink);cursor:pointer;}
   .hbtn:hover{border-color:var(--blue);}
   .hbtn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
-  table.hm{border-collapse:collapse;font-size:10.5px;table-layout:fixed;width:738px;}
-  table.hm col.dayc{width:64px;} table.hm col.hrc{width:26px;} table.hm col.totc{width:50px;}
-  table.hm th{font-weight:600;color:var(--mut);padding:2px 1px;text-align:center;font-size:9.5px;overflow:hidden;}
-  table.hm th.day{text-align:right;padding-right:8px;color:var(--sec);font-size:11px;white-space:nowrap;}
-  table.hm td{height:24px;text-align:center;border:1px solid #fff;color:#3a3a38;font-variant-numeric:tabular-nums;overflow:hidden;white-space:nowrap;}
+  table.hm{border-collapse:collapse;font-size:13px;table-layout:fixed;width:1120px;}
+  table.hm col.dayc{width:92px;} table.hm col.hrc{width:40px;} table.hm col.totc{width:68px;}
+  table.hm th{font-weight:600;color:var(--mut);padding:3px 1px;text-align:center;font-size:11px;overflow:hidden;}
+  table.hm th.day{text-align:right;padding-right:10px;color:var(--sec);font-size:13px;white-space:nowrap;}
+  table.hm td{height:36px;text-align:center;border:1px solid #fff;color:#3a3a38;font-variant-numeric:tabular-nums;overflow:hidden;white-space:nowrap;}
   table.hm td.rowtot{font-weight:700;color:var(--ink);border-left:2px solid var(--bds);}
   table.hm th.tot{color:var(--sec);}
 </style>
@@ -404,7 +404,7 @@ function hmTable(ch){
   var html='<table class="hm"><colgroup><col class="dayc">';
   for(var h=0;h<24;h++)html+='<col class="hrc">';
   html+='<col class="totc"></colgroup><thead><tr><th class="day"></th>';
-  for(var h=0;h<24;h++)html+='<th>'+(h%3===0?hrs[h]:'')+'</th>';
+  for(var h=0;h<24;h++)html+='<th>'+(h%2===0?hrs[h]:'')+'</th>';
   html+='<th class="tot">Day</th></tr></thead><tbody>';
   for(var d=0;d<7;d++){html+='<tr><th class="day">'+days[d]+'</th>';
     for(var h=0;h<24;h++){var v=M[d][h];var disp=(v===0?'':(Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':v));
