@@ -50,6 +50,13 @@
   .method ul{margin:10px 0 14px;padding-left:18px;line-height:1.65;}
   .method li{margin:5px 0;color:var(--ink);}
   .method b{color:#0b0b0b;}
+  /* dependency-free horizontal bar chart (no Chart.js) */
+  .bars{margin-top:10px;}
+  .hbar{display:flex;align-items:center;gap:10px;margin:5px 0;font-size:12.5px;}
+  .hbl{width:210px;flex:none;text-align:right;color:var(--sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hbt{flex:1;background:#eceae5;border-radius:5px;height:20px;position:relative;}
+  .hbf{position:absolute;left:0;top:0;bottom:0;border-radius:5px;min-width:2px;}
+  .hbv{width:96px;flex:none;font-variant-numeric:tabular-nums;color:var(--ink);}
 </style>
 </head>
 <body>
@@ -85,7 +92,7 @@
   </div>
 
   <div class="sec">Top reasons by volume</div>
-  <div class="cbox"><canvas id="rfcChart"></canvas></div>
+  <div id="rfcBars" class="bars"></div>
 
   <div class="sec">Full taxonomy</div>
   <table id="rfcTable">
@@ -126,7 +133,7 @@
       <button class="cdbtn2" onclick="renderEmail('other')">Other (unbuilt)</button>
     </div>
     <div class="sec">Top reasons by volume — <span id="emTitle">All built clients</span></div>
-    <div class="cbox"><canvas id="emailChart"></canvas></div>
+    <div id="emailBars" class="bars"></div>
     <div class="sec">Full taxonomy</div>
     <table id="emailTable">
       <thead><tr><th>#</th><th>Category</th><th>Tickets</th><th>% of sample</th><th>Share</th><th>Owning queue</th><th>Deflection</th></tr></thead>
@@ -138,7 +145,6 @@
   <div class="foot" id="foot"></div>
 </div>
 
-<script src="chart.umd.min.js"></script>
 <script>
 // RFC categories — Code Yellow week of Jun 14 2026 (calls only). d = deflection: g/a/n
 var RFC=[
@@ -172,12 +178,15 @@ function render(){
 render();
 var col={g:'#127a3e',a:'#9a6a00',n:'#b42318'};
 var top=RFC.slice(0,9);
-try{ new Chart(document.getElementById('rfcChart'),{type:'bar',data:{labels:top.map(function(r){return r.n;}),
-  datasets:[{data:top.map(function(r){return r.c;}),backgroundColor:top.map(function(r){return col[r.d];}),borderRadius:4,maxBarThickness:26}]},
-  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
-    tooltip:{callbacks:{label:function(t){var r=top[t.dataIndex];return r.c.toLocaleString()+' calls · '+r.p.toFixed(1)+'% · '+DEFL[r.d]+' deflection';}}}},
-  scales:{x:{grid:{color:'rgba(137,135,129,0.2)'},ticks:{color:'#898781',font:{size:11}}},
-          y:{grid:{display:false},ticks:{color:'#52514e',font:{size:11.5}}}}}}); }catch(_e){}
+function htmlBars(elId, items, maxv, labelFn, valFn, dispFn, colorFn){
+  var el=document.getElementById(elId); if(!el) return;
+  el.innerHTML=items.map(function(r){
+    var w=Math.max(2,Math.round(valFn(r)/(maxv||1)*100));
+    return '<div class="hbar"><span class="hbl">'+labelFn(r)+'</span><span class="hbt"><span class="hbf" style="width:'+w+'%;background:'+colorFn(r)+'"></span></span><span class="hbv">'+dispFn(r)+'</span></div>';
+  }).join('');
+}
+htmlBars('rfcBars', top, max, function(r){return r.n;}, function(r){return r.c;},
+  function(r){return r.c.toLocaleString()+' · '+r.p.toFixed(1)+'%';}, function(r){return col[r.d];});
 function sortT(c,txt){
   var tb=document.querySelector('#rfcTable tbody');var rows=[].slice.call(tb.querySelectorAll('tr'));
   var asc=tb.getAttribute('data-asc')===c+'';
@@ -211,12 +220,9 @@ function renderEmail(client){
       '<td><div class="bar"><span style="width:'+Math.round(r.c/mx*100)+'%"></span></div></td><td>'+r.q+'</td><td>'+pill(r.d)+'</td></tr>';
   }).join('');
   var top=D.arr.slice(0,10);
-  if(emailChart)emailChart.destroy();
-  try{ emailChart=new Chart(document.getElementById('emailChart'),{type:'bar',data:{labels:top.map(function(r){return r.n;}),
-    datasets:[{data:top.map(function(r){return r.c;}),backgroundColor:top.map(function(r){return col[r.d];}),borderRadius:4,maxBarThickness:26}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
-      tooltip:{callbacks:{label:function(t){var r=top[t.dataIndex];return r.c+' tickets · '+r.p.toFixed(1)+'% · '+DEFL[r.d]+' deflection';}}}},
-    scales:{x:{grid:{color:'rgba(137,135,129,0.2)'},ticks:{color:'#898781',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#52514e',font:{size:11.5}}}}}}); }catch(_e){}
+  htmlBars('emailBars', top, (top[0]?top[0].c:1), function(r){return r.n;}, function(r){return r.c;},
+    function(r){return r.c+' · '+r.p.toFixed(1)+'%';}, function(r){return col[r.d];});
+  emailChart=true;  // rendered flag (kept so showChannel renders once, then preserves client selection)
 }
 function showChannel(ch){
   document.getElementById('phoneView').style.display=ch==='phone'?'block':'none';
