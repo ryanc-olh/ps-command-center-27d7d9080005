@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>Chart.js self-host test</title>
+<body style="font-family:sans-serif;padding:20px">
+<h3>Chart.js self-host test</h3>
+<p id="status">loading…</p>
+<div style="height:260px"><canvas id="t"></canvas></div>
+<script src="chart.umd.min.js"></script>
+<script>
+var s=document.getElementById('status');
+if(typeof Chart==='undefined'){ s.textContent='❌ Chart.js did NOT load (still blocked / not found)'; s.style.color='red'; }
+else{
+  try{
+    new Chart(document.getElementById('t'),{type:'bar',data:{labels:['A','B','C'],datasets:[{data:[5,9,3]}]},options:{responsive:true,maintainAspectRatio:false}});
+    s.textContent='✅ Chart.js loaded and rendered — self-hosting works in this browser'; s.style.color='green';
+  }catch(e){ s.textContent='⚠️ Chart.js loaded but threw: '+e.message; s.style.color='#9a6a00'; }
+}
+</script>
