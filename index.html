@@ -134,11 +134,11 @@
     <div class="lbl" style="margin-top:0;">Which BPO handles each client — and how well</div>
     <div class="callout">
       <div class="ic">⚠️</div>
-      <div class="tx"><b>The routing tells the SLA story.</b> Embody is staffed by its <b>two slowest vendors</b> — Narith &amp; TTEC — on <b>both</b> voice and email, so patients wait (Narith answers voice in ~15&nbsp;min) and its service level stays low. <b>Medvi</b> runs mostly on <b>Response</b> (voice answered in ~18&nbsp;s, 77% of email replied within 4&nbsp;hr) and performs well. The fix is a <b>routing lever</b>, not a mystery.</div>
+      <div class="tx"><b>The routing tells the SLA story.</b> Embody is staffed by its <b>two slowest vendors</b> — Narith &amp; TTEC — on <b>both</b> voice and email, so its calls wait ~2–3&nbsp;min to be answered (Narith 163s, TTEC 118s) and its service level stays low. <b>Medvi</b> runs mostly on <b>Response</b> (calls answered in <b>14&nbsp;s</b>, 77% of email replied within 4&nbsp;hr) and performs well. The fix is a <b>routing lever</b>, not a mystery.</div>
     </div>
 
-    <div class="mxhead">📞 Voice <span class="win">· Jul month-to-date</span></div>
-    <div class="mxsub">How many calls each vendor answered per client, and <b>how fast they picked up</b> (ASA). Green ≤30s · amber ≤2m · red &gt;2m. Shaded = the vendor handling the most.</div>
+    <div class="mxhead">📞 Voice <span class="win">· inbound calls · Jul month-to-date</span></div>
+    <div class="mxsub">Inbound calls each vendor answered per client, and <b>how fast they picked up</b> (ASA). Green ≤30s · amber ≤2m · red &gt;2m. Shaded = the vendor handling the most. <i>Inbound-only, matching the client dashboards (excludes callbacks/transfers).</i></div>
     <div style="overflow-x:auto;"><table id="bpoMatrixVoice" class="mx">
       <thead><tr><th>Client</th><th>Response</th><th>TTEC</th><th>NextVas</th><th>Narith</th><th>Total calls</th></tr></thead>
       <tbody></tbody>
@@ -220,30 +220,29 @@ var CLIENTS=[
 ];
 // Agent efficiency by BPO × client — voice, Jul MTD through 7/16 (Amazon Connect Logs Adj, hierarchy L1)
 // asa = avg time-to-answer (queue wait) sec; null = no queued answered calls in that cell
+// VOICE, INBOUND-ONLY (matches client dashboards' initiation_method='INBOUND'), Jul 1-16.
+// NextVas does ~0 inbound voice (its earlier volume was callbacks/API) → dropped from client rows.
 var BPOS_BY_CLIENT={
   all:[
-    {b:"RESPONSE",ag:433,an:51173,aht:5.5,acw:58,cpa:118.2,asa:29},
-    {b:"TTEC",ag:148,an:15087,aht:11.3,acw:58,cpa:101.9,asa:108},
-    {b:"NEXTVAS",ag:242,an:7594,aht:6.1,acw:295,cpa:31.4,asa:7},
-    {b:"NARITH",ag:165,an:7290,aht:10.0,acw:92,cpa:44.2,asa:920}
+    {b:"RESPONSE",ag:433,an:27304,aht:9.7,acw:58,cpa:63.1,asa:22},
+    {b:"TTEC",ag:148,an:16069,aht:10.9,acw:58,cpa:108.6,asa:95},
+    {b:"NARITH",ag:165,an:6845,aht:10.9,acw:92,cpa:41.5,asa:159},
+    {b:"NEXTVAS",ag:242,an:2,aht:2.3,acw:295,cpa:0.0,asa:7}
   ],
   embody:[
-    {b:"TTEC",ag:125,an:6318,aht:10.0,acw:30,cpa:50.5,asa:145},
-    {b:"NARITH",ag:101,an:5644,aht:10.4,acw:96,cpa:55.9,asa:939},
-    {b:"RESPONSE",ag:303,an:3265,aht:6.3,acw:63,cpa:10.8,asa:98},
-    {b:"NEXTVAS",ag:98,an:724,aht:1.8,acw:28,cpa:7.4,asa:null}
+    {b:"TTEC",ag:125,an:7180,aht:10.1,acw:30,cpa:57.4,asa:118},
+    {b:"NARITH",ag:101,an:5638,aht:10.8,acw:96,cpa:55.8,asa:163},
+    {b:"RESPONSE",ag:303,an:1958,aht:9.3,acw:63,cpa:6.5,asa:59}
   ],
   medvi:[
-    {b:"RESPONSE",ag:362,an:25162,aht:5.6,acw:59,cpa:69.5,asa:18},
-    {b:"TTEC",ag:110,an:6257,aht:13.1,acw:99,cpa:56.9,asa:80},
-    {b:"NEXTVAS",ag:126,an:1493,aht:3.1,acw:96,cpa:11.8,asa:null},
-    {b:"NARITH",ag:66,an:239,aht:3.5,acw:42,cpa:3.6,asa:969}
+    {b:"RESPONSE",ag:362,an:12953,aht:10.4,acw:59,cpa:35.8,asa:14},
+    {b:"TTEC",ag:110,an:6235,aht:12.0,acw:99,cpa:56.7,asa:78},
+    {b:"NARITH",ag:66,an:43,aht:10.3,acw:42,cpa:0.7,asa:124}
   ],
   elixa:[
-    {b:"NARITH",ag:68,an:316,aht:10.9,acw:105,cpa:4.6,asa:1578},
-    {b:"RESPONSE",ag:96,an:264,aht:8.7,acw:77,cpa:2.8,asa:33},
-    {b:"TTEC",ag:45,an:152,aht:11.2,acw:29,cpa:3.4,asa:48},
-    {b:"NEXTVAS",ag:38,an:107,aht:1.3,acw:13,cpa:2.8,asa:null}
+    {b:"NARITH",ag:68,an:224,aht:12.8,acw:105,cpa:3.3,asa:230},
+    {b:"RESPONSE",ag:96,an:207,aht:10.7,acw:77,cpa:2.2,asa:31},
+    {b:"TTEC",ag:45,an:152,aht:11.5,acw:29,cpa:3.4,asa:51}
   ]
 };
 function asaFmt(s){ if(s==null) return '—'; return s>=60?(Math.round(s/6)/10)+'m':s+'s'; }
