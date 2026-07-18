@@ -90,6 +90,7 @@
     <button class="tab" onclick="showTab(3)">By BPO &amp; Client</button>
     <button class="tab" onclick="showTab(4)">Client Dashboards</button>
     <button class="tab" onclick="showTab(5)">Reasons for Contact</button>
+    <button class="tab" onclick="showTab(6)">Intraday by Hour</button>
   </div>
 
   <!-- ===== LIVE OPS ===== -->
@@ -196,9 +197,28 @@
     <iframe src="ps-rfc.html" title="Reasons for Contact"></iframe>
   </div>
 
+  <!-- ===== INTRADAY BY HOUR ===== -->
+  <div class="panel" id="p6">
+    <div class="lbl" style="margin-top:0;">Volume by hour — a typical weekday</div>
+    <div class="mxsub" style="margin-bottom:12px;">Average volume <b>handled per hour on a weekday</b> (Mon–Fri avg, <span id="idWin">Jul 6–16</span>), split by BPO. Voice = inbound calls answered · Email = replies sent. <b>Click a BPO in the legend to filter</b> it in/out.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px;">
+      <button type="button" class="cdbtn active" onclick="idFilter('all')" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;">All BPOs</button>
+      <button type="button" class="cdbtn" onclick="idFilter('RESPONSE')" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;">Response</button>
+      <button type="button" class="cdbtn" onclick="idFilter('TTEC')" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;">TTEC</button>
+      <button type="button" class="cdbtn" onclick="idFilter('NEXTVAS')" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;">NextVas</button>
+      <button type="button" class="cdbtn" onclick="idFilter('NARITH')" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;">Narith</button>
+    </div>
+    <div class="mxhead">📞 Voice — inbound calls answered / hour <span class="win" id="idVtot"></span></div>
+    <div class="cbox" style="position:relative;width:100%;height:300px;"><canvas id="idVoice"></canvas></div>
+    <div class="mxhead" style="margin-top:24px;">✉️ Email — replies sent / hour <span class="win" id="idEtot"></span></div>
+    <div class="cbox" style="position:relative;width:100%;height:300px;"><canvas id="idEmail"></canvas></div>
+    <div class="note" style="margin-top:10px;">Stacked = total across BPOs; each color a BPO. Hours in Central (voice) / stored tz (email replies, offshore-heavy). Use the buttons above or click legend items to isolate a BPO.</div>
+  </div>
+
   <div class="foot" id="foot"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 // ---- real snapshot data (de-identified aggregates) ----
 var CLIENTS=[
@@ -328,6 +348,33 @@ function applyFilter(){
 function showTab(i){
   document.querySelectorAll('.tabs .tab').forEach(function(t,j){t.classList.toggle('active',j===i);});
   document.querySelectorAll('.panel').forEach(function(p,j){p.classList.toggle('active',j===i);});
+  if(i===6){ buildIntraday(); setTimeout(function(){ if(idCharts.voice){idCharts.voice.resize();idCharts.email.resize();} },60); }
+}
+// ---- intraday by hour ----
+var BPO_COLORS={RESPONSE:'#2a78d6',TTEC:'#9a6a00',NEXTVAS:'#1baf7a',NARITH:'#b42318',BOOTH:'#7b61ff',OTHER:'#b8b6af'};
+var BPO_SEQ=['RESPONSE','TTEC','NEXTVAS','NARITH','BOOTH','OTHER'];
+var BPOS_INTRADAY={"window":"2026-07-06\u20132026-07-16","voice":{"RESPONSE":[5.4,2.3,3.1,2.3,2.9,10.3,25.7,69.4,135.9,182.7,196.7,210.4,217.4,213.9,210.8,194.4,172.0,149.1,105.9,71.8,47.9,31.6,18.1,8.3],"TTEC":[3.6,2.6,1.7,1.7,2.1,7.4,30.0,63.3,88.4,107.2,106.6,86.6,137.2,133.0,127.3,109.3,80.2,60.9,62.4,46.6,41.7,21.1,12.7,7.3],"NEXTVAS":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"NARITH":[1.7,1.1,1.0,0.6,1.0,5.0,6.3,15.3,32.8,38.2,54.6,42.1,40.0,52.2,69.8,76.1,74.0,53.7,33.8,26.3,14.9,13.0,8.6,4.6],"BOOTH":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"OTHER":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"email":{"RESPONSE":[9.3,9.0,10.0,11.9,30.8,57.3,62.7,96.1,99.3,111.3,103.2,100.3,102.9,113.3,98.4,74.0,65.8,75.1,81.2,63.3,37.8,29.9,22.3,16.8],"TTEC":[19.4,20.1,16.1,17.1,18.3,32.6,33.4,25.2,26.7,26.1,30.7,38.8,35.0,37.6,24.4,20.1,22.1,21.2,20.6,20.9,19.4,21.7,25.6,23.2],"NEXTVAS":[1.9,2.9,4.7,3.3,3.2,6.2,21.3,17.3,18.6,10.8,13.9,13.7,16.8,11.0,14.7,9.8,7.3,7.3,2.4,5.0,9.2,8.7,12.0,6.8],"NARITH":[54.2,45.4,38.6,46.4,49.2,40.6,37.3,33.8,25.4,38.9,43.2,42.8,59.7,59.7,60.4,69.3,32.8,28.8,24.2,23.7,31.7,41.2,50.1,58.0],"BOOTH":[0.0,0.0,0.0,0.0,0.0,0.1,1.2,1.3,1.2,0.8,0.7,0.4,0.7,0.9,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"OTHER":[0.2,0.0,0.2,0.0,0.1,1.6,2.4,4.6,5.3,7.6,7.1,7.9,13.9,13.3,11.0,13.9,10.1,6.1,4.9,7.1,4.1,1.7,1.3,0.3]}}; // injected
+var idCharts={};
+function idHrs(){var a=[];for(var h=0;h<24;h++)a.push((h%12===0?12:h%12)+(h<12?'a':'p'));return a;}
+function idDS(src){return BPO_SEQ.filter(function(b){return src[b]&&src[b].some(function(v){return v>0;});})
+  .map(function(b){return {label:b.charAt(0)+b.slice(1).toLowerCase(),bpo:b,data:src[b],backgroundColor:BPO_COLORS[b],stack:'s',borderWidth:0,maxBarThickness:26};});}
+function idSum(src){var t=0;BPO_SEQ.forEach(function(b){(src[b]||[]).forEach(function(v){t+=v;});});return Math.round(t);}
+function buildIntraday(){
+  if(idCharts.voice||typeof Chart==='undefined'||!BPOS_INTRADAY) return;
+  var hrs=idHrs();
+  var opt=function(){return {responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,boxWidth:8,font:{size:12}}},tooltip:{mode:'index',intersect:false}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#898781',font:{size:10},maxRotation:0,autoSkip:false,callback:function(v,i){return i%2===0?hrs[i]:'';}}},y:{stacked:true,beginAtZero:true,grid:{color:'rgba(137,135,129,.2)'},ticks:{color:'#898781',font:{size:11},precision:0}}}};};
+  idCharts.voice=new Chart(document.getElementById('idVoice'),{type:'bar',data:{labels:hrs,datasets:idDS(BPOS_INTRADAY.voice)},options:opt()});
+  idCharts.email=new Chart(document.getElementById('idEmail'),{type:'bar',data:{labels:hrs,datasets:idDS(BPOS_INTRADAY.email)},options:opt()});
+  document.getElementById('idVtot').textContent='· ~'+idSum(BPOS_INTRADAY.voice).toLocaleString()+' calls/weekday';
+  document.getElementById('idEtot').textContent='· ~'+idSum(BPOS_INTRADAY.email).toLocaleString()+' replies/weekday';
+  if(BPOS_INTRADAY.window) document.getElementById('idWin').textContent=BPOS_INTRADAY.window;
+}
+function idFilter(which){
+  var btns=document.querySelectorAll('#p6 .cdbtn'); btns.forEach(function(b){b.classList.remove('active');});
+  if(window.event&&window.event.target) window.event.target.classList.add('active');
+  [idCharts.voice,idCharts.email].forEach(function(ch){ if(!ch) return;
+    ch.data.datasets.forEach(function(ds){ ds.hidden=(which!=='all' && ds.bpo!==which); }); ch.update();
+  });
 }
 // ---- client dashboards ----
 var CLIENT_URLS={
