@@ -383,7 +383,9 @@ function hmVal(ch,day,hr){
   // inbound = demand into the BPO scope (net of anything in-house/Booth absorbed) so Gap = true abandoned
   var inb=0; cls.forEach(function(cl){ inb+=C.inbound[cl][day][hr]; HM_NONBPO.forEach(function(b){ inb-=C.handled[cl][b][day][hr]; }); });
   if(inb<0) inb=0;
-  var bps = hm.bpo==='all'?HM_BPOS:[hm.bpo];
+  // BPO filter only applies to Handled; Inbound & Gap depend on total demand (not BPO-attributable), so always use all BPOs
+  var useBpo = (hm.metric==='handled') ? hm.bpo : 'all';
+  var bps = useBpo==='all'?HM_BPOS:[useBpo];
   var hand=0; cls.forEach(function(cl){ bps.forEach(function(b){ hand+=C.handled[cl][b][day][hr]; }); });
   return hm.metric==='inbound'?inb:(hm.metric==='handled'?hand:(inb-hand));
 }
@@ -416,9 +418,9 @@ function renderHM(){
   var mlab={inbound:'offered',handled:'handled',gap:'net gap'};
   document.getElementById('hmVsum').textContent='· '+v.grand.toLocaleString()+' calls '+mlab[hm.metric];
   document.getElementById('hmEsum').textContent='· '+e.grand.toLocaleString()+' emails '+mlab[hm.metric];
-  var bpoDis=(hm.metric==='inbound');
+  var bpoDis=(hm.metric!=='handled');
   document.querySelectorAll('#p6 .hbtn[data-g="bpo"]').forEach(function(b){ b.style.opacity=bpoDis?'0.35':''; b.style.pointerEvents=bpoDis?'none':''; });
-  document.getElementById('hmBpoNote').textContent = bpoDis ? 'BPO filter applies to Handled & Gap only' : '';
+  document.getElementById('hmBpoNote').textContent = bpoDis ? 'BPO filter applies to Handled only (Inbound & Gap are total demand)' : '';
   if(HM_CUBE.window) document.getElementById('hmWin').textContent='· previous week ('+HM_CUBE.window+')';
 }
 function setHM(g,val){
