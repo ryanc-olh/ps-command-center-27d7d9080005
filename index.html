@@ -191,6 +191,8 @@
         <button type="button" class="tab cdbtn active" style="border:1px solid var(--bds);border-radius:7px;padding:6px 13px;" onclick="showClient('embody')">Embody</button>
         <button type="button" class="tab cdbtn" style="border:1px solid var(--bds);border-radius:7px;padding:6px 13px;" onclick="showClient('medvi')">Medvi</button>
         <button type="button" class="tab cdbtn" style="border:1px solid var(--bds);border-radius:7px;padding:6px 13px;" onclick="showClient('elixa')">Elixa</button>
+        <button type="button" class="tab cdbtn" style="border:1px solid var(--bds);border-radius:7px;padding:6px 13px;" onclick="showClient('altrx')">AltRx</button>
+        <button type="button" class="tab cdbtn" style="border:1px solid var(--bds);border-radius:7px;padding:6px 13px;" onclick="showClient('trinity')">Trinity</button>
       </div>
       <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
         <input id="cdUrl" readonly style="font-size:12px;padding:6px 9px;border:1px solid var(--bds);border-radius:7px;background:#fff;color:var(--sec);min-width:340px;">
@@ -436,7 +438,9 @@ function setHM(g,val){
 var CLIENT_URLS={
   embody:"https://ryanc-olh.github.io/embody-ps-perf-c4bfe7d68d/",
   medvi:"https://ryanc-olh.github.io/medvi-ps-perf-5bfa85220008/",
-  elixa:"https://ryanc-olh.github.io/elixa-ps-perf-e7f27bbecb14/"
+  elixa:"https://ryanc-olh.github.io/elixa-ps-perf-e7f27bbecb14/",
+  altrx:"https://ryanc-olh.github.io/altrx-ps-perf-1c4392541458/",
+  trinity:"https://ryanc-olh.github.io/trinity-ps-perf-0ef938ba73f2/"
 };
 function showClient(c){
   var url=CLIENT_URLS[c];
@@ -446,7 +450,7 @@ function showClient(c){
   document.getElementById('cdCopied').style.display='none';
   document.querySelectorAll('#cdBtns .cdbtn').forEach(function(b){b.classList.remove('active');});
   var btns=document.querySelectorAll('#cdBtns .cdbtn');
-  ['embody','medvi','elixa'].forEach(function(k,i){ if(k===c) btns[i].classList.add('active'); });
+  ['embody','medvi','elixa','altrx','trinity'].forEach(function(k,i){ if(k===c) btns[i].classList.add('active'); });
 }
 function copyClientLink(){
   var u=document.getElementById('cdUrl').value;
