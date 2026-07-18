@@ -95,15 +95,8 @@
 <body>
 <div class="wrap">
   <h1>OpenLoop PS — Operations Command Center <span class="proto">PROTOTYPE · v0</span></h1>
-  <div class="sub">All clients · all channels · capacity + live ops + SLAs, one screen. Snapshot as of <b>Jul 12, 2026</b> (de-identified aggregates). Filter/search below applies to the client &amp; BPO tables.</div>
+  <div class="sub">All clients · all channels · capacity + live ops + SLAs, one screen. Snapshot as of <b>Jul 12, 2026</b> (de-identified aggregates).</div>
 
-  <div class="bar">
-    <label>Search</label><input id="q" placeholder="client or BPO…" oninput="applyFilter()">
-    <label>Channel</label><select id="chan" onchange="applyFilter()"><option>All</option><option>Voice</option><option>Chat</option><option>Email</option></select>
-    <label>BPO</label><select id="bpo" onchange="applyFilter()"><option>All</option><option>RESPONSE</option><option>TTEC</option><option>NEXTVAS</option><option>NARITH</option></select>
-    <label>SLA</label><select id="sla" onchange="applyFilter()"><option>All</option><option>Breaching</option><option>Meeting</option></select>
-    <span id="filterStat" style="font-size:12px;color:var(--mut);margin-left:auto;"></span>
-  </div>
 
   <div class="tabs">
     <button class="tab active" onclick="showTab(0)">Live Ops</button>
@@ -377,7 +370,8 @@ function renderBpos(cl){
   applyFilter();
 }
 function applyFilter(){
-  var q=document.getElementById('q').value.toLowerCase().trim();
+  var qEl=document.getElementById('q'); if(!qEl) return;   // search bar removed — no-op
+  var q=qEl.value.toLowerCase().trim();
   var chan=document.getElementById('chan').value;
   var bpo=document.getElementById('bpo').value;
   var sla=document.getElementById('sla').value;
