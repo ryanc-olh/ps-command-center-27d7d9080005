@@ -171,12 +171,12 @@ function render(){
 render();
 var col={g:'#127a3e',a:'#9a6a00',n:'#b42318'};
 var top=RFC.slice(0,9);
-new Chart(document.getElementById('rfcChart'),{type:'bar',data:{labels:top.map(function(r){return r.n;}),
+try{ new Chart(document.getElementById('rfcChart'),{type:'bar',data:{labels:top.map(function(r){return r.n;}),
   datasets:[{data:top.map(function(r){return r.c;}),backgroundColor:top.map(function(r){return col[r.d];}),borderRadius:4,maxBarThickness:26}]},
   options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
     tooltip:{callbacks:{label:function(t){var r=top[t.dataIndex];return r.c.toLocaleString()+' calls · '+r.p.toFixed(1)+'% · '+DEFL[r.d]+' deflection';}}}},
   scales:{x:{grid:{color:'rgba(137,135,129,0.2)'},ticks:{color:'#898781',font:{size:11}}},
-          y:{grid:{display:false},ticks:{color:'#52514e',font:{size:11.5}}}}}});
+          y:{grid:{display:false},ticks:{color:'#52514e',font:{size:11.5}}}}}}); }catch(_e){}
 function sortT(c,txt){
   var tb=document.querySelector('#rfcTable tbody');var rows=[].slice.call(tb.querySelectorAll('tr'));
   var asc=tb.getAttribute('data-asc')===c+'';
@@ -211,11 +211,11 @@ function renderEmail(client){
   }).join('');
   var top=D.arr.slice(0,10);
   if(emailChart)emailChart.destroy();
-  emailChart=new Chart(document.getElementById('emailChart'),{type:'bar',data:{labels:top.map(function(r){return r.n;}),
+  try{ emailChart=new Chart(document.getElementById('emailChart'),{type:'bar',data:{labels:top.map(function(r){return r.n;}),
     datasets:[{data:top.map(function(r){return r.c;}),backgroundColor:top.map(function(r){return col[r.d];}),borderRadius:4,maxBarThickness:26}]},
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
       tooltip:{callbacks:{label:function(t){var r=top[t.dataIndex];return r.c+' tickets · '+r.p.toFixed(1)+'% · '+DEFL[r.d]+' deflection';}}}},
-    scales:{x:{grid:{color:'rgba(137,135,129,0.2)'},ticks:{color:'#898781',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#52514e',font:{size:11.5}}}}}});
+    scales:{x:{grid:{color:'rgba(137,135,129,0.2)'},ticks:{color:'#898781',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#52514e',font:{size:11.5}}}}}}); }catch(_e){}
 }
 function showChannel(ch){
   document.getElementById('phoneView').style.display=ch==='phone'?'block':'none';
