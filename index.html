@@ -155,12 +155,8 @@
   <!-- ===== BY BPO & CLIENT ===== -->
   <div class="panel" id="p3">
     <div class="lbl" style="margin-top:0;">Which BPO handles each client — and how well</div>
-    <div class="callout">
-      <div class="ic">⚠️</div>
-      <div class="tx"><b>The routing tells the SLA story.</b> Embody is staffed by its <b>two slowest vendors</b> — Narith &amp; TTEC — on <b>both</b> voice and email, so its calls wait ~2–3&nbsp;min to be answered (Narith 163s, TTEC 118s) and its service level stays low. <b>Medvi</b> runs mostly on <b>Response</b> (calls answered in <b>14&nbsp;s</b>, 77% of email replied within 4&nbsp;hr) and performs well. The fix is a <b>routing lever</b>, not a mystery.</div>
-    </div>
 
-    <div class="mxhead">📞 Voice <span class="win">· inbound calls · Jul month-to-date</span></div>
+    <div class="mxhead">📞 Voice <span class="win">· inbound calls · Jul 10–16</span></div>
     <div class="mxsub">Inbound calls each vendor answered per client, and <b>how fast they picked up</b> (ASA). Green ≤30s · amber ≤2m · red &gt;2m. Shaded = the vendor handling the most. <i>Inbound-only, matching the client dashboards (excludes callbacks/transfers).</i></div>
     <div style="overflow-x:auto;"><table id="bpoMatrixVoice" class="mx">
       <thead><tr><th>Client</th><th>Response</th><th>TTEC</th><th>NextVas</th><th>Narith</th><th>Total calls</th></tr></thead>
@@ -332,6 +328,13 @@ var BPOS_EMAIL_BY_CLIENT={
   medvi:[{b:"RESPONSE",rep:3671,frp:77},{b:"NARITH",rep:537,frp:57},{b:"TTEC",rep:379,frp:27},{b:"NEXTVAS",rep:12,frp:73}],
   elixa:[{b:"NARITH",rep:253,frp:47},{b:"RESPONSE",rep:4,frp:0},{b:"NEXTVAS",rep:1,frp:100}]
 };
+// voice answered + ASA by client×BPO, Jul 10–16 (SAME window as email matrix above). "all" = the 3 shown clients.
+var BPOS_VOICE_WK={
+  all:[{b:"RESPONSE",an:6818,asa:13},{b:"TTEC",an:7495,asa:105},{b:"NARITH",an:5269,asa:174}],
+  embody:[{b:"TTEC",an:5789,asa:99},{b:"NARITH",an:5091,asa:170},{b:"RESPONSE",an:403,asa:24}],
+  medvi:[{b:"RESPONSE",an:6393,asa:13},{b:"TTEC",an:1692,asa:128},{b:"NARITH",an:38,asa:137}],
+  elixa:[{b:"NARITH",an:140,asa:328},{b:"RESPONSE",an:22,asa:12},{b:"TTEC",an:14,asa:99}]
+};
 function frpCls(p){return p>=70?'grn':(p>=50?'amb':'red');}
 var MX_ORDER=["RESPONSE","TTEC","NEXTVAS","NARITH"];
 var MX_CLIENTS=[["embody","Embody"],["medvi","Medvi"],["elixa","Elixa"],["all","All clients"]];
@@ -351,7 +354,7 @@ function renderMatrixInto(tblId, SRC, cellFn, valFn){
 function ragPill(rag, label, val){var L={grn:'g',amb:'a',red:'r','':'n',n:'n'}[rag]||'n'; return '<span class="m '+L+'"><span class="k">'+label+'</span>'+val+'</span>';}
 function renderMatrix(){
   // Voice: big = calls answered; pill = ASA (time to answer)
-  renderMatrixInto('bpoMatrixVoice', BPOS_BY_CLIENT,
+  renderMatrixInto('bpoMatrixVoice', BPOS_VOICE_WK,
     function(r){return '<span class="big">'+r.an.toLocaleString()+'</span>'+ragPill(asaCls(r.asa)||'n','ASA',asaFmt(r.asa));},
     function(r){return r.an;});
   // Email: big = replies; pill = % replied within 4 hours
