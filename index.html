@@ -213,8 +213,8 @@
   <!-- ===== REASONS FOR CONTACT ===== -->
   <div class="panel" id="p5">
     <div class="lbl" style="margin-top:0;">Reasons for Contact (RFC) — why patients contact PS</div>
-    <div class="note" style="margin:0 0 8px;">Ranked contact drivers, owning queues, and deflection potential. v0 = phone channel only (Code Yellow, wk of Jun 14). Email/chat reasons pending a live classifier. Internal planning view — not client-facing.</div>
-    <iframe src="ps-rfc.html" title="Reasons for Contact"></iframe>
+    <div class="note" style="margin:0 0 8px;">Ranked contact drivers, owning queues, and deflection potential. Phone (Code Yellow, wk Jun 14) + Email (weekly sampled, body-classified, all clients) — toggle inside. Internal planning view — not client-facing.</div>
+    <iframe id="rfcFrame" title="Reasons for Contact"></iframe>
   </div>
 
   <!-- ===== INTRADAY BY HOUR ===== -->
@@ -399,6 +399,7 @@ function applyFilter(){
 function showTab(i){
   document.querySelectorAll('.tabs .tab').forEach(function(t,j){t.classList.toggle('active',j===i);});
   document.querySelectorAll('.panel').forEach(function(p,j){p.classList.toggle('active',j===i);});
+  if(i===5){ var rf=document.getElementById('rfcFrame'); if(rf) rf.src='ps-rfc.html?cb='+Date.now(); }
   if(i===6){ renderHM(); }
 }
 // ---- day×hour heatmap ----
