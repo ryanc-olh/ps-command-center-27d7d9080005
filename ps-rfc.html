@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow, noarchive">
 <title>OpenLoop PS — Reasons for Contact (RFC)</title>
 <style>
   :root{--ink:#0b0b0b;--sec:#52514e;--mut:#898781;--card:#f5f4f1;--bd:#e1e0d9;--bds:#c3c2b7;--red:#b42318;--amb:#9a6a00;--grn:#127a3e;--blue:#2a78d6;--panel:#fbfaf8;}
@@ -39,14 +38,24 @@
   .db .b{font-size:22px;font-weight:600;margin-top:3px;}
   .foot{font-size:11px;color:var(--mut);margin-top:26px;border-top:1px solid var(--bd);padding-top:10px;}
   @media(max-width:640px){.defl{grid-template-columns:1fr;}}
+  .chtab{font-size:14px;font-weight:600;padding:8px 16px;border:1px solid var(--bds);border-radius:8px;background:#fff;color:var(--sec);cursor:pointer;}
+  .chtab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .cdbtn2{font-size:12.5px;font-weight:600;padding:5px 11px;border:1px solid var(--bds);border-radius:6px;background:#fff;color:var(--ink);cursor:pointer;}
+  .cdbtn2.active{background:var(--ink);color:#fff;border-color:var(--ink);}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>OpenLoop PS — Reasons for Contact <span class="proto">v0 · CALLS ONLY</span></h1>
-  <div class="sub">Why patients contact us, ranked. Snapshot: <b>week of Jun 14, 2026</b> · phone channel only · ~21,790 categorized calls · de-identified aggregates. Source: Code Yellow "Inbound Patient Support Needs."</div>
+  <h1>OpenLoop PS — Reasons for Contact <span class="proto">v1 · PHONE + EMAIL</span></h1>
+  <div class="sub">Why patients contact us, ranked &amp; de-identified. Pick a channel:</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 6px;">
+    <button id="chPhone" class="chtab active" onclick="showChannel('phone')">📞 Phone</button>
+    <button id="chEmail" class="chtab" onclick="showChannel('email')">✉️ Email</button>
+  </div>
 
-  <div class="sec" style="margin-top:22px;">Headline</div>
+  <div id="phoneView">
+  <div class="sub" style="margin-top:10px;">Phone snapshot: <b>week of Jun 14, 2026</b> · phone only · ~21,790 categorized calls. Source: Code Yellow "Inbound Patient Support Needs."</div>
+  <div class="sec" style="margin-top:18px;">Headline</div>
   <div class="grid kpis">
     <div class="card"><div class="k">Categorized calls (wk)</div><div class="v">21,790</div><div class="n">week of Jun 14 · phone only</div></div>
     <div class="card"><div class="k">Top driver</div><div class="v blue">23%</div><div class="n">Scheduling &amp; Appointments</div></div>
@@ -81,6 +90,30 @@
   </div>
 
   <div class="note" style="margin-top:14px;"><b>Disposition ≠ reason.</b> These are <i>outcomes</i>, not reasons-for-contact, and belong in a separate tagging dimension (v1 fix): No Category 2,820 · HeyRevia Transfer 508 · Disconnected 399 · Queued–No Answer 343 · Agent Ghosted 165 · Queue Unstaffed 161 · Customer Ghosted 79 · IVR Disconnect 76 · External 34.</div>
+
+  </div><!-- /phoneView -->
+
+  <div id="emailView" style="display:none">
+    <div class="sub" style="margin-top:10px;">Email sample: <b>week of Jul 11–17, 2026</b> · 100 random tickets/client, reason classified by reading each ticket body · de-identified. "All built" = the 5 clients with dashboards (n=500).</div>
+    <div class="lbl" style="margin-top:16px;">Client</div>
+    <div id="emBtns" style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="cdbtn2 active" onclick="renderEmail('all')">All built</button>
+      <button class="cdbtn2" onclick="renderEmail('embody')">Embody</button>
+      <button class="cdbtn2" onclick="renderEmail('medvi')">Medvi</button>
+      <button class="cdbtn2" onclick="renderEmail('elixa')">Elixa</button>
+      <button class="cdbtn2" onclick="renderEmail('altrx')">AltRx</button>
+      <button class="cdbtn2" onclick="renderEmail('trinity')">Trinity</button>
+      <button class="cdbtn2" onclick="renderEmail('other')">Other (unbuilt)</button>
+    </div>
+    <div class="sec">Top reasons by volume — <span id="emTitle">All built clients</span></div>
+    <div class="cbox"><canvas id="emailChart"></canvas></div>
+    <div class="sec">Full taxonomy</div>
+    <table id="emailTable">
+      <thead><tr><th>#</th><th>Category</th><th>Tickets</th><th>% of sample</th><th>Share</th><th>Owning queue</th><th>Deflection</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="note">Reason mix from a random 100-ticket sample per client (% = share of that client's sample). Bodies read &amp; classified individually — not from the (largely blank) ticket category field. <b>"Other"</b> = clients without a built dashboard, and it's ~71% non-patient noise (vendor/marketing/system), so treat its patient reasons as a thin slice. Deflection tiers are planning estimates.</div>
+  </div>
 
   <div class="foot" id="foot"></div>
 </div>
@@ -132,7 +165,54 @@ function sortT(c,txt){
     if(txt)return asc?y.localeCompare(x):x.localeCompare(y);return asc?(parseFloat(y)-parseFloat(x)):(parseFloat(x)-parseFloat(y));});
   tb.setAttribute('data-asc',asc?'':c+'');rows.forEach(function(r){tb.appendChild(r);});
 }
-document.getElementById('foot').textContent='RFC v0 — calls only, week of Jun 14 2026 (Code Yellow "Inbound Patient Support Needs"; Zoho Analytics view 2713211000068740630). Email/chat/text drivers not yet included — RFC mix will shift when added. Deflection tiers are v0 estimates for planning. De-identified aggregate counts; no PHI. v1: live reason mix from CRM/Desk ticket categories + all channels.';
+// ===== EMAIL RFC — sampled 100 tickets/client, week of Jul 11-17 2026, classified from ticket bodies =====
+var EMAIL={
+ embody:{"Order & shipping":30,"Medication":20,"Onboarding/admin":13,"Scheduling":12,"Account/access":5,"Billing complaint":5,"Non-patient/noise":5,"Cancellation":4,"Pricing question":3,"Other":3},
+ medvi:{"Order & shipping":21,"Billing complaint":15,"Cancellation":14,"Non-patient/noise":11,"Medication":11,"Pricing question":9,"Account/access":7,"Onboarding/admin":4,"Labs":3,"Other":3,"Scheduling":2},
+ elixa:{"Order & shipping":21,"Medication":17,"Scheduling":10,"Onboarding/admin":9,"Account/access":8,"Pricing question":8,"Cancellation":8,"Labs":8,"Care coaching":4,"Billing complaint":3,"Other":2,"Product quality":1,"Non-patient/noise":1},
+ altrx:{"Order & shipping":21,"Medication":20,"Scheduling":18,"Onboarding/admin":12,"Billing complaint":10,"Account/access":6,"Pricing question":6,"Cancellation":3,"Non-patient/noise":2,"Labs":1,"Care coaching":1},
+ trinity:{"Order & shipping":30,"Medication":17,"Scheduling":16,"Pricing question":10,"Onboarding/admin":10,"Billing complaint":6,"Cancellation":5,"Other":3,"Account/access":2,"Non-patient/noise":1},
+ other:{"Non-patient/noise":71,"Medication":9,"Order & shipping":5,"Labs":5,"Cancellation":4,"Account/access":2,"Scheduling":2,"Care coaching":1,"Billing complaint":1}
+};
+var EMMETA={"Order & shipping":{q:"PS-Tier1 / Narvar",d:"g"},"Medication":{q:"RN / CMA",d:"n"},"Scheduling":{q:"PS-Tier1",d:"g"},"Onboarding/admin":{q:"PS-Tier1 / Async",d:"a"},"Billing complaint":{q:"Billing",d:"a"},"Cancellation":{q:"Retention",d:"a"},"Pricing question":{q:"PS-Tier1",d:"g"},"Account/access":{q:"PS-Tier1",d:"g"},"Labs":{q:"Lab team",d:"n"},"Care coaching":{q:"Clinical",d:"n"},"Product quality":{q:"PS-Tier1",d:"a"},"Non-patient/noise":{q:"Route out / filter",d:"g"},"Other":{q:"PS-Tier1",d:"a"}};
+var EMNAME={all:"All built clients",embody:"Embody",medvi:"Medvi",elixa:"Elixa",altrx:"AltRx",trinity:"Trinity",other:"Other (unbuilt)"};
+var BUILT=["embody","medvi","elixa","altrx","trinity"];
+function emailData(client){
+  var d={};
+  if(client==='all'){ BUILT.forEach(function(c){ for(var k in EMAIL[c]) d[k]=(d[k]||0)+EMAIL[c][k]; }); }
+  else { var s=EMAIL[client]; for(var k in s) d[k]=s[k]; }
+  var tot=0; for(var k in d) tot+=d[k];
+  var arr=Object.keys(d).map(function(k){var m=EMMETA[k]||{};return {n:k,c:d[k],p:tot?d[k]/tot*100:0,q:m.q||'—',d:m.d||'a'};});
+  arr.sort(function(a,b){return b.c-a.c;});
+  return {arr:arr,tot:tot};
+}
+var emailChart=null;
+function renderEmail(client){
+  var order=['all'].concat(BUILT,['other']);
+  var btns=document.querySelectorAll('#emBtns .cdbtn2');
+  btns.forEach(function(b){b.classList.remove('active');}); if(btns[order.indexOf(client)])btns[order.indexOf(client)].classList.add('active');
+  document.getElementById('emTitle').textContent=EMNAME[client];
+  var D=emailData(client), mx=Math.max.apply(null,D.arr.map(function(r){return r.c;}))||1;
+  document.querySelector('#emailTable tbody').innerHTML=D.arr.map(function(r,i){
+    return '<tr><td>'+(i+1)+'</td><td>'+r.n+'</td><td>'+r.c+'</td><td>'+r.p.toFixed(1)+'%</td>'+
+      '<td><div class="bar"><span style="width:'+Math.round(r.c/mx*100)+'%"></span></div></td><td>'+r.q+'</td><td>'+pill(r.d)+'</td></tr>';
+  }).join('');
+  var top=D.arr.slice(0,10);
+  if(emailChart)emailChart.destroy();
+  emailChart=new Chart(document.getElementById('emailChart'),{type:'bar',data:{labels:top.map(function(r){return r.n;}),
+    datasets:[{data:top.map(function(r){return r.c;}),backgroundColor:top.map(function(r){return col[r.d];}),borderRadius:4,maxBarThickness:26}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:function(t){var r=top[t.dataIndex];return r.c+' tickets · '+r.p.toFixed(1)+'% · '+DEFL[r.d]+' deflection';}}}},
+    scales:{x:{grid:{color:'rgba(137,135,129,0.2)'},ticks:{color:'#898781',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#52514e',font:{size:11.5}}}}}});
+}
+function showChannel(ch){
+  document.getElementById('phoneView').style.display=ch==='phone'?'block':'none';
+  document.getElementById('emailView').style.display=ch==='email'?'block':'none';
+  document.getElementById('chPhone').classList.toggle('active',ch==='phone');
+  document.getElementById('chEmail').classList.toggle('active',ch==='email');
+  if(ch==='email' && !emailChart) renderEmail('all');
+}
+document.getElementById('foot').textContent='RFC v1 — Phone: Code Yellow week of Jun 14 2026 (calls, view 2713211000068740630). Email: sampled 100 random tickets/client for week of Jul 11-17 2026, reason classified by reading each ticket body via Zoho Desk (n=600). De-identified aggregate counts; no PHI. Deflection tiers are planning estimates. Refresh cadence: weekly (sampled).';
 </script>
 </body>
 </html>
