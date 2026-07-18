@@ -159,37 +159,37 @@
 
   <!-- ===== BY BPO & CLIENT ===== -->
   <div class="panel" id="p3">
-    <div class="lbl" style="margin-top:0;">Which BPO handles each client — and how well</div>
-
-    <div class="mxhead">📞 Voice <span class="win">· inbound calls · Jul 10–16</span></div>
-    <div class="mxsub">Inbound calls each vendor answered per client, and <b>how fast they picked up</b> (ASA). Green ≤30s · amber ≤2m · red &gt;2m. Shaded = the vendor handling the most. <i>Inbound-only, matching the client dashboards (excludes callbacks/transfers).</i></div>
-    <div style="overflow-x:auto;"><table id="bpoMatrixVoice" class="mx">
-      <thead><tr><th>Client</th><th>Response</th><th>TTEC</th><th>NextVas</th><th>Narith</th><th>Total calls</th></tr></thead>
-      <tbody></tbody>
-    </table></div>
-
-    <div class="mxhead">✉️ Email <span class="win">· Jul 10–16</span></div>
-    <div class="mxsub">How many email replies each vendor sent per client, and <b>% answered within 4 hours</b>. Green ≥70% · amber ≥50% · red &lt;50%. Vendor identified via the BPO roster.</div>
-    <div style="overflow-x:auto;"><table id="bpoMatrixEmail" class="mx">
-      <thead><tr><th>Client</th><th>Response</th><th>TTEC</th><th>NextVas</th><th>Narith</th><th>Total replies</th></tr></thead>
-      <tbody></tbody>
-    </table></div>
-    <div class="lbl">Agent efficiency by BPO — voice, Jul MTD (through 7/16)</div>
-    <div class="picker" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 10px;padding:9px 13px;background:var(--panel);border:1px solid var(--bd);border-radius:9px;">
-      <span style="font-size:13px;color:var(--sec);">Client</span>
-      <div id="bpoClientBtns" style="display:flex;gap:5px;flex-wrap:wrap;">
-        <button type="button" class="cdbtn active" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;" onclick="renderBpos('all')">All clients</button>
-        <button type="button" class="cdbtn" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;" onclick="renderBpos('embody')">Embody</button>
-        <button type="button" class="cdbtn" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;" onclick="renderBpos('medvi')">Medvi</button>
-        <button type="button" class="cdbtn" style="border:1px solid var(--bds);border-radius:6px;padding:5px 12px;background:#fff;cursor:pointer;font-size:13px;" onclick="renderBpos('elixa')">Elixa</button>
-      </div>
-      <span id="bpoClientStat" style="font-size:12px;color:var(--mut);margin-left:auto;"></span>
+    <div class="lbl" style="margin-top:0;">BPO performance — vendor comparison &amp; per-client split</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px;">
+      <button id="bvBpo" class="hbtn active" onclick="showBpoView('bpo')">By BPO (compare vendors)</button>
+      <button id="bvClient" class="hbtn" onclick="showBpoView('client')">By Client</button>
     </div>
-    <table id="bpoTable">
-      <thead><tr><th onclick="sortT('bpoTable',0,true)">BPO</th><th onclick="sortT('bpoTable',1)">Agents</th><th onclick="sortT('bpoTable',2)">Answered</th><th onclick="sortT('bpoTable',3)">ASA (answer)</th><th onclick="sortT('bpoTable',4)">AHT (min)</th><th onclick="sortT('bpoTable',5)">ACW (s)</th><th onclick="sortT('bpoTable',6)">Contacts/agent</th></tr></thead>
-      <tbody></tbody>
-    </table>
-    <div class="note"><b>Slice by client above.</b> Response is the efficient BPO (5.5m AHT, ~118/agent); TTEC is the laggard (11.3m). <b>Key finding:</b> Embody is served mostly by TTEC + Narith (the slow BPOs) → its low SLA; Medvi runs mostly on Response (efficient) → its strong SLA. NextVas shows implausibly high ACW (~295s) — likely ACW-state parking; verify before trusting. BPO = Amazon Connect hierarchy L1; in-house/clinical (NULL hierarchy) excluded. Voice only; email-agent attribution (Zoho Desk) not yet included. Feeds the capacity model's per-BPO AHT.</div>
+
+    <div id="bpoView">
+      <div class="mxsub" style="margin-top:12px;">Every vendor across channels — voice speed (ASA) and email first-response, side by side. Voice &amp; email cover Embody · Medvi · Elixa (wk Jul 10–16); headcount is total roster (all clients).</div>
+      <div style="overflow-x:auto;"><table id="bpoScorecard" class="mx">
+        <thead><tr><th>BPO</th><th>Region · HC</th><th>📞 Answered</th><th>📞 ASA</th><th>✉️ Replies</th><th>✉️ ≤4hr</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="note">ASA (speed to answer): green ≤30s · amber ≤2m · red &gt;2m. Email ≤4hr first response: green ≥70% · amber ≥50% · red &lt;50%. NextVas &amp; Booth are email/CSS-heavy (little inbound voice). AltRx &amp; Trinity not yet in the BPO split — pending a data refresh.</div>
+    </div>
+
+    <div id="clientBpoView" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 8px;">
+        <span style="font-size:13px;color:var(--sec);">Client</span>
+        <div id="cbBtns" style="display:flex;gap:5px;flex-wrap:wrap;">
+          <button class="hbtn active" onclick="renderByClient('embody')">Embody</button>
+          <button class="hbtn" onclick="renderByClient('medvi')">Medvi</button>
+          <button class="hbtn" onclick="renderByClient('elixa')">Elixa</button>
+        </div>
+        <span id="cbStat" style="font-size:12px;color:var(--mut);margin-left:auto;"></span>
+      </div>
+      <div style="overflow-x:auto;"><table id="clientBpoTable" class="mx">
+        <thead><tr><th>BPO</th><th>📞 Answered</th><th>📞 ASA</th><th>✉️ Replies</th><th>✉️ ≤4hr</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="note">Which vendors handle this client and how well, per channel · wk Jul 10–16. BPO = Amazon Connect hierarchy (voice) + roster join (email); in-house/clinical excluded.</div>
+    </div>
   </div>
 
   <!-- ===== CLIENT DASHBOARDS ===== -->
@@ -504,6 +504,35 @@ function sortT(id,col,txt){
   tb.setAttribute('data-asc',asc?'':col+'');
   rows.forEach(function(r){tb.appendChild(r);});
 }
+var BPO_META={RESPONSE:{r:"South Africa",hc:1034},TTEC:{r:"PH / US",hc:227},NARITH:{r:"India",hc:320},NEXTVAS:{r:"Philippines",hc:879},BOOTH:{r:"Philippines",hc:142}};
+var BPO_ORDER2=["RESPONSE","TTEC","NARITH","NEXTVAS","BOOTH"];
+function mergeBpo(v,e){var m={};(v||[]).forEach(function(x){(m[x.b]=m[x.b]||{}).an=x.an;m[x.b].asa=x.asa;});(e||[]).forEach(function(x){(m[x.b]=m[x.b]||{}).rep=x.rep;m[x.b].frp=x.frp;});return m;}
+function bpoCells(x){return '<td>'+(x.an!=null?x.an.toLocaleString():'—')+'</td>'+
+  '<td class="'+(x.asa==null?'mut':asaCls(x.asa))+'">'+(x.asa==null?'—':asaFmt(x.asa))+'</td>'+
+  '<td>'+(x.rep!=null?x.rep.toLocaleString():'—')+'</td>'+
+  '<td class="'+(x.frp==null?'mut':frpCls(x.frp))+'">'+(x.frp==null?'—':x.frp+'%')+'</td>';}
+function renderByBpo(){
+  var m=mergeBpo(BPOS_VOICE_WK.all, BPOS_EMAIL_BY_CLIENT.all);
+  document.querySelector('#bpoScorecard tbody').innerHTML=BPO_ORDER2.map(function(b){
+    var x=m[b]||{}, meta=BPO_META[b]||{};
+    return '<tr><td>'+b+'</td><td class="mut">'+(meta.r||'—')+' · '+(meta.hc?meta.hc.toLocaleString():'—')+'</td>'+bpoCells(x)+'</tr>';
+  }).join('');
+}
+function renderByClient(cl){
+  var btns=document.querySelectorAll('#cbBtns .hbtn');
+  ['embody','medvi','elixa'].forEach(function(k,i){if(btns[i])btns[i].classList.toggle('active',k===cl);});
+  var m=mergeBpo(BPOS_VOICE_WK[cl], BPOS_EMAIL_BY_CLIENT[cl]);
+  var rows=BPO_ORDER2.filter(function(b){return m[b];});
+  document.querySelector('#clientBpoTable tbody').innerHTML=rows.map(function(b){return '<tr><td>'+b+'</td>'+bpoCells(m[b])+'</tr>';}).join('');
+  var tv=rows.reduce(function(s,b){return s+(m[b].an||0);},0), te=rows.reduce(function(s,b){return s+(m[b].rep||0);},0);
+  document.getElementById('cbStat').textContent=tv.toLocaleString()+' calls · '+te.toLocaleString()+' email replies';
+}
+function showBpoView(v){
+  document.getElementById('bpoView').style.display=v==='bpo'?'block':'none';
+  document.getElementById('clientBpoView').style.display=v==='client'?'block':'none';
+  document.getElementById('bvBpo').classList.toggle('active',v==='bpo');
+  document.getElementById('bvClient').classList.toggle('active',v==='client');
+}
 function renderExec(){
   var CL=HM_CLIENTS;
   function gtot(g){return g.reduce(function(s,x){return s+x.reduce(function(a,b){return a+b;},0);},0);}
@@ -532,7 +561,7 @@ function renderExec(){
   var best={v:0}; for(var d=0;d<7;d++)for(var hr=0;hr<24;hr++){var s=0;CL.forEach(function(c){s+=HM_CUBE.cube.voice.inbound[c][d][hr];});if(s>best.v)best={v:s,d:d,hr:hr};}
   document.getElementById('exPeak').textContent=HM_CUBE.days[best.d]+', '+((best.hr%12)||12)+(best.hr<12?'a':'p')+' — '+best.v.toLocaleString()+' calls';
 }
-renderExec(); renderClients(); renderMatrix(); renderBpos(); applyFilter();
+renderExec(); renderClients(); renderByBpo(); renderByClient('embody'); applyFilter();
 document.getElementById('foot').textContent='Prototype v0 — real snapshot data (voice by client last 7d; agent efficiency by BPO Jul MTD; Embody email/chat from Desk). Live email feed proven via Zoho Desk API. Not auto-refreshing, not gated — v1 adds a backend poller + login. All figures planning/ops estimates; de-identified.';
 </script>
 </body>
