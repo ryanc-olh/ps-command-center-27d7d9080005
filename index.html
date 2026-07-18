@@ -109,27 +109,39 @@
   </div>
 
   <!-- ===== LIVE OPS ===== -->
-  <div class="panel active" id="p0">
-    <div class="lbl" style="margin-top:0;">Data freshness by source — what's live vs batch</div>
-    <div class="fresh">
-      <div class="fbox"><div class="h"><span class="dot live"></span>Email / chat / ticket queues</div>Zoho Desk API — <b>LIVE</b>. Newest ticket pulled at 18:05:37 UTC today (real-time). Backlog, oldest-waiting, replies available now.</div>
-      <div class="fbox"><div class="h"><span class="dot daily"></span>Voice volume · AHT · SLA</div>Amazon Connect → Zoho Analytics — <b>daily batch</b> (through ~04:29 CT today). Fine for trends/capacity, not intraday.</div>
-      <div class="fbox"><div class="h"><span class="dot off"></span>Live voice floor (ASA, queue depth, agents-available-now)</div>Amazon Connect API — <b>not connected</b>. Needs IAM access (in progress). This is the only true-live gap.</div>
+    <div class="panel active" id="p0">
+    <div class="lbl" style="margin-top:0;">Executive summary — Patient Support, week of Jul 6–12 2026 <span style="font-weight:400;color:var(--mut);font-size:12px;">· de-identified aggregates · snapshot for C-suite &amp; BPO review</span></div>
+    <div class="grid kpis">
+      <div class="card"><div class="k">Patient contacts (wk)</div><div class="v" id="exTotal">—</div><div class="n" id="exTotalN">voice + email</div></div>
+      <div class="card"><div class="k">Voice service level</div><div class="v" id="exSL">—</div><div class="n">answered ≤30s · target 80%</div></div>
+      <div class="card"><div class="k">Voice abandon</div><div class="v" id="exAb">—</div><div class="n">target &lt;5%</div></div>
+      <div class="card"><div class="k">Email first response</div><div class="v" id="exFRT">—</div><div class="n">≤4hr · target 70%</div></div>
+      <div class="card"><div class="k">Clients below SLA</div><div class="v" id="exBelow">—</div><div class="n">voice SL &lt;80%</div></div>
     </div>
 
-    <div class="lbl">Current snapshot — headline</div>
-    <div class="grid kpis">
-      <div class="card"><div class="k">Voice service level (wk)</div><div class="v amb">71%</div><div class="n">all clients, vol-weighted · target 80% ≤30s · 9% abandon</div></div>
-      <div class="card"><div class="k">Clients below SLA target</div><div class="v red">4</div><div class="n">Embody 36 · WC-Embody 51 · ElixaMD 72 · Fridays 78 (&lt;80%)</div></div>
-      <div class="card"><div class="k">Email queue (Embody)</div><div class="v red">~512</div><div class="n">open · live via Desk</div></div>
-      <div class="card"><div class="k">Active BPO agents (voice)</div><div class="v">988</div><div class="n">Response 433 · NextVas 242 · Narith 165 · TTEC 148 · Jul MTD</div></div>
-      <div class="card"><div class="k">Live email feed</div><div class="v grn">✓</div><div class="n">connected · Zoho Desk API</div></div>
+    <div class="lbl">Clients below SLA target — voice (worst first)</div>
+    <table id="exBreachTable">
+      <thead><tr><th>Client</th><th>Offered</th><th>SL ≤30s</th><th>Abandon</th><th>Status</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="lbl">BPO performance — voice answered &amp; speed · email replies &amp; first response</div>
+    <table id="exBpoTable">
+      <thead><tr><th>BPO</th><th>Voice answered</th><th>ASA (answer)</th><th>Email replies</th><th>≤4hr</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="lbl">Load &amp; drivers</div>
+    <div class="fresh">
+      <div class="fbox"><div class="h">Busiest hour (voice)</div><span id="exPeak">—</span></div>
+      <div class="fbox"><div class="h">Top contact reasons</div>Email: Order &amp; shipping · Medication · Scheduling. Phone: Scheduling · Cancellation · Refund. <span class="mut">— full breakdown on the Reasons for Contact tab.</span></div>
+      <div class="fbox"><div class="h">Data freshness</div>Email / tickets <span class="grn">live</span> (Zoho Desk) · Voice <span class="amb">daily batch</span> (Connect→Analytics) · Live voice floor <span class="red">not connected</span> (needs Connect IAM).</div>
     </div>
-    <div class="note">Live ticket <b>drill-down</b> (who's waiting, by patient) is the gated v1 feature — this prototype shows de-identified aggregates only. Voice "live floor" arrives with the Amazon Connect IAM hookup.</div>
+    <div class="note">Snapshot for exec + BPO review — top numbers only; each tab has the full detail. Windows: contact volume &amp; BPO = wk Jul 6–12 / 10–16; voice SL-by-client = last 7 days.</div>
   </div>
 
   <!-- ===== SLAs ===== -->
-  <div class="panel" id="p1">
+<div class="panel" id="p1">
     <div class="lbl" style="margin-top:0;">Voice service level by client — last 7 days (Jul 5–12)</div>
     <table id="clientTable">
       <thead><tr><th onclick="sortT('clientTable',0,true)">Client</th><th onclick="sortT('clientTable',1)">Offered</th><th onclick="sortT('clientTable',2)">Answered</th><th onclick="sortT('clientTable',3)">SL ≤30s</th><th onclick="sortT('clientTable',4)">Abandon</th><th>Status</th></tr></thead>
@@ -492,7 +504,35 @@ function sortT(id,col,txt){
   tb.setAttribute('data-asc',asc?'':col+'');
   rows.forEach(function(r){tb.appendChild(r);});
 }
-renderClients(); renderMatrix(); renderBpos(); applyFilter();
+function renderExec(){
+  var CL=HM_CLIENTS;
+  function gtot(g){return g.reduce(function(s,x){return s+x.reduce(function(a,b){return a+b;},0);},0);}
+  var vi=0,ei=0; CL.forEach(function(c){vi+=gtot(HM_CUBE.cube.voice.inbound[c]);ei+=gtot(HM_CUBE.cube.email.inbound[c]);});
+  document.getElementById('exTotal').textContent=(vi+ei).toLocaleString();
+  document.getElementById('exTotalN').textContent='voice '+vi.toLocaleString()+' · email '+ei.toLocaleString();
+  var o=0,slw=0,abw=0; CLIENTS.forEach(function(c){o+=c.o;slw+=c.o*c.sl;abw+=c.o*c.ab;});
+  var slv=Math.round(slw/o), abv=Math.round(abw/o);
+  var e;
+  e=document.getElementById('exSL'); e.textContent=slv+'%'; e.className='v '+(slv>=80?'grn':slv>=65?'amb':'red');
+  e=document.getElementById('exAb'); e.textContent=abv+'%'; e.className='v '+(abv<5?'grn':abv<10?'amb':'red');
+  var r=0,fw=0; BPOS_EMAIL_BY_CLIENT.all.forEach(function(x){r+=x.rep;fw+=x.rep*x.frp;});
+  var frt=Math.round(fw/r);
+  e=document.getElementById('exFRT'); e.textContent=frt+'%'; e.className='v '+(frt>=70?'grn':frt>=50?'amb':'red');
+  var below=CLIENTS.filter(function(c){return c.sl<80;});
+  document.getElementById('exBelow').textContent=below.length;
+  document.querySelector('#exBreachTable tbody').innerHTML=below.slice().sort(function(a,b){return a.sl-b.sl;}).map(function(c){
+    return '<tr><td>'+c.c+'</td><td>'+c.o.toLocaleString()+'</td><td class="'+cls(c.sl)+'">'+c.sl+'%</td><td class="'+(c.ab>5?'red':'grn')+'">'+c.ab+'%</td><td>'+slPill(c.sl)+'</td></tr>';
+  }).join('');
+  var bpo={}; BPOS_VOICE_WK.all.forEach(function(x){(bpo[x.b]=bpo[x.b]||{}).an=x.an;bpo[x.b].asa=x.asa;});
+  BPOS_EMAIL_BY_CLIENT.all.forEach(function(x){(bpo[x.b]=bpo[x.b]||{}).rep=x.rep;bpo[x.b].frp=x.frp;});
+  document.querySelector('#exBpoTable tbody').innerHTML=['RESPONSE','TTEC','NARITH','NEXTVAS'].filter(function(b){return bpo[b];}).map(function(b){
+    var x=bpo[b];
+    return '<tr><td>'+b+'</td><td>'+(x.an!=null?x.an.toLocaleString():'—')+'</td><td class="'+(x.asa==null?'':asaCls(x.asa))+'">'+(x.asa==null?'—':asaFmt(x.asa))+'</td><td>'+(x.rep!=null?x.rep.toLocaleString():'—')+'</td><td class="'+(x.frp==null?'':frpCls(x.frp))+'">'+(x.frp==null?'—':x.frp+'%')+'</td></tr>';
+  }).join('');
+  var best={v:0}; for(var d=0;d<7;d++)for(var hr=0;hr<24;hr++){var s=0;CL.forEach(function(c){s+=HM_CUBE.cube.voice.inbound[c][d][hr];});if(s>best.v)best={v:s,d:d,hr:hr};}
+  document.getElementById('exPeak').textContent=HM_CUBE.days[best.d]+', '+((best.hr%12)||12)+(best.hr<12?'a':'p')+' — '+best.v.toLocaleString()+' calls';
+}
+renderExec(); renderClients(); renderMatrix(); renderBpos(); applyFilter();
 document.getElementById('foot').textContent='Prototype v0 — real snapshot data (voice by client last 7d; agent efficiency by BPO Jul MTD; Embody email/chat from Desk). Live email feed proven via Zoho Desk API. Not auto-refreshing, not gated — v1 adds a backend poller + login. All figures planning/ops estimates; de-identified.';
 </script>
 </body>
