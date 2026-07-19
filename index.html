@@ -163,10 +163,11 @@
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px;">
       <button id="bvBpo" class="hbtn active" onclick="showBpoView('bpo')">By BPO (compare vendors)</button>
       <button id="bvClient" class="hbtn" onclick="showBpoView('client')">By Client</button>
+      <button id="bvTrend" class="hbtn" onclick="showBpoView('trend')">Week-over-week trend</button>
     </div>
 
     <div id="bpoView">
-      <div class="mxsub" style="margin-top:12px;">Every vendor across channels — voice speed (ASA) and email first-response, side by side. Voice &amp; email cover Embody · Medvi · Elixa (wk Jul 10–16); headcount is total roster (all clients).</div>
+      <div class="mxsub" style="margin-top:12px;">Every vendor across channels — voice speed (ASA) and email first-response, side by side. <b>Voice: latest complete week (<span id="bpoVoiceWin">—</span>), all clients.</b> Email: Embody · Medvi · Elixa, wk Jul 10–16. Headcount = total roster.</div>
       <div style="overflow-x:auto;"><table id="bpoScorecard" class="mx">
         <thead><tr><th>BPO</th><th>Region · HC</th><th>📞 Answered</th><th>📞 ASA</th><th>✉️ Replies</th><th>✉️ ≤4hr</th></tr></thead>
         <tbody></tbody>
@@ -181,6 +182,8 @@
           <button class="hbtn active" onclick="renderByClient('embody')">Embody</button>
           <button class="hbtn" onclick="renderByClient('medvi')">Medvi</button>
           <button class="hbtn" onclick="renderByClient('elixa')">Elixa</button>
+          <button class="hbtn" onclick="renderByClient('altrx')">AltRx</button>
+          <button class="hbtn" onclick="renderByClient('trinity')">Trinity</button>
         </div>
         <span id="cbStat" style="font-size:12px;color:var(--mut);margin-left:auto;"></span>
       </div>
@@ -188,7 +191,27 @@
         <thead><tr><th>BPO</th><th>📞 Answered</th><th>📞 ASA</th><th>✉️ Replies</th><th>✉️ ≤4hr</th></tr></thead>
         <tbody></tbody>
       </table></div>
-      <div class="note">Which vendors handle this client and how well, per channel · wk Jul 10–16. BPO = Amazon Connect hierarchy (voice) + roster join (email); in-house/clinical excluded.</div>
+      <div class="note">Which vendors handle this client &amp; how well, per channel. <b>Voice: latest complete week (<span id="cbVoiceWin">—</span>).</b> Email: wk Jul 10–16 (Embody/Medvi/Elixa only). BPO = Connect hierarchy (voice) + roster join (email); in-house/clinical excluded.</div>
+    </div>
+
+    <div id="trendView" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 8px;">
+        <span style="font-size:13px;color:var(--sec);">Show</span>
+        <button id="tmAsa" class="hbtn active" onclick="setTrend('metric','asa')">ASA (speed)</button>
+        <button id="tmAn" class="hbtn" onclick="setTrend('metric','an')">Calls answered</button>
+        <span style="font-size:13px;color:var(--sec);margin-left:10px;">Client</span>
+        <button id="tcAll" class="hbtn active" onclick="setTrend('client','all')">All</button>
+        <button class="hbtn" onclick="setTrend('client','embody')">Embody</button>
+        <button class="hbtn" onclick="setTrend('client','medvi')">Medvi</button>
+        <button class="hbtn" onclick="setTrend('client','elixa')">Elixa</button>
+        <button class="hbtn" onclick="setTrend('client','altrx')">AltRx</button>
+        <button class="hbtn" onclick="setTrend('client','trinity')">Trinity</button>
+      </div>
+      <div style="overflow-x:auto;"><table id="trendTable" class="mx">
+        <thead><tr id="trendHead"></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="note" id="trendNote">Voice inbound by BPO, week over week. Latest column (*) is a partial week. ASA colored: green ≤30s · amber ≤2m · red &gt;2m.</div>
     </div>
   </div>
 
@@ -504,6 +527,7 @@ function sortT(id,col,txt){
   tb.setAttribute('data-asc',asc?'':col+'');
   rows.forEach(function(r){tb.appendChild(r);});
 }
+var BPO_WOW={"weeks":[{"start":"2026-06-01","end":"2026-06-07","label":"Jun 1\u20137","complete":true},{"start":"2026-06-08","end":"2026-06-14","label":"Jun 8\u201314","complete":true},{"start":"2026-06-15","end":"2026-06-21","label":"Jun 15\u201321","complete":true},{"start":"2026-06-22","end":"2026-06-28","label":"Jun 22\u201328","complete":true},{"start":"2026-06-29","end":"2026-07-05","label":"Jun 29\u2013Jul 5","complete":true},{"start":"2026-07-06","end":"2026-07-12","label":"Jul 6\u201312","complete":true},{"start":"2026-07-13","end":"2026-07-19","label":"Jul 13\u201319","complete":false}],"voice":{"embody":{"RESPONSE":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":9,"asa":8},{"an":61,"asa":11},{"an":1620,"asa":65},{"an":378,"asa":30}],"TTEC":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":4,"asa":6},{"an":39,"asa":31},{"an":2501,"asa":162},{"an":5887,"asa":89}],"NEXTVAS":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null}],"NARITH":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":2,"asa":8},{"an":4,"asa":37},{"an":1800,"asa":283},{"an":4986,"asa":99}]},"medvi":{"RESPONSE":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":2526,"asa":10},{"an":4607,"asa":11},{"an":5309,"asa":15},{"an":6297,"asa":14}],"TTEC":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":971,"asa":31},{"an":3636,"asa":39},{"an":3335,"asa":91},{"an":687,"asa":194}],"NEXTVAS":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null}],"NARITH":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":14,"asa":109},{"an":32,"asa":120}]},"elixa":{"RESPONSE":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":67,"asa":9},{"an":121,"asa":45},{"an":23,"asa":15}],"TTEC":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":1,"asa":6},{"an":93,"asa":12},{"an":48,"asa":110},{"an":13,"asa":106}],"NEXTVAS":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null}],"NARITH":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":52,"asa":7},{"an":117,"asa":8},{"an":113,"asa":181},{"an":129,"asa":285}]},"altrx":{"RESPONSE":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":14,"asa":10},{"an":112,"asa":12},{"an":310,"asa":19},{"an":480,"asa":34}],"TTEC":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":1,"asa":6},{"an":8,"asa":7},{"an":24,"asa":90},{"an":25,"asa":47}],"NEXTVAS":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null}],"NARITH":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":2,"asa":272},{"an":4,"asa":23}]},"trinity":{"RESPONSE":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":2,"asa":6},{"an":6,"asa":64},{"an":85,"asa":25},{"an":508,"asa":30}],"TTEC":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":5,"asa":96},{"an":22,"asa":144},{"an":65,"asa":53}],"NEXTVAS":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null}],"NARITH":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":5,"asa":248},{"an":9,"asa":88}]},"all":{"RESPONSE":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":4362,"asa":10},{"an":8834,"asa":12},{"an":12433,"asa":29},{"an":12288,"asa":19}],"TTEC":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":1220,"asa":28},{"an":4677,"asa":35},{"an":6928,"asa":117},{"an":7688,"asa":98}],"NEXTVAS":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":2,"asa":7},{"an":1,"asa":6}],"NARITH":[{"an":0,"asa":null},{"an":0,"asa":null},{"an":0,"asa":null},{"an":60,"asa":7},{"an":143,"asa":8},{"an":2253,"asa":259},{"an":5911,"asa":102}]}}};
 var BPO_META={RESPONSE:{r:"South Africa",hc:1034},TTEC:{r:"PH / US",hc:227},NARITH:{r:"India",hc:320},NEXTVAS:{r:"Philippines",hc:879},BOOTH:{r:"Philippines",hc:142}};
 var BPO_ORDER2=["RESPONSE","TTEC","NARITH","NEXTVAS","BOOTH"];
 function mergeBpo(v,e){var m={};(v||[]).forEach(function(x){(m[x.b]=m[x.b]||{}).an=x.an;m[x.b].asa=x.asa;});(e||[]).forEach(function(x){(m[x.b]=m[x.b]||{}).rep=x.rep;m[x.b].frp=x.frp;});return m;}
@@ -511,8 +535,17 @@ function bpoCells(x){return '<td>'+(x.an!=null?x.an.toLocaleString():'—')+'</t
   '<td class="'+(x.asa==null?'mut':asaCls(x.asa))+'">'+(x.asa==null?'—':asaFmt(x.asa))+'</td>'+
   '<td>'+(x.rep!=null?x.rep.toLocaleString():'—')+'</td>'+
   '<td class="'+(x.frp==null?'mut':frpCls(x.frp))+'">'+(x.frp==null?'—':x.frp+'%')+'</td>';}
+// --- BPO WoW helpers: voice from BPO_WOW (auto-refreshed), email from static roster join ---
+var WOW_B=["RESPONSE","TTEC","NEXTVAS","NARITH"];
+function wowWeeksWithData(){ return BPO_WOW.weeks.map(function(w,i){ return WOW_B.some(function(b){return BPO_WOW.voice.all[b][i].an>0;}) ? i : -1; }).filter(function(i){return i>=0;}); }
+function wowLastComplete(){ var idxs=wowWeeksWithData(); for(var j=idxs.length-1;j>=0;j--){ if(BPO_WOW.weeks[idxs[j]].complete) return idxs[j]; } return idxs[idxs.length-1]; }
+function voiceAt(cl, wk){ var o={}; WOW_B.forEach(function(b){ var v=(BPO_WOW.voice[cl]||{})[b]; if(v&&v[wk]&&v[wk].an>0){o[b]={an:v[wk].an,asa:v[wk].asa};} }); return o; }
 function renderByBpo(){
-  var m=mergeBpo(BPOS_VOICE_WK.all, BPOS_EMAIL_BY_CLIENT.all);
+  var wk=wowLastComplete();
+  document.getElementById('bpoVoiceWin').textContent=BPO_WOW.weeks[wk].label;
+  var v=voiceAt('all',wk), m={};
+  WOW_B.forEach(function(b){ if(v[b]){(m[b]=m[b]||{}).an=v[b].an;m[b].asa=v[b].asa;} });
+  BPOS_EMAIL_BY_CLIENT.all.forEach(function(x){(m[x.b]=m[x.b]||{}).rep=x.rep;m[x.b].frp=x.frp;});
   document.querySelector('#bpoScorecard tbody').innerHTML=BPO_ORDER2.map(function(b){
     var x=m[b]||{}, meta=BPO_META[b]||{};
     return '<tr><td>'+b+'</td><td class="mut">'+(meta.r||'—')+' · '+(meta.hc?meta.hc.toLocaleString():'—')+'</td>'+bpoCells(x)+'</tr>';
@@ -520,18 +553,43 @@ function renderByBpo(){
 }
 function renderByClient(cl){
   var btns=document.querySelectorAll('#cbBtns .hbtn');
-  ['embody','medvi','elixa'].forEach(function(k,i){if(btns[i])btns[i].classList.toggle('active',k===cl);});
-  var m=mergeBpo(BPOS_VOICE_WK[cl], BPOS_EMAIL_BY_CLIENT[cl]);
+  ['embody','medvi','elixa','altrx','trinity'].forEach(function(k,i){if(btns[i])btns[i].classList.toggle('active',k===cl);});
+  var wk=wowLastComplete();
+  document.getElementById('cbVoiceWin').textContent=BPO_WOW.weeks[wk].label;
+  var v=voiceAt(cl,wk), m={};
+  WOW_B.forEach(function(b){ if(v[b]){(m[b]=m[b]||{}).an=v[b].an;m[b].asa=v[b].asa;} });
+  (BPOS_EMAIL_BY_CLIENT[cl]||[]).forEach(function(x){(m[x.b]=m[x.b]||{}).rep=x.rep;m[x.b].frp=x.frp;});
   var rows=BPO_ORDER2.filter(function(b){return m[b];});
-  document.querySelector('#clientBpoTable tbody').innerHTML=rows.map(function(b){return '<tr><td>'+b+'</td>'+bpoCells(m[b])+'</tr>';}).join('');
+  document.querySelector('#clientBpoTable tbody').innerHTML=rows.length?rows.map(function(b){return '<tr><td>'+b+'</td>'+bpoCells(m[b])+'</tr>';}).join(''):'<tr><td colspan="5" class="mut">no BPO voice data this week</td></tr>';
   var tv=rows.reduce(function(s,b){return s+(m[b].an||0);},0), te=rows.reduce(function(s,b){return s+(m[b].rep||0);},0);
-  document.getElementById('cbStat').textContent=tv.toLocaleString()+' calls · '+te.toLocaleString()+' email replies';
+  document.getElementById('cbStat').textContent=tv.toLocaleString()+' calls · '+(te?te.toLocaleString()+' email replies':'email pending');
+}
+var trend={metric:'asa',client:'all'};
+function renderTrend(){
+  var idxs=wowWeeksWithData(); var W=BPO_WOW.voice[trend.client]||BPO_WOW.voice.all;
+  document.getElementById('trendHead').innerHTML='<th>BPO</th>'+idxs.map(function(i){return '<th>'+BPO_WOW.weeks[i].label+(BPO_WOW.weeks[i].complete?'':'*')+'</th>';}).join('');
+  document.querySelector('#trendTable tbody').innerHTML=WOW_B.map(function(b){
+    return '<tr><td>'+b+'</td>'+idxs.map(function(i){
+      var c=W[b][i];
+      if(trend.metric==='an'){ return '<td>'+(c.an?c.an.toLocaleString():'—')+'</td>'; }
+      return '<td class="'+(c.asa==null?'mut':asaCls(c.asa))+'">'+(c.asa==null?'—':asaFmt(c.asa))+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+  document.getElementById('trendNote').innerHTML=(trend.metric==='asa'?'Voice <b>ASA (speed to answer)</b>':'Voice <b>calls answered</b>')+' by BPO, week over week · '+(trend.client==='all'?'all clients':trend.client)+'. Latest column (*) is a partial week. Per-BPO voice history begins '+BPO_WOW.weeks[idxs[0]].label+' (Connect hierarchy tagging). ASA color: green ≤30s · amber ≤2m · red &gt;2m.';
+}
+function setTrend(g,val){
+  trend[g]=val;
+  document.querySelectorAll('#trendView .hbtn').forEach(function(b){ var on=b.getAttribute('onclick')||''; if(on.indexOf("'"+g+"'")>=0) b.classList.toggle('active', on.indexOf("'"+val+"'")>=0); });
+  renderTrend();
 }
 function showBpoView(v){
   document.getElementById('bpoView').style.display=v==='bpo'?'block':'none';
   document.getElementById('clientBpoView').style.display=v==='client'?'block':'none';
+  document.getElementById('trendView').style.display=v==='trend'?'block':'none';
   document.getElementById('bvBpo').classList.toggle('active',v==='bpo');
   document.getElementById('bvClient').classList.toggle('active',v==='client');
+  document.getElementById('bvTrend').classList.toggle('active',v==='trend');
+  if(v==='trend') renderTrend();
 }
 function renderExec(){
   var CL=HM_CLIENTS;
