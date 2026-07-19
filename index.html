@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OpenLoop PS — Operations Command Center (Prototype)</title>
+<title>OpenLoop PS — Operations Command Center</title>
 <style>
   :root{--ink:#0b0b0b;--sec:#52514e;--mut:#898781;--card:#f5f4f1;--bd:#e1e0d9;--bds:#c3c2b7;--red:#b42318;--amb:#9a6a00;--grn:#127a3e;--blue:#2a78d6;--panel:#fbfaf8;}
   *{box-sizing:border-box;}
@@ -110,6 +110,7 @@
   .capm-tag{font-size:9px;font-weight:800;border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
   .capm-tag.live{background:#e7f3ea;color:#127a3e;}
   .capm-tag.assume{background:#f7efd9;color:#9a6a00;}
+  .capm-tag.meas{background:#eaeaf7;color:#3a3aa0;}
   .capm-warn{border-top:2px solid var(--bds);padding-top:10px;margin-top:4px;}
   .capm-warn b{color:#b42318;}
   .capm-warn ul{margin:6px 0 0;padding-left:18px;line-height:1.65;}
@@ -128,9 +129,27 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>OpenLoop PS — Operations Command Center <span class="proto">PROTOTYPE · v0</span></h1>
-  <div class="sub">All clients · all channels · capacity + live ops + SLAs, one screen. Snapshot as of <b>Jul 12, 2026</b> (de-identified aggregates).</div>
+  <h1>OpenLoop PS — Operations Command Center <span class="proto" style="background:var(--blue)">INTERNAL</span></h1>
+  <div class="sub">All clients · all channels · capacity + live ops + SLAs, one screen. <b>Rebuilt daily ~5:15am MT</b><span id="buildStamp"></span> · de-identified aggregates (PHI not persisted).</div>
 
+  <details class="method" id="howto" style="margin-top:12px;">
+    <summary>How to read this page — data sources, refresh cadence &amp; what's live vs. assumed</summary>
+    <ul>
+      <li><b>What this is:</b> the internal Patient Support operations command center — de-identified aggregates across all clients &amp; channels. <b>Internal only</b> (contains BPO/agent detail); not client-facing.</li>
+      <li><b>Data sources:</b> 📞 Voice = <b>Amazon Connect</b> (mirrored call logs, current to the prior day). ✉️ Email = <b>Zoho Desk</b> (mirrored, up to ~1-day lag). Phone reasons &amp; call sentiment = <b>Amazon Connect Contact Lens</b>.</li>
+      <li><b>Refresh cadence:</b> this command center + the phone Reasons-for-Contact view + per-client email noise rates rebuild <b>daily ~5:15am Mountain</b>; the email Reasons-for-Contact reason-mix rebuilds <b>weekly, Monday ~6:30am MT</b>; the embedded client dashboards refresh <b>every 4 hours</b>. It is an auto-rebuilt file (refreshed on a schedule), not a live stream.</li>
+      <li><b>Three kinds of number on this page:</b>
+        <ul>
+          <li><span class="dot live"></span><b>LIVE — measured, auto-refreshed daily:</b> voice answered / ASA / AHT / abandon / service level; email replies / first-response / one-touch / replies-per-ticket; intraday volumes; deployed agents; phone reasons + sentiment.</li>
+          <li><span class="dot daily"></span><b>MEASURED · STATIC — measured once, not auto-refreshed</b> (a script is re-run to update): the email throughput coefficient (<b>2.1</b> replies per active agent-hour) and the per-client email real-patient (noise) rates.</li>
+          <li><span class="dot off"></span><b>YOUR ASSUMPTION — editable inputs</b> (Capacity tab &amp; the Intraday "Agents needed" bar): Erlang target service-level % &amp; answer-seconds, email SLA-window hours, shrinkage %.</li>
+        </ul>
+      </li>
+      <li><b>Models:</b> Voice staffing uses <b>Erlang C</b> — the contact-center industry-standard queueing model for staffing to a service-level target (full formula + rationale on the <b>Intraday</b> tab and the <b>Capacity</b> tab). Email staffing uses an asynchronous throughput / labor-balance floor. Call sentiment is AWS Contact Lens. Email noise is AI-classified (two passes + tiebreak).</li>
+      <li><b>Date windows</b> (each tab also shows its own 📅 window): Live Ops &amp; By-BPO scorecard = <b>latest complete week</b>; voice SLA tab = <b>trailing 7 days</b>; Week-over-week = <b>6 complete weeks + current partial (*)</b>; Intraday &amp; capacity = <b>previous complete week</b>; phone reasons = latest complete week; email reasons = previous complete week (sample).</li>
+      <li><b>Email is patient-only:</b> every email volume/demand figure is scaled by each client's measured real-patient rate to strip automated/marketing/vendor/system noise; reply &amp; response-time metrics are not scaled, and voice is not adjusted.</li>
+    </ul>
+  </details>
 
   <div class="tabs">
     <button class="tab active" onclick="showTab(0)">Live Ops</button>
@@ -141,51 +160,55 @@
     <button class="tab" onclick="showTab(5)">Reasons for Contact</button>
     <button class="tab" onclick="showTab(6)">Intraday by Hour</button>
   </div>
+  <div class="note" style="margin:-6px 0 14px;">Cadence: Live Ops · SLAs · By&nbsp;BPO · Intraday = <b>daily</b> · Reasons for Contact = phone daily / email weekly · Client Dashboards = every 4h · Capacity vs Demand = <b>interactive model</b> (you set the inputs — nothing to refresh).</div>
 
   <!-- ===== LIVE OPS ===== -->
     <div class="panel active" id="p0">
     <div class="lbl" style="margin-top:0;">Executive summary — Patient Support <span style="font-weight:400;color:var(--mut);font-size:12px;">· de-identified aggregates · C-suite &amp; BPO review</span></div>
-    <div class="winbig">📅 Week of <span class="w">Jul 6–12</span> <span style="font-weight:400;font-size:12px;color:var(--mut);">(voice service level = last 7 days, Jul 5–12)</span></div>
+    <div class="winbig">📅 Latest complete week <span class="w">Jul 6–12</span> <span style="font-weight:400;font-size:12px;color:var(--mut);">— contacts, email, sentiment &amp; BPO. Voice service level / abandon / clients-below-SLA = <b>trailing 7 days</b> (see SLAs tab).</span></div>
     <div class="grid kpis">
       <div class="card"><div class="k">Patient contacts (wk)</div><div class="v" id="exTotal">—</div><div class="n" id="exTotalN">voice + email</div></div>
-      <div class="card"><div class="k">Voice service level</div><div class="v" id="exSL">—</div><div class="n">answered ≤30s · target 80%</div></div>
-      <div class="card"><div class="k">Voice abandon</div><div class="v" id="exAb">—</div><div class="n">target &lt;5%</div></div>
-      <div class="card"><div class="k">Email first response</div><div class="v" id="exFRT">—</div><div class="n">≤4hr · target 70%</div></div>
-      <div class="card"><div class="k">Email one-touch</div><div class="v" id="exOneTouch">—</div><div class="n">resolved in ≤1 reply</div></div>
-      <div class="card"><div class="k">Call sentiment (neg)</div><div class="v" id="exNeg">—</div><div class="n">calls ending negative</div></div>
-      <div class="card"><div class="k">Clients below SLA</div><div class="v" id="exBelow">—</div><div class="n">voice SL &lt;80%</div></div>
+      <div class="card"><div class="k">Voice service level</div><div class="v" id="exSL">—</div><div class="n">answered ≤30s · target 80% · Connect · trailing 7d</div></div>
+      <div class="card"><div class="k">Voice abandon</div><div class="v" id="exAb">—</div><div class="n">target &lt;5% · Connect · trailing 7d</div></div>
+      <div class="card"><div class="k">Email first response</div><div class="v" id="exFRT">—</div><div class="n">≤4hr · target 70% · Zoho Desk · complete wk (≤1d lag)</div></div>
+      <div class="card"><div class="k">Email one-touch</div><div class="v" id="exOneTouch">—</div><div class="n">resolved in ≤1 reply · Zoho Desk · complete wk</div></div>
+      <div class="card"><div class="k">Call sentiment (neg)</div><div class="v" id="exNeg">—</div><div class="n">calls ending negative · Contact Lens AI · complete wk</div></div>
+      <div class="card"><div class="k">Clients below SLA</div><div class="v" id="exBelow">—</div><div class="n">voice SL &lt;80% · trailing 7d</div></div>
     </div>
+    <div class="note" style="margin-top:8px;">All figures are <span class="grn">live/measured</span> (auto-refreshed daily) except that <b>"Patient contacts" &amp; email counts are patient-only</b> — email is scaled by each client's measured real-patient rate (a <span class="amb">measured-static</span> factor, re-measured periodically) to strip marketing/vendor/system noise; voice is not adjusted. <b>Color key:</b> <span class="grn">green</span> = meets target · <span class="amb">amber</span> = near · <span class="red">red</span> = breaching (SL 80/65 · abandon 5/10 · email FR &amp; one-touch 70/50 · sentiment neg 25/40).</div>
 
-    <div class="lbl">Clients below SLA target — voice (worst first)</div>
+    <div class="lbl">Clients below SLA target — voice · trailing 7 days · Amazon Connect (worst first)</div>
     <table id="exBreachTable">
       <thead><tr><th>Client</th><th>Offered</th><th>SL ≤30s</th><th>Abandon</th><th>Status</th></tr></thead>
       <tbody></tbody>
     </table>
+    <div class="note" style="margin-top:4px;">Offered = inbound calls presented; SL ≤30s = answered within 30s ÷ offered; Abandon = unanswered ÷ offered. Target 80% ≤30s, abandon &lt;5%. Status: Meeting ≥80% · Near 65–79% · Breaching &lt;65%.</div>
 
-    <div class="lbl">BPO performance — voice answered &amp; speed · email replies &amp; first response</div>
+    <div class="lbl">BPO performance — voice answered &amp; speed · email replies &amp; first response · latest complete week</div>
     <table id="exBpoTable">
       <thead><tr><th>BPO</th><th>Voice answered</th><th>ASA</th><th>AHT</th><th>Email replies</th><th>≤4hr</th></tr></thead>
       <tbody></tbody>
     </table>
+    <div class="note" style="margin-top:4px;">Voice = latest complete week (Amazon Connect); email = latest complete week (Zoho Desk, ≤1-day lag). ASA (avg seconds to answer): <span class="grn">green</span> ≤30s / <span class="amb">amber</span> ≤2m / <span class="red">red</span> &gt;2m · AHT (avg handle minutes) shown uncolored (context, no fixed target) · ≤4hr first-response: green ≥70% / amber ≥50% / red &lt;50%.</div>
 
-    <div class="lbl">Load &amp; drivers</div>
+    <div class="lbl">Load &amp; drivers <span style="font-weight:400;color:var(--mut);font-size:12px;">· previous complete week</span></div>
     <div class="fresh">
-      <div class="fbox"><div class="h">Busiest hour (voice)</div><span id="exPeak">—</span></div>
-      <div class="fbox"><div class="h">Top contact reasons</div>Email: Order &amp; shipping · Medication · Scheduling. Phone: Scheduling · Cancellation · Refund. <span class="mut">— full breakdown on the Reasons for Contact tab.</span></div>
-      <div class="fbox"><div class="h">Data freshness</div>Email / tickets <span class="grn">live</span> (Zoho Desk) · Voice <span class="amb">daily batch</span> (Connect→Analytics) · Live voice floor <span class="red">not connected</span> (needs Connect IAM).</div>
+      <div class="fbox"><div class="h">Busiest hour (voice) · prev complete wk</div><span id="exPeak">—</span></div>
+      <div class="fbox"><div class="h">Top phone reasons <span class="mut">· Contact Lens · latest complete wk</span></div><span id="exReasons">—</span> <span class="mut">— full phone + email breakdown on the Reasons for Contact tab.</span></div>
+      <div class="fbox"><div class="h">Data freshness</div>Whole page <span class="amb">rebuilt daily ~5:15am MT</span>. Voice = Amazon Connect (current to prior day) · Email/tickets = Zoho Desk <span class="amb">daily (≤1-day lag)</span> · Live real-time voice floor <span class="red">not connected</span> (needs Connect IAM).</div>
     </div>
-    <div class="note">Snapshot for exec + BPO review — top numbers only; each tab has the full detail. Windows: contact volume &amp; BPO = wk Jul 6–12 / 10–16; voice SL-by-client = last 7 days.</div>
+    <div class="note">Exec + BPO review — top numbers only; each tab has full detail and its own 📅 window. Windows here: contacts / email / sentiment / BPO = latest complete week (Jul 6–12); voice service level, abandon &amp; clients-below-SLA = trailing 7 days (SLAs tab); busiest-hour = previous complete week. Rebuilt daily ~5:15am MT.</div>
   </div>
 
   <!-- ===== SLAs ===== -->
 <div class="panel" id="p1">
-    <div class="lbl" style="margin-top:0;">Voice service level by client</div>
-    <div class="winbig">📅 Last 7 days: <span class="w" id="slaWin">Jul 5–12</span></div>
+    <div class="lbl" style="margin-top:0;">Voice service level by client <span class="proto" style="background:var(--grn);margin-left:6px;">LIVE · measured</span></div>
+    <div class="winbig">📅 Trailing 7 days: <span class="w" id="slaWin">Jul 5–12</span> <span style="font-weight:400;font-size:12px;color:var(--mut);">· Amazon Connect · rebuilt daily ~5:15am MT</span></div>
     <table id="clientTable">
       <thead><tr><th onclick="sortT('clientTable',0,true)">Client</th><th onclick="sortT('clientTable',1)">Offered</th><th onclick="sortT('clientTable',2)">Answered</th><th onclick="sortT('clientTable',3)">SL ≤30s</th><th onclick="sortT('clientTable',4)">Abandon</th><th>Status</th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="note">Target: <b>80% answered ≤30s</b>, abandon <b>&lt;5%</b>. RAG = meeting / near / breaching. Chat &amp; email SLA-by-client come from Zoho Desk (live) in v1; today Embody email = ~18% ≤1hr / 44% ≤4hr, chat = 94% ≤30s. Amazon Connect org-name variants (White Coat / casing / sub-brands) are combined into one row per client.</div>
+    <div class="note"><b>Source:</b> Amazon Connect (mirrored call logs) — measured actuals, not modeled; auto-refreshes daily ~5:15am MT. <b>Definitions:</b> Offered = all inbound calls presented to the queue · SL ≤30s = calls answered within 30 seconds ÷ offered · Abandon = callers who hung up before answer ÷ offered. <b>Target:</b> 80% answered ≤30s, abandon &lt;5%. <b>Status (RAG):</b> Meeting ≥80% (green) · Near 65–79% (amber) · Breaching &lt;65% (red); abandon red if &gt;5%. <b>Scope:</b> this lists every Connect voice queue — including OpenLoop internal lines (CMA Triage, Pharmacy, OLH Patient Support) — a superset of the 5 built BPO clients shown on the other tabs; Connect org-name variants (White Coat / casing / sub-brands) are merged into one row per client. Email &amp; chat SLA-by-client are not yet built (planned) — this table is voice only.</div>
   </div>
 
   <!-- ===== CAPACITY ===== -->
@@ -208,12 +231,12 @@
 
     <div id="bpoView">
       <div class="winbig">📅 Week of <span class="w" id="bpoVoiceWin">—</span></div>
-      <div class="mxsub"><b>🏢 One row per BPO vendor</b>, aggregated across all 5 built clients (Embody · Medvi · Elixa · AltRx · Trinity). Voice = answered + speed (ASA) + handle time (AHT); Email = replies + % first response ≤4hr. HC = total roster.</div>
+      <div class="mxsub"><b>🏢 One row per BPO vendor</b>, aggregated across all 5 built clients (Embody · Medvi · Elixa · AltRx · Trinity). Voice = answered + speed (ASA = avg seconds to answer) + handle time (AHT = avg minutes/call); Email = replies + % first response ≤4hr. HC = total vendor headcount (static reference roster).</div>
       <div style="overflow-x:auto;"><table id="bpoScorecard" class="mx">
         <thead><tr><th>BPO</th><th>Region · HC</th><th>📞 Answered</th><th>📞 ASA</th><th>📞 AHT</th><th>✉️ Replies</th><th>✉️ ≤4hr</th><th>✉️ 1-touch <span class="estlbl">est</span></th><th>✉️ Repl/tix <span class="estlbl">est</span></th></tr></thead>
         <tbody></tbody>
       </table></div>
-      <div class="note"><b>Voice abandonment: <span id="bpoAbandon">—</span> · Email one-touch resolution: <span id="bpoOneTouch">—</span> · Call sentiment (neg): <span id="bpoNeg">—</span></b> (5 clients, this week — all three real, client-level). The per-BPO <b>1-touch</b> &amp; <b>Repl/tix</b> columns are <span class="estlbl">est</span> — a ticket is attributed to its first responder's vendor, but replies can span vendors; the real client figures are in the By-Client view. Abandonment is queue-level (abandoned calls have no vendor); per-vendor negative sentiment is in the Week-over-week trend. ASA green ≤30s/amber ≤2m/red &gt;2m · ≤4hr green ≥70%/amber ≥50%/red &lt;50%. Auto-refreshes daily.</div>
+      <div class="note"><b>Voice abandonment: <span id="bpoAbandon">—</span> · Email one-touch resolution: <span id="bpoOneTouch">—</span> · Call sentiment (neg): <span id="bpoNeg">—</span></b> (5 clients, this week — all three real, client-level). The per-BPO <b>1-touch</b> &amp; <b>Repl/tix</b> columns are <span class="estlbl">est</span> — a ticket is attributed to its first responder's vendor, but replies can span vendors; the real client figures are in the By-Client view. Abandonment is queue-level (abandoned calls have no vendor); per-vendor negative sentiment is in the Week-over-week trend. 1-touch = tickets resolved in ≤1 reply; Repl/tix = avg replies per ticket (lower is better). ASA green ≤30s/amber ≤2m/red &gt;2m · ≤4hr green ≥70%/amber ≥50%/red &lt;50%; AHT uncolored (context, no fixed target). Sources: voice = Amazon Connect; email = Zoho Desk (mirrored, up to ~1-day lag). Rebuilt daily ~5:15am Mountain (previous day's data).</div>
     </div>
 
     <div id="clientBpoView" style="display:none">
@@ -223,7 +246,7 @@
         <thead><tr><th>Client · BPO</th><th>📞 Answered</th><th>📞 ASA</th><th>📞 AHT</th><th>✉️ Replies</th><th>✉️ ≤4hr</th><th>✉️ 1-touch <span class="estlbl">est</span></th><th>✉️ Repl/tix <span class="estlbl">est</span></th></tr></thead>
         <tbody></tbody>
       </table></div>
-      <div class="note">BPO = Connect hierarchy (voice) + roster join (email); in-house/clinical excluded. Same complete week as the scorecard.</div>
+      <div class="note">BPO = Amazon Connect hierarchy (voice) + roster join (email); in-house/clinical excluded. Same latest-complete-week window as the scorecard. Sources: voice = Amazon Connect; email = Zoho Desk (mirrored, up to ~1-day lag). <b>1-touch</b> &amp; <b>Repl/tix</b> are <span class="estlbl">est</span> (attributed to the first responder's vendor; real client figures elsewhere). ASA green ≤30s/amber ≤2m/red &gt;2m · ≤4hr green ≥70%/amber ≥50%/red &lt;50%; AHT uncolored. Rebuilt daily ~5:15am Mountain.</div>
     </div>
 
     <div id="trendView" style="display:none">
@@ -271,15 +294,15 @@
   <!-- ===== REASONS FOR CONTACT ===== -->
   <div class="panel" id="p5">
     <div class="lbl" style="margin-top:0;">Reasons for Contact (RFC) — why patients contact PS</div>
-    <div class="winbig">📅 Phone: week of Jun 14 (one-time snapshot) · Email: sampled weekly <span style="font-weight:400;font-size:12px;color:var(--mut);">— pick the channel inside</span></div>
-    <div class="note" style="margin:0 0 8px;">Ranked contact drivers, owning queues, and deflection potential. Phone (Code Yellow, wk Jun 14) + Email (weekly sampled, body-classified, all clients) — toggle inside. Internal planning view — not client-facing.</div>
+    <div class="winbig">📅 Phone: latest complete week · refreshed <b>daily</b> · Email: previous complete week · refreshed <b>weekly (Mon)</b> <span style="font-weight:400;font-size:12px;color:var(--mut);">— pick the channel inside</span></div>
+    <div class="note" style="margin:0 0 8px;">Ranked contact drivers &amp; owning queues. <b>Phone</b> = live Amazon Connect <b>Contact Lens</b> topic tags on answered calls (latest complete week, rebuilt daily ~5:15am MT; multi-label, so shares can total &gt;100%). <b>Email</b> = a random ~100 tickets/client from the previous complete week, body-classified (rebuilt weekly, Mon ~6:30am MT), all clients. Toggle channel inside. Internal planning view — not client-facing.</div>
     <iframe id="rfcFrame" title="Reasons for Contact"></iframe>
   </div>
 
   <!-- ===== INTRADAY BY HOUR ===== -->
   <div class="panel" id="p6">
     <div class="lbl" style="margin-top:0;">Volume heatmap — day of week × hour</div>
-    <div class="winbig">📅 Previous complete week: <span class="w" id="hmWin">Jul 6–12</span></div>
+    <div class="winbig">📅 Previous complete week: <span class="w" id="hmWin">Jul 6–12</span> <span style="font-weight:400;font-size:12px;color:var(--mut);">· rebuilt daily ~5:15am MT from mirrored logs (voice = Amazon Connect, current to prior day; email = Zoho Desk, ≤1-day lag)</span></div>
     <div class="hmctl"><span class="hclab">Show</span>
       <button class="hbtn active" data-g="metric" data-v="inbound" onclick="setHM('metric','inbound')">Inbound volume</button>
       <button class="hbtn" data-g="metric" data-v="handled" onclick="setHM('metric','handled')">Handled</button>
@@ -379,10 +402,10 @@ function normClient(name){
 function mergedClients(){
   var byc={};
   CLIENTS.forEach(function(r){
-    var k=normClient(r.c), g=byc[k]||(byc[k]={c:k,o:0,a:0,s30:0,abn:0});
+    var name=normClient(r.c), k=name.toLowerCase(), g=byc[k]||(byc[k]={c:name,o:0,a:0,s30:0,abn:0});  // dedup case-insensitively (e.g. XMD/Xmd), keep first-seen display casing
     g.o+=r.o; g.a+=r.a; g.s30+=r.sl/100*r.o; g.abn+=r.ab/100*r.o;
   });
-  return Object.keys(byc).map(function(k){var g=byc[k];return {c:k,o:g.o,a:g.a,sl:g.o?Math.round(g.s30/g.o*100):0,ab:g.o?Math.round(g.abn/g.o*100):0};}).sort(function(a,b){return b.o-a.o;});
+  return Object.keys(byc).map(function(k){var g=byc[k];return {c:g.c,o:g.o,a:g.a,sl:g.o?Math.round(g.s30/g.o*100):0,ab:g.o?Math.round(g.abn/g.o*100):0};}).sort(function(a,b){return b.o-a.o;});
 }
 function renderClients(){
   var sw=document.getElementById('slaWin'); if(sw) sw.textContent=SLA_WINDOW;
@@ -598,13 +621,14 @@ function buildCapMethod(agents,covgap){
     ['Calls offered / hr','from grid','live','Connect inbound this week — whole-client demand (not BPO-attributable)'],
     ['Target service level',CAP.sl+'% in '+CAP.asa+'s','assume','the answer-speed target you set — editable above'],
     ['Replies / ticket',rpt,'live','Zoho Desk closed tickets, latest complete wk ('+who+')'],
-    ['Email throughput',CAP.coeff+' repl/agent-hr','assume','measured over 4 wks (Jul 2026); static — editable; re-measure periodically'],
+    ['Email throughput',CAP.coeff+' repl/agent-hr','meas','measured over 4 wks (Jul 2026); NOT auto-refreshed — re-run to update. Editable here for headroom.'],
     ['Email SLA window',CAP.slaHrs+' h','assume','first-response target — editable'],
     ['Shrinkage',CAP.shrink+'%','assume','breaks / meetings / training — editable; applied to phone only']
   ];
   if(covgap) rows.push(['Deployed agents / hr','from grid','live','distinct agents active this week — phone: agent_username on answered calls · email: distinct repliers']);
   var tbl='<table class="capm-in"><tr><th>Input</th><th>Value now</th><th>Where it comes from</th></tr>'+rows.map(function(r){
-    return '<tr><td>'+r[0]+'</td><td class="v">'+r[1]+'</td><td><span class="capm-tag '+(r[2]==='live'?'live':'assume')+'">'+(r[2]==='live'?'live data':'assumption')+'</span> '+r[3]+'</td></tr>';
+    var tg=r[2]==='live'?['live','live data']:(r[2]==='meas'?['meas','measured · static']:['assume','assumption']);
+    return '<tr><td>'+r[0]+'</td><td class="v">'+r[1]+'</td><td><span class="capm-tag '+tg[0]+'">'+tg[1]+'</span> '+r[3]+'</td></tr>';
   }).join('')+'</table>';
   var gapBlk = covgap ? '<div class="capm-t" style="margin-top:2px;">⚠️ Coverage gap</div><div style="margin-bottom:12px;color:var(--sec);">= <b>needed − deployed</b> per hour. <span style="color:var(--red);font-weight:700;">Red</span> = short, <span style="color:var(--grn);font-weight:700;">green</span> = covered/surplus; <b>Net</b> column = agent-hours short(+)/surplus(−) that day. <b>Phone deployed</b> = distinct agents who took ≥1 built call that hour (headcount incl. part-hours &amp; rotation) → read phone gap as coverage <b>alignment</b> (enough heads, wrong hours), not exact FTE over/under. <b>Email deployed</b> = distinct repliers that hour.</div>' : '';
   // "How noise is defined" + the per-client real-patient rate applied to email demand (shown for any capacity metric)
@@ -618,9 +642,9 @@ function buildCapMethod(agents,covgap){
   }
   return '<div class="capm">'+
     '<div class="capm-h">🧮 How this is calculated</div>'+
-    '<div class="capm-sub">Scope: <b>'+who+'</b> · week of <b>'+HM_CUBE.window+'</b> · edit any assumption in the “Assumes” bar above and every cell recomputes live.</div>'+
+    '<div class="capm-sub">Scope: <b>'+who+'</b> · previous complete week <b>'+HM_CUBE.window+'</b> · rebuilt daily ~5:15am MT. "Live data" below = refreshed on each daily rebuild (not streaming); voice is mirrored from Amazon Connect (current to prior day), email from Zoho Desk (≤1-day lag). Edit any assumption in the “Assumes” bar above and every cell recomputes instantly.</div>'+
     '<div class="capm-grid">'+
-      '<div><div class="capm-t">📞 Phone — Erlang C (real-time queue)</div><div class="capm-f">A (Erlangs) = calls offered/hr × AHT(min) ÷ 60<br>N = smallest agents where P(answer ≤ '+CAP.asa+'s) ≥ '+CAP.sl+'%<br>scheduled = ⌈ N ÷ (1 − shrinkage) ⌉</div><div class="capm-eg">'+egP+'</div></div>'+
+      '<div><div class="capm-t">📞 Phone — Erlang C (queuing model)</div><div style="font-size:11.5px;color:var(--sec);margin-bottom:6px;"><b>Erlang C is the contact-center industry standard</b> for inbound voice staffing. It treats calls as random (Poisson) arrivals into one shared queue, so it captures why holding an '+CAP.sl+'%/'+CAP.asa+'s answer target needs materially <i>more</i> agents than raw call-minutes (offered load) imply — that buffer is the price of speed. A naive "calls×AHT÷hour" estimate ignores randomness and systematically under-staffs the peak; Erlang C does not.</div><div class="capm-f">A (offered load, Erlangs) = calls offered/hr × AHT(min) ÷ 60<br>N = smallest #agents where P(answer ≤ '+CAP.asa+'s) ≥ '+CAP.sl+'%<br>scheduled = ⌈ N ÷ (1 − shrinkage) ⌉</div><div class="capm-eg">'+egP+'</div></div>'+
       '<div><div class="capm-t">✉️ Email — throughput (async, deferrable)</div><div class="capm-f">work = emails received in trailing '+CAP.slaHrs+'h × replies/ticket<br>agents = ⌈ work ÷ '+CAP.coeff+' repl/agent-hr ÷ '+CAP.slaHrs+'h ⌉<br><span style="color:#9a6a00;">no shrinkage — coeff already reflects real deployed agents</span></div><div class="capm-eg">'+egE+'</div></div>'+
     '</div>'+
     tbl + gapBlk + noiseDef +
@@ -715,7 +739,7 @@ function renderByBpo(){
   WOW_B.forEach(function(b){ if(v[b]){(m[b]=m[b]||{}).an=v[b].an;m[b].asa=v[b].asa;m[b].aht=v[b].aht;} });
   BPOS_EMAIL_BY_CLIENT.all.forEach(function(x){(m[x.b]=m[x.b]||{}).rep=x.rep;m[x.b].frp=x.frp;});
   WOW_B.forEach(function(b){ var r=(((RESOLUTION.bpoest||{}).all||{})[b]||[])[wk]; if(r){(m[b]=m[b]||{}).ot1=r.ot;m[b].rr=r.avgrep;} });
-  document.querySelector('#bpoScorecard tbody').innerHTML=BPO_ORDER2.map(function(b){
+  document.querySelector('#bpoScorecard tbody').innerHTML=BPO_ORDER2.filter(function(b){return m[b];}).map(function(b){   // only vendors with data this week (drops empty rows e.g. retired BOOTH)
     var x=m[b]||{}, meta=BPO_META[b]||{};
     return '<tr><td>'+b+'</td><td class="mut">'+(meta.r||'—')+' · '+(meta.hc?meta.hc.toLocaleString():'—')+'</td>'+bpoCells(x)+'</tr>';
   }).join('');
@@ -817,7 +841,7 @@ function renderTrend(){
   // 🏢 Vendor (BPO) band first — we care more about vendor performance — then 🏥 client-level band
   var html=vendorHtml+bandC+abHtml+senHtml+otHtml+rrHtml;
   document.querySelector('#trendTable tbody').innerHTML=html;
-  document.getElementById('trendNote').innerHTML='<b>Two bands:</b> 🏢 vendor-level metrics (one section per BPO) first, then 🏥 client-level metrics (one row per client), for '+(cl==='all'?'all built clients':(CLIENT_NAMES[cl]||cl))+'. <b>The small figure under each value is the change vs the prior week (WoW).</b> * = current partial week. Voice/sentiment per-BPO history begins Jun 22 (Connect tagging). Colors: ASA green ≤30s/amber ≤2m/red &gt;2m (Δ +%=slower, red); ≤4hr green ≥70%/amber ≥50%/red &lt;50% (Δ pts, +=better); sentiment/abandon green low/red high (Δ pp, +=worse, red); volume Δ neutral.';
+  document.getElementById('trendNote').innerHTML='<b>Two bands:</b> 🏢 vendor-level metrics (one section per BPO) first, then 🏥 client-level metrics (one row per client), for '+(cl==='all'?'all built clients':(CLIENT_NAMES[cl]||cl))+'. <b>The small figure under each value is the change vs the prior week (WoW).</b> * = current partial week. Voice/sentiment per-BPO history begins Jun 22 (Connect tagging). Colors: ASA green ≤30s/amber ≤2m/red &gt;2m (Δ +%=slower, red); ≤4hr green ≥70%/amber ≥50%/red &lt;50% (Δ pts, +=better); sentiment/abandon green low/red high (Δ pp, +=worse, red); volume Δ neutral. Sources: voice/sentiment = Amazon Connect &amp; Contact Lens; email = Zoho Desk (≤1-day lag). Rebuilt daily ~5:15am Mountain; shows 6 complete weeks + current partial (*).';
 }
 function setTrend(g,val){
   trend[g]=val;
@@ -851,6 +875,9 @@ function renderExec(){
   var ot1=((RESOLUTION.client&&RESOLUTION.client.all)||[])[wowLastComplete()];
   e=document.getElementById('exOneTouch'); if(e&&ot1){ e.textContent=(ot1.ot!=null?ot1.ot+'%':'—'); e.className='v '+(ot1.ot>=70?'grn':ot1.ot>=50?'amb':'red'); }
   var neg=phNegPct('all'); e=document.getElementById('exNeg'); if(e){ e.textContent=(neg!=null?neg+'%':'—'); e.className='v '+negCls(neg); }
+  // top phone reasons — computed live from PHONE_RFC (latest complete week, all built) so the teaser can't drift from the Reasons tab
+  var pr=(PHONE_RFC.client||{}).all, er=document.getElementById('exReasons');
+  if(er){ if(pr&&pr.topics){ var pi=phIdx(); var ts=Object.keys(pr.topics).map(function(t){return {n:t,c:(pr.topics[t]||[])[pi]||0};}).sort(function(a,b){return b.c-a.c;}).slice(0,3); er.textContent=ts.map(function(x){return x.n;}).join(' · '); } else er.textContent='—'; }
   var below=mergedClients().filter(function(c){return c.sl<80;});
   document.getElementById('exBelow').textContent=below.length;
   document.querySelector('#exBreachTable tbody').innerHTML=below.slice().sort(function(a,b){return a.sl-b.sl;}).map(function(c){
@@ -866,8 +893,10 @@ function renderExec(){
   var best={v:0}; for(var d=0;d<7;d++)for(var hr=0;hr<24;hr++){var s=0;CL.forEach(function(c){s+=HM_CUBE.cube.voice.inbound[c][d][hr];});if(s>best.v)best={v:s,d:d,hr:hr};}
   document.getElementById('exPeak').textContent=HM_CUBE.days[best.d]+', '+((best.hr%12)||12)+(best.hr<12?'a':'p')+' — '+best.v.toLocaleString()+' calls';
 }
+var BUILD_STAMP=" \u00b7 data as of Jul 19, 2026";   // injected by cc_refresh.py at rebuild time, e.g. " · data as of Jul 19 2026"
 renderExec(); renderClients(); renderByBpo(); renderByClient(); showBpoView('trend'); applyFilter();
-document.getElementById('foot').textContent='Prototype v0 — real snapshot data (voice by client last 7d; agent efficiency by BPO Jul MTD; Embody email/chat from Desk). Live email feed proven via Zoho Desk API. Not auto-refreshing, not gated — v1 adds a backend poller + login. All figures planning/ops estimates; de-identified.';
+(function(){ var b=document.getElementById('buildStamp'); if(b&&BUILD_STAMP) b.textContent=BUILD_STAMP; })();
+document.getElementById('foot').textContent='OpenLoop PS Command Center — rebuilt daily ~5:15am Mountain (launchd com.embody.cc). Sources: voice = Amazon Connect (mirrored, current to prior day); email = Zoho Desk (mirrored, up to ~1-day lag); phone reasons + call sentiment = Contact Lens. Email reason-mix rebuilds weekly (Mon ~6:30am). Headline voice/email metrics are measured &amp; live; the email throughput coefficient (2.1) and per-client noise rates are measured-static; Erlang/SLA/shrinkage inputs are user assumptions. De-identified aggregates; PHI not persisted.';
 </script>
 </body>
 </html>

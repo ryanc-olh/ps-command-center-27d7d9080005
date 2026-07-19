@@ -61,7 +61,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>OpenLoop PS — Reasons for Contact <span class="proto">v1 · PHONE + EMAIL</span></h1>
+  <h1>OpenLoop PS — Reasons for Contact <span class="proto">v2 · PHONE + EMAIL</span></h1>
   <div class="sub">Why patients contact us, ranked &amp; de-identified. Pick a channel:</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 6px;">
     <button id="chPhone" class="chtab active" onclick="showChannel('phone')">📞 Phone</button>
@@ -107,7 +107,7 @@
   </div><!-- /phoneView -->
 
   <div id="emailView" style="display:none">
-    <div class="sub" style="margin-top:10px;">Email sample: <b>week of Jul 6–12, 2026</b> · 100 random tickets/client, reason classified by reading each ticket body · de-identified. "All built" = the 5 clients with dashboards (n=500).</div>
+    <div class="sub" style="margin-top:10px;">Email sample from <b>Zoho Desk</b>: <b>previous complete week (Jul 6–12, 2026)</b> · 100 random tickets/client, reason classified by reading each ticket body · de-identified · refreshes <b>weekly (Mon ~6:30am MT)</b>. "All built" = the 5 clients with dashboards (n=500).</div>
     <div class="lbl" style="margin-top:16px;">Client</div>
     <div id="emBtns" style="display:flex;gap:6px;flex-wrap:wrap;">
       <button class="cdbtn2 active" onclick="renderEmail('all')">All built</button>
@@ -132,7 +132,7 @@
       <thead><tr><th>#</th><th>Category</th><th>Tickets</th><th>% of sample</th><th>Share</th><th>Owning queue</th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="note">Reason mix from a random 100-ticket sample per client (% = share of that client's sample). Bodies read &amp; classified individually — not from the (largely blank) ticket category field. <b>"Other"</b> = clients without a built dashboard, and it's ~71% non-patient noise (vendor/marketing/system), so treat its patient reasons as a thin slice.</div>
+    <div class="note">Reason mix from a random 100-ticket sample per client (% = share of that client's sample). Bodies read &amp; classified individually — not from the (largely blank) ticket category field. <b>"Other"</b> = clients without a built dashboard, and it's ~<b>55% non-patient noise</b> (vendor/marketing/system — measured, n=250) so only ~45% is genuine patient contact; treat its patient reasons as a thin slice. (Built-client inboxes are far cleaner — see each client's measured real-patient rate above.)</div>
   </div>
 
   <div class="foot" id="foot"></div>
@@ -190,7 +190,7 @@ function htmlBars(elId, items, maxv, labelFn, valFn, dispFn, colorFn){
   }).join('');
 }
 renderPhone('all');
-// ===== EMAIL RFC — sampled 100 tickets/client, week of Jul 11-17 2026, classified from ticket bodies =====
+// ===== EMAIL RFC — sampled 100 tickets/client, previous complete week (Jul 6-12 2026), classified from ticket bodies; refreshed weekly by rfc_run.py =====
 // canonical per-client email real-patient rate (measured; used across the app to strip noise from email volume) — injected
 var EMAIL_NOISE={"window":"Jun 22\u2013Jul 12, 2026","asof":"2026-07-19","method":"subject+sender \u00b7 2 AI passes + tiebreak","clients":{"embody":{"rate":0.988,"pct":98.8,"ci":[96.5,99.6],"n":249,"noise":3,"kinds":{"patient":246,"system":3}},"medvi":{"rate":0.8514,"pct":85.1,"ci":[80.2,89.0],"n":249,"noise":37,"kinds":{"patient":212,"system":27,"marketing":5,"autoreply":5}},"elixa":{"rate":0.976,"pct":97.6,"ci":[94.9,98.9],"n":250,"noise":6,"kinds":{"patient":244,"autoreply":2,"marketing":1,"vendor":1,"system":1,"spam":1}},"altrx":{"rate":0.9679,"pct":96.8,"ci":[93.8,98.4],"n":249,"noise":8,"kinds":{"patient":241,"system":6,"autoreply":1,"marketing":1}},"trinity":{"rate":0.9213,"pct":92.1,"ci":[87.8,95.0],"n":216,"noise":17,"kinds":{"patient":199,"internal":8,"marketing":6,"system":1,"autoreply":1,"vendor":1}},"other":{"rate":0.452,"pct":45.2,"ci":[39.1,51.4],"n":250,"noise":137,"kinds":{"patient":113,"system":85,"vendor":29,"spam":9,"marketing":8,"autoreply":4,"internal":1,"other":1}}}};
 var EMAIL={"embody":{"Medication":26,"Billing complaint":7,"Other":2,"Pricing question":8,"Onboarding/admin":11,"Cancellation":10,"Order & shipping":7,"Labs":3,"Scheduling":15,"Account/access":8,"Care coaching":1,"Product quality":1,"Non-patient/noise":1},"medvi":{"Non-patient/noise":14,"Other":4,"Account/access":7,"Billing complaint":15,"Scheduling":4,"Order & shipping":13,"Medication":19,"Care coaching":1,"Cancellation":16,"Pricing question":5,"Onboarding/admin":1,"Labs":1},"elixa":{"Billing complaint":5,"Order & shipping":23,"Labs":7,"Account/access":9,"Medication":22,"Scheduling":7,"Pricing question":1,"Non-patient/noise":6,"Other":7,"Onboarding/admin":6,"Product quality":1,"Care coaching":1,"Cancellation":4},"altrx":{"Account/access":12,"Order & shipping":19,"Medication":16,"Billing complaint":6,"Other":7,"Pricing question":5,"Scheduling":20,"Care coaching":4,"Cancellation":7,"Onboarding/admin":3,"Non-patient/noise":1},"trinity":{"Account/access":9,"Medication":22,"Billing complaint":11,"Onboarding/admin":12,"Scheduling":5,"Cancellation":7,"Non-patient/noise":3,"Other":5,"Order & shipping":14,"Pricing question":11,"Care coaching":1},"other":{"Non-patient/noise":26,"Medication":22,"Billing complaint":6,"Scheduling":4,"Cancellation":9,"Order & shipping":8,"Onboarding/admin":13,"Labs":6,"Account/access":2,"Care coaching":1,"Other":3}};
@@ -225,9 +225,10 @@ function renderEmail(client){
   // canonical real-patient rate (measured binary classification) — the number used to noise-discount email volume across the app
   var en=document.getElementById('emNoise');
   if(en){ var cn=(EMAIL_NOISE.clients||{});
+    var win=EMAIL_NOISE.window||'a recent 3-week window';
     if(client==='all'){ var parts=BUILT.filter(function(c){return cn[c];}).map(function(c){return EMNAME[c]+' '+cn[c].pct+'%';});
-      en.innerHTML = parts.length? '<b>Measured real-patient rate</b> (share of inbound email that is genuine patient contact, not automated/marketing/vendor/system): '+parts.join(' · ')+(cn.other?' · Other '+cn.other.pct+'%':'')+'. Email <b>volume/demand</b> figures across the dashboard are scaled by these; the reason mix below is within the sampled emails.' : '';
-    } else if(cn[client]){ var x=cn[client]; en.innerHTML='<b>Measured real-patient rate: '+x.pct+'%</b> (95% CI '+x.ci[0]+'–'+x.ci[1]+'%, n='+x.n+') — the rest is automated/marketing/vendor/system noise, excluded from email volume/demand across the app.';
+      en.innerHTML = parts.length? '<b>Measured real-patient rate</b> (share of inbound email that is genuine patient contact, not automated/marketing/vendor/system): '+parts.join(' · ')+(cn.other?' · Other '+cn.other.pct+'%':'')+'. Email <b>volume/demand</b> figures across the app are scaled by these; the reason mix below is within the sampled emails. <span class="mut">Measured '+win+' (~250/client); point-in-time, re-measured periodically — not a live number.</span>' : '';
+    } else if(cn[client]){ var x=cn[client]; en.innerHTML='<b>Measured real-patient rate: '+x.pct+'%</b> (95% CI '+x.ci[0]+'–'+x.ci[1]+'%, n='+x.n+') — the rest is automated/marketing/vendor/system noise, excluded from email volume/demand across the app. <span class="mut">Measured '+win+'; point-in-time, re-measured periodically — not live.</span>';
     } else en.innerHTML=''; }
   document.querySelector('#emailTable tbody').innerHTML=D.arr.map(function(r,i){
     return '<tr><td>'+(i+1)+'</td><td>'+r.n+'</td><td>'+r.c+'</td><td>'+r.p.toFixed(1)+'%</td>'+
