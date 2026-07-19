@@ -153,7 +153,7 @@
   <!-- ===== SLAs ===== -->
 <div class="panel" id="p1">
     <div class="lbl" style="margin-top:0;">Voice service level by client</div>
-    <div class="winbig">📅 Last 7 days: <span class="w">Jul 5–12</span></div>
+    <div class="winbig">📅 Last 7 days: <span class="w" id="slaWin">Jul 5–12</span></div>
     <table id="clientTable">
       <thead><tr><th onclick="sortT('clientTable',0,true)">Client</th><th onclick="sortT('clientTable',1)">Offered</th><th onclick="sortT('clientTable',2)">Answered</th><th onclick="sortT('clientTable',3)">SL ≤30s</th><th onclick="sortT('clientTable',4)">Abandon</th><th>Status</th></tr></thead>
       <tbody></tbody>
@@ -297,23 +297,7 @@
 <script src="chart.umd.min.js"></script>
 <script>
 // ---- real snapshot data (de-identified aggregates) ----
-var CLIENTS=[
-  {c:"MEDVi",o:7921,a:7565,sl:81,ab:4},
-  {c:"Embody",o:4676,a:3577,sl:36,ab:24},
-  {c:"White Coat - Embody",o:1735,a:1415,sl:51,ab:18},
-  {c:"Agile Telehealth - HealthEquity",o:1192,a:1161,sl:86,ab:3},
-  {c:"Medvi",o:1177,a:1133,sl:82,ab:4},
-  {c:"XMD Wellness",o:773,a:761,sl:94,ab:2},
-  {c:"Taurus",o:411,a:404,sl:95,ab:2},
-  {c:"RemedyMeds",o:320,a:305,sl:87,ab:5},
-  {c:"Pharmacy Line (Olh)",o:269,a:258,sl:95,ab:4},
-  {c:"ElixaMD",o:262,a:238,sl:72,ab:9},
-  {c:"White Coat - AltRx",o:250,a:241,sl:88,ab:4},
-  {c:"Cma Triage Support Line",o:237,a:235,sl:98,ab:1},
-  {c:"RedBox Rx",o:228,a:216,sl:90,ab:5},
-  {c:"Gala GLP-1",o:219,a:214,sl:87,ab:2},
-  {c:"Fridays",o:192,a:166,sl:78,ab:14}
-];
+var CLIENTS=[{"c":"Embody","o":10937,"a":10088,"sl":50,"ab":8},{"c":"MEDVi","o":7545,"a":7099,"sl":83,"ab":6},{"c":"White Coat - Embody","o":2634,"a":2471,"sl":51,"ab":6},{"c":"Agile Telehealth - HealthEquity","o":1223,"a":1182,"sl":85,"ab":3},{"c":"Medvi","o":1139,"a":1070,"sl":80,"ab":6},{"c":"XMD Wellness","o":805,"a":788,"sl":93,"ab":2},{"c":"White Coat - Trinity Meds","o":641,"a":627,"sl":83,"ab":2},{"c":"White Coat - AltRx","o":523,"a":512,"sl":90,"ab":2},{"c":"Cma Triage Support Line","o":451,"a":446,"sl":95,"ab":1},{"c":"Taurus","o":405,"a":385,"sl":91,"ab":5},{"c":"RemedyMeds","o":335,"a":316,"sl":85,"ab":6},{"c":"Pharmacy Line (Olh)","o":269,"a":257,"sl":93,"ab":4},{"c":"RedBox Rx","o":251,"a":243,"sl":92,"ab":3},{"c":"Gala GLP-1","o":218,"a":212,"sl":91,"ab":3},{"c":"ElixaMD","o":203,"a":144,"sl":46,"ab":29},{"c":"WOODWORK","o":166,"a":157,"sl":83,"ab":5},{"c":"Fridays","o":161,"a":132,"sl":73,"ab":18},{"c":"Le-Vel Rx","o":156,"a":153,"sl":93,"ab":2},{"c":"Olh Patient Support","o":144,"a":140,"sl":97,"ab":3},{"c":"Admired (Docsby)","o":140,"a":136,"sl":91,"ab":3},{"c":"Agile Telehealth - Brick and Mortar","o":126,"a":124,"sl":91,"ab":2},{"c":"G-Plans","o":119,"a":111,"sl":75,"ab":7},{"c":"RNK Health","o":113,"a":111,"sl":92,"ab":2},{"c":"White Coat - MEDVi","o":112,"a":110,"sl":88,"ab":2},{"c":"GetThin MD","o":111,"a":101,"sl":73,"ab":9},{"c":"White Coat - ElixaMD","o":80,"a":55,"sl":46,"ab":31},{"c":"AltRx","o":74,"a":73,"sl":92,"ab":1},{"c":"Reframe","o":65,"a":65,"sl":98,"ab":0},{"c":"Agile Telehealth H E","o":64,"a":62,"sl":84,"ab":3},{"c":"Xmd Wellness","o":56,"a":55,"sl":95,"ab":2}];
 // Agent efficiency by BPO × client — voice, Jul MTD through 7/16 (Amazon Connect Logs Adj, hierarchy L1)
 // asa = avg time-to-answer (queue wait) sec; null = no queued answered calls in that cell
 // VOICE, INBOUND-ONLY (matches client dashboards' initiation_method='INBOUND'), Jul 1-16.
@@ -347,6 +331,7 @@ var BPO_CLIENT_LABEL={all:"all clients",embody:"Embody",medvi:"Medvi",elixa:"Eli
 function slPill(sl){ if(sl>=80) return '<span class="pill g">Meeting</span>'; if(sl>=65) return '<span class="pill a">Near</span>'; return '<span class="pill r">Breaching</span>'; }
 function cls(sl){ return sl>=80?'grn':(sl>=65?'amb':'red'); }
 
+var SLA_WINDOW="Jul 11\u201317";
 // collapse Amazon Connect "Org Name" variants (White Coat, casing, Agile sub-brands) into one client per row
 function normClient(name){
   var canon={'Embody':'Embody','White Coat - Embody':'Embody',
@@ -368,6 +353,7 @@ function mergedClients(){
   return Object.keys(byc).map(function(k){var g=byc[k];return {c:k,o:g.o,a:g.a,sl:g.o?Math.round(g.s30/g.o*100):0,ab:g.o?Math.round(g.abn/g.o*100):0};}).sort(function(a,b){return b.o-a.o;});
 }
 function renderClients(){
+  var sw=document.getElementById('slaWin'); if(sw) sw.textContent=SLA_WINDOW;
   var tb=document.querySelector('#clientTable tbody');
   tb.innerHTML=mergedClients().map(function(r){
     return '<tr data-name="'+r.c.toLowerCase()+'" data-sl="'+r.sl+'"><td>'+r.c+'</td><td>'+r.o.toLocaleString()+'</td><td>'+r.a.toLocaleString()+'</td><td class="'+cls(r.sl)+'">'+r.sl+'%</td><td class="'+(r.ab>5?'red':'grn')+'">'+r.ab+'%</td><td>'+slPill(r.sl)+'</td></tr>';
