@@ -313,7 +313,7 @@
     <div id="hmVoice" style="overflow-x:auto;"></div>
     <div class="mxhead" style="margin-top:20px;">✉️ Email <span class="win" id="hmEsum"></span></div>
     <div id="hmEmail" style="overflow-x:auto;"></div>
-    <div class="note" style="margin-top:12px;">Each cell = the chosen metric for that day &amp; hour; darker = higher. <b>Gap</b> (inbound − handled): <span style="color:var(--red);font-weight:600;">red</span> = demand outran handling that hour, <span style="color:var(--grn);font-weight:600;">green</span> = kept up/ahead. Inbound = calls offered / emails received (whole client, not per-BPO). Phone hours Central; email hours stored tz.</div>
+    <div class="note" style="margin-top:12px;">Each cell = the chosen metric for that day &amp; hour; darker = higher. <b>Gap</b> (inbound − handled): <span style="color:var(--red);font-weight:600;">red</span> = demand outran handling that hour, <span style="color:var(--grn);font-weight:600;">green</span> = kept up/ahead. Inbound = calls offered / emails received (whole client, not per-BPO). <b>Email inbound is patient-only</b> — each client's email is scaled by its measured real-patient rate (noise stripped; see the capacity method panel for the per-client rates). Phone is not adjusted. Phone hours Central; email hours stored tz.</div>
     <div class="note" id="capNote" style="display:none;margin-top:8px;"></div>
     <div id="capMethod" style="display:none;"></div>
   </div>
@@ -474,7 +474,8 @@ var HM_CLIENTS=['embody','medvi','elixa','altrx','trinity','other'], HM_BPOS=['R
 var HM_BUILT=['embody','medvi','elixa','altrx','trinity'];
 var DEPLOYED={"voice":[[4,3,2,6,2,11,23,51,101,109,126,135,161,157,144,125,105,110,80,60,50,23,18,15],[8,3,6,2,7,15,35,54,120,131,136,156,154,160,154,145,111,91,78,68,46,35,19,17],[10,4,1,1,2,16,33,72,95,84,99,134,139,163,162,153,124,108,77,49,43,24,13,9],[6,3,5,6,5,14,34,62,92,109,124,140,148,150,177,151,150,118,90,91,68,39,29,17],[9,7,7,6,6,16,45,78,115,140,147,144,153,173,167,145,132,105,73,49,37,29,26,9],[8,4,6,5,4,13,20,41,58,75,83,78,90,68,75,55,41,63,54,49,32,30,19,15],[11,4,4,2,4,6,20,43,66,63,82,89,108,94,101,71,61,62,51,43,38,28,21,10]],"email":[[14,13,9,12,23,34,46,45,58,58,60,55,59,57,50,43,35,41,35,40,34,38,24,26],[21,21,18,20,27,33,58,67,71,72,75,74,92,99,80,81,50,43,44,45,43,38,34,31],[25,20,21,25,37,47,58,68,66,68,83,64,83,74,89,76,61,55,41,42,36,34,33,29],[23,31,25,30,44,54,66,58,55,68,82,70,75,62,60,44,38,41,43,47,51,46,52,44],[46,39,37,41,50,53,63,72,69,78,75,86,100,94,78,79,57,45,41,34,38,31,33,28],[29,33,26,29,33,34,39,41,51,47,43,54,58,60,61,51,41,43,50,40,37,38,31,33],[32,30,28,25,34,55,67,68,71,66,70,69,82,72,69,52,55,49,59,50,42,44,40,37]]};   // distinct agents active per day×hour (all patient), injected daily
 // Other-bucket email real-patient rate (classified sample) — discounts Other email demand in the coverage gap so we don't staff to noise. Injected; re-measured periodically.
-var OTHER_NOISE={"rate":0.457,"pct":45.7,"ci":[40.1,51.3],"n":300,"window":"Jun 22\u2013Jul 12, 2026","asof":"2026-07-19","kinds":{"patient":137,"system":86,"vendor":38,"spam":17,"marketing":10,"autoreply":7,"internal":4,"other":1}};
+var EMAIL_NOISE={window:"",asof:"",clients:{}};
+function emailRate(cl){ var c=(EMAIL_NOISE.clients||{})[cl]; return (c&&c.rate!=null)?c.rate:1; }
 var hm={metric:'inbound',client:'all',bpo:'all'};
 // ---- Capacity model: assumptions + phone (Erlang C) + email (throughput) ----
 var CAP={sl:80,asa:30,shrink:30,slaHrs:4,coeff:2.1};
@@ -497,11 +498,11 @@ function hmInbound(ch,day,hr){
   var C=HM_CUBE.cube[ch], cls=hmClientList(), inb=0;
   cls.forEach(function(cl){
     var v=C.inbound[cl][day][hr];
-    // coverage-gap email: discount the Other bucket by its measured real-patient rate (don't staff to noise)
-    if(ch==='email' && cl==='other' && hm.metric==='covgap') v*=OTHER_NOISE.rate;
+    // email is reported as PATIENT demand everywhere — scale each client's inbound by its measured real-patient rate (strip noise)
+    if(ch==='email') v*=emailRate(cl);
     inb+=v; HM_NONBPO.forEach(function(b){ inb-=C.handled[cl][b][day][hr]; });
   });
-  return inb<0?0:inb;
+  return inb<0?0:Math.round(inb);
 }
 function capCell(ch,d,h){
   var covgap=(hm.metric==='covgap'), ec=covgap?'all':hm.client, req;
@@ -606,15 +607,14 @@ function buildCapMethod(agents,covgap){
     return '<tr><td>'+r[0]+'</td><td class="v">'+r[1]+'</td><td><span class="capm-tag '+(r[2]==='live'?'live':'assume')+'">'+(r[2]==='live'?'live data':'assumption')+'</span> '+r[3]+'</td></tr>';
   }).join('')+'</table>';
   var gapBlk = covgap ? '<div class="capm-t" style="margin-top:2px;">⚠️ Coverage gap</div><div style="margin-bottom:12px;color:var(--sec);">= <b>needed − deployed</b> per hour. <span style="color:var(--red);font-weight:700;">Red</span> = short, <span style="color:var(--grn);font-weight:700;">green</span> = covered/surplus; <b>Net</b> column = agent-hours short(+)/surplus(−) that day. <b>Phone deployed</b> = distinct agents who took ≥1 built call that hour (headcount incl. part-hours &amp; rotation) → read phone gap as coverage <b>alignment</b> (enough heads, wrong hours), not exact FTE over/under. <b>Email deployed</b> = distinct repliers that hour.</div>' : '';
-  // "How noise is defined" — only relevant to covgap (Other-email discount)
+  // "How noise is defined" + the per-client real-patient rate applied to email demand (shown for any capacity metric)
   var noiseDef='';
-  if(covgap){
-    var k=OTHER_NOISE.kinds||{}, cats=[['patient','Patient — real inbound needing an agent',true],['system','System / service notifications',false],['vendor','Vendor / partner operational or billing',false],['spam','Spam',false],['marketing','Marketing / newsletters / promotions',false],['autoreply','Out-of-office / auto-replies / receipts',false],['internal','Internal / staff mail',false],['other','Other non-patient',false]];
-    var kr=cats.filter(function(c){return k[c[0]]!=null;}).map(function(c){ var pctc=OTHER_NOISE.n?Math.round(k[c[0]]/OTHER_NOISE.n*100):0; return '<tr><td>'+(c[2]?'✅ <b>':'🔕 ')+c[1]+(c[2]?'</b>':'')+'</td><td class="v">'+(k[c[0]]||0)+'</td><td>'+pctc+'%</td></tr>'; }).join('');
-    noiseDef='<div class="capm-t" style="margin-top:6px;">🔎 How “noise” is defined (Other-bucket email)</div>'+
-      '<div style="color:var(--sec);margin-bottom:7px;"><b>Kept = real patient</b>: a genuine inbound message from a patient/member — or someone acting for them (a caregiver, or their pharmacy/provider about a specific patient) — that a support agent must read and act on. <b>Discounted = noise</b>: anything that is <i>not</i> real patient support — marketing/newsletters, vendor/partner operational or billing mail, system/service notifications, delivery/read receipts needing no reply, out-of-office &amp; auto-replies, surveys, spam, internal/staff mail, no-reply/do-not-reply senders. Classified by <b>reading each email’s subject + sender + body</b> (two independent AI passes + a tiebreak on disagreements); when genuinely unsure we lean <b>patient</b>, so the noise share is conservative (if anything, understated).</div>'+
-      '<table class="capm-in" style="max-width:460px;"><tr><th>Category — measured on n='+OTHER_NOISE.n+' random Other emails</th><th>Count</th><th>Share</th></tr>'+kr+
-      '<tr style="border-top:2px solid var(--bds);font-weight:700;"><td>Real-patient rate applied to Other email demand</td><td class="v">'+OTHER_NOISE.pct+'%</td><td>±'+(OTHER_NOISE.ci[1]!=null?Math.round((OTHER_NOISE.ci[1]-OTHER_NOISE.ci[0])/2*10)/10:'—')+'pp</td></tr></table>';
+  if(cap){
+    var CN=EMAIL_NOISE.clients||{}, ord=['embody','medvi','elixa','altrx','trinity','other'], nm={embody:'Embody',medvi:'Medvi',elixa:'Elixa',altrx:'AltRx',trinity:'Trinity',other:'Other'};
+    var kr=ord.filter(function(c){return CN[c];}).map(function(c){ var x=CN[c], ci=(x.ci&&x.ci[0]!=null)?('±'+Math.round((x.ci[1]-x.ci[0])/2*10)/10+'pp'):'—'; return '<tr><td>'+(nm[c]||c)+'</td><td class="v">'+x.pct+'%</td><td>'+ci+'</td><td>'+x.n+'</td></tr>'; }).join('');
+    noiseDef='<div class="capm-t" style="margin-top:6px;">🔎 How “noise” is defined &amp; the per-client rate applied to email</div>'+
+      '<div style="color:var(--sec);margin-bottom:7px;"><b>Kept = real patient</b>: a genuine inbound message from a patient/member — or someone acting for them (a caregiver, or their pharmacy/provider about a specific patient) — that a support agent must read and act on. <b>Discounted = noise</b>: anything <i>not</i> real patient support — marketing/newsletters, vendor/partner operational or billing mail, system/service notifications, delivery/read receipts, out-of-office &amp; auto-replies, surveys, spam, internal/staff mail, no-reply/do-not-reply senders. Classified by <b>reading each email’s sender + subject</b> (two independent AI passes + a tiebreak); when unsure we lean <b>patient</b>, so noise is conservative. <b>Every email volume/demand figure on this dashboard is scaled by the client’s rate below</b> — reply &amp; response-time metrics are left alone (agents rarely reply to noise, so those are already patient-clean). Measured '+(EMAIL_NOISE.window||'—')+' · re-measured periodically ('+(EMAIL_NOISE.asof||'—')+').</div>'+
+      '<table class="capm-in" style="max-width:460px;"><tr><th>Client</th><th>Real-patient rate (email)</th><th>95% CI</th><th>n</th></tr>'+kr+'</table>';
   }
   return '<div class="capm">'+
     '<div class="capm-h">🧮 How this is calculated</div>'+
@@ -632,11 +632,11 @@ function buildCapMethod(agents,covgap){
       '<li><b>One AHT for every hour</b> — phone uses the latest-week, volume-weighted AHT; real AHT varies by hour and day.</li>'+
       '<li><b>Erlang C assumes</b> Poisson arrivals, callers who wait (abandonment not in the formula), steady state within each hour.</li>'+
       '<li><b>Snapshot, not an average</b> — all volumes are the single previous complete week ('+HM_CUBE.window+'), not a trailing multi-week mean.</li>'+
+      '<li><b>Email demand is noise-discounted per client</b> (rates table above) so we don’t staff to marketing/vendor/system mail; <b>phone is not discounted</b> (patient calls). Rates are measured on a sample per client, so each carries a CI.</li>'+
       (covgap
-        ? '<li><b>“Other”-bucket email is noise-discounted.</b> Its inbound is scaled to <b>'+OTHER_NOISE.pct+'% real patient</b> (measured: classified n='+OTHER_NOISE.n+' Other emails, 95% CI '+(OTHER_NOISE.ci[0]!=null?OTHER_NOISE.ci[0]+'–'+OTHER_NOISE.ci[1]+'%':'—')+', '+(OTHER_NOISE.window||'—')+') so we don’t staff to vendor/marketing/system mail. Re-measured periodically ('+(OTHER_NOISE.asof||'—')+'); built-client email is un-discounted. Phone Other = real patient calls (not discounted).</li>'+
-          '<li><b>AHT, replies/ticket &amp; the 2.1 coeff are built-measured</b>, applied as proxies to all patient clients (incl. Other). Reasonable, but not separately measured for the Other bucket.</li>'+
+        ? '<li><b>AHT, replies/ticket &amp; the '+CAP.coeff+' coeff are built-measured</b>, applied as proxies to all patient clients (incl. Other).</li>'+
           '<li><b>Scope &amp; tz</b> — all patient clients (built + Other); back-office / clinical lines excluded. Phone hours Central, email stored (offshore-heavy) tz, so cross-channel hour alignment is approximate.</li>'
-        : '<li><b>Scope &amp; tz</b> — built clients only (“Other” ~71% noise excluded; coeff/AHT are built-only). Phone hours Central, email stored (offshore-heavy) tz, so cross-channel hour alignment is approximate.</li>')+
+        : '<li><b>Scope &amp; tz</b> — built clients only (Other excluded from this per-client view); coeff/AHT are built-measured. Phone hours Central, email stored (offshore-heavy) tz, so cross-channel hour alignment is approximate.</li>')+
     '</ul></div>'+
   '</div>';
 }
@@ -836,9 +836,10 @@ function showBpoView(v){
 function renderExec(){
   var CL=HM_CLIENTS;
   function gtot(g){return g.reduce(function(s,x){return s+x.reduce(function(a,b){return a+b;},0);},0);}
-  var vi=0,ei=0; CL.forEach(function(c){vi+=gtot(HM_CUBE.cube.voice.inbound[c]);ei+=gtot(HM_CUBE.cube.email.inbound[c]);});
+  var vi=0,ei=0; CL.forEach(function(c){vi+=gtot(HM_CUBE.cube.voice.inbound[c]);ei+=gtot(HM_CUBE.cube.email.inbound[c])*emailRate(c);});
+  ei=Math.round(ei);
   document.getElementById('exTotal').textContent=(vi+ei).toLocaleString();
-  document.getElementById('exTotalN').textContent='voice '+vi.toLocaleString()+' · email '+ei.toLocaleString();
+  document.getElementById('exTotalN').textContent='voice '+vi.toLocaleString()+' · patient email '+ei.toLocaleString();
   var o=0,slw=0,abw=0; CLIENTS.forEach(function(c){o+=c.o;slw+=c.o*c.sl;abw+=c.o*c.ab;});
   var slv=Math.round(slw/o), abv=Math.round(abw/o);
   var e;
