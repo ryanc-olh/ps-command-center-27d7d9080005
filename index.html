@@ -167,12 +167,12 @@
     </div>
 
     <div id="bpoView">
-      <div class="mxsub" style="margin-top:12px;">Every vendor across channels — voice speed (ASA) and email first-response, side by side. <b>Voice: latest complete week (<span id="bpoVoiceWin">—</span>), all clients.</b> Email: Embody · Medvi · Elixa, wk Jul 10–16. Headcount = total roster.</div>
+      <div class="mxsub" style="margin-top:12px;">Every vendor across channels, one window — <b>5 built clients (Embody · Medvi · Elixa · AltRx · Trinity) · week of <span id="bpoVoiceWin">—</span>.</b> Voice = calls answered + speed (ASA); Email = replies + % first response ≤4hr. Headcount = total roster (all clients).</div>
       <div style="overflow-x:auto;"><table id="bpoScorecard" class="mx">
         <thead><tr><th>BPO</th><th>Region · HC</th><th>📞 Answered</th><th>📞 ASA</th><th>✉️ Replies</th><th>✉️ ≤4hr</th></tr></thead>
         <tbody></tbody>
       </table></div>
-      <div class="note">ASA (speed to answer): green ≤30s · amber ≤2m · red &gt;2m. Email ≤4hr first response: green ≥70% · amber ≥50% · red &lt;50%. NextVas &amp; Booth are email/CSS-heavy (little inbound voice). AltRx &amp; Trinity not yet in the BPO split — pending a data refresh.</div>
+      <div class="note">ASA (speed to answer): green ≤30s · amber ≤2m · red &gt;2m. Email ≤4hr first response: green ≥70% · amber ≥50% · red &lt;50%. NextVas &amp; Booth are email/CSS-heavy (little inbound voice). Auto-refreshes daily.</div>
     </div>
 
     <div id="clientBpoView" style="display:none">
@@ -191,7 +191,7 @@
         <thead><tr><th>BPO</th><th>📞 Answered</th><th>📞 ASA</th><th>✉️ Replies</th><th>✉️ ≤4hr</th></tr></thead>
         <tbody></tbody>
       </table></div>
-      <div class="note">Which vendors handle this client &amp; how well, per channel. <b>Voice: latest complete week (<span id="cbVoiceWin">—</span>).</b> Email: wk Jul 10–16 (Embody/Medvi/Elixa only). BPO = Connect hierarchy (voice) + roster join (email); in-house/clinical excluded.</div>
+      <div class="note">Which vendors handle this client &amp; how well, per channel · <b>week of <span id="cbVoiceWin">—</span></b> (voice + email, same window). BPO = Connect hierarchy (voice) + roster join (email); in-house/clinical excluded.</div>
     </div>
 
     <div id="trendView" style="display:none">
@@ -350,12 +350,7 @@ function renderClients(){
   }).join('');
 }
 // email replies + first-response ≤4hr% by client×BPO (Jul 10-16, roster join)
-var BPOS_EMAIL_BY_CLIENT={
-  all:[{b:"NARITH",rep:7677,frp:59},{b:"TTEC",rep:4967,frp:61},{b:"RESPONSE",rep:3834,frp:76},{b:"NEXTVAS",rep:13,frp:75}],
-  embody:[{b:"NARITH",rep:6887,frp:60},{b:"TTEC",rep:4588,frp:64},{b:"RESPONSE",rep:159,frp:59}],
-  medvi:[{b:"RESPONSE",rep:3671,frp:77},{b:"NARITH",rep:537,frp:57},{b:"TTEC",rep:379,frp:27},{b:"NEXTVAS",rep:12,frp:73}],
-  elixa:[{b:"NARITH",rep:253,frp:47},{b:"RESPONSE",rep:4,frp:0},{b:"NEXTVAS",rep:1,frp:100}]
-};
+var BPOS_EMAIL_BY_CLIENT={"embody":[{"b":"NARITH","rep":5208,"frp":41},{"b":"TTEC","rep":2134,"frp":61},{"b":"RESPONSE","rep":63,"frp":50}],"medvi":[{"b":"RESPONSE","rep":3246,"frp":87},{"b":"TTEC","rep":1137,"frp":37},{"b":"NARITH","rep":619,"frp":42},{"b":"NEXTVAS","rep":18,"frp":93}],"elixa":[{"b":"NARITH","rep":250,"frp":41},{"b":"NEXTVAS","rep":6,"frp":100},{"b":"RESPONSE","rep":4,"frp":0}],"altrx":[{"b":"RESPONSE","rep":1079,"frp":77},{"b":"NARITH","rep":12,"frp":25}],"trinity":[{"b":"RESPONSE","rep":194,"frp":5},{"b":"NARITH","rep":1,"frp":0}],"all":[{"b":"NARITH","rep":6090,"frp":41},{"b":"RESPONSE","rep":4586,"frp":81},{"b":"TTEC","rep":3271,"frp":52},{"b":"NEXTVAS","rep":24,"frp":94}]};
 // voice answered + ASA by client×BPO, Jul 10–16 (SAME window as email matrix above). "all" = the 3 shown clients.
 var BPOS_VOICE_WK={
   all:[{b:"RESPONSE",an:6818,asa:13},{b:"TTEC",an:7495,asa:105},{b:"NARITH",an:5269,asa:174}],
@@ -540,10 +535,12 @@ var WOW_B=["RESPONSE","TTEC","NEXTVAS","NARITH"];
 function wowWeeksWithData(){ return BPO_WOW.weeks.map(function(w,i){ return WOW_B.some(function(b){return BPO_WOW.voice.all[b][i].an>0;}) ? i : -1; }).filter(function(i){return i>=0;}); }
 function wowLastComplete(){ var idxs=wowWeeksWithData(); for(var j=idxs.length-1;j>=0;j--){ if(BPO_WOW.weeks[idxs[j]].complete) return idxs[j]; } return idxs[idxs.length-1]; }
 function voiceAt(cl, wk){ var o={}; WOW_B.forEach(function(b){ var v=(BPO_WOW.voice[cl]||{})[b]; if(v&&v[wk]&&v[wk].an>0){o[b]={an:v[wk].an,asa:v[wk].asa};} }); return o; }
+var BUILT_CL=["embody","medvi","elixa","altrx","trinity"];
+function voiceBuiltAt(wk){ var o={}; WOW_B.forEach(function(b){ var an=0,dur=0,has=false; BUILT_CL.forEach(function(cl){ var v=(BPO_WOW.voice[cl]||{})[b]; if(v&&v[wk]&&v[wk].an>0){ an+=v[wk].an; if(v[wk].asa!=null) dur+=v[wk].asa*v[wk].an; has=true; } }); if(has) o[b]={an:an, asa:(an?Math.round(dur/an):null)}; }); return o; }
 function renderByBpo(){
   var wk=wowLastComplete();
   document.getElementById('bpoVoiceWin').textContent=BPO_WOW.weeks[wk].label;
-  var v=voiceAt('all',wk), m={};
+  var v=voiceBuiltAt(wk), m={};
   WOW_B.forEach(function(b){ if(v[b]){(m[b]=m[b]||{}).an=v[b].an;m[b].asa=v[b].asa;} });
   BPOS_EMAIL_BY_CLIENT.all.forEach(function(x){(m[x.b]=m[x.b]||{}).rep=x.rep;m[x.b].frp=x.frp;});
   document.querySelector('#bpoScorecard tbody').innerHTML=BPO_ORDER2.map(function(b){
