@@ -609,7 +609,7 @@ function buildCapMethod(agents,covgap){
   var gapBlk = covgap ? '<div class="capm-t" style="margin-top:2px;">⚠️ Coverage gap</div><div style="margin-bottom:12px;color:var(--sec);">= <b>needed − deployed</b> per hour. <span style="color:var(--red);font-weight:700;">Red</span> = short, <span style="color:var(--grn);font-weight:700;">green</span> = covered/surplus; <b>Net</b> column = agent-hours short(+)/surplus(−) that day. <b>Phone deployed</b> = distinct agents who took ≥1 built call that hour (headcount incl. part-hours &amp; rotation) → read phone gap as coverage <b>alignment</b> (enough heads, wrong hours), not exact FTE over/under. <b>Email deployed</b> = distinct repliers that hour.</div>' : '';
   // "How noise is defined" + the per-client real-patient rate applied to email demand (shown for any capacity metric)
   var noiseDef='';
-  if(cap){
+  if(agents||covgap){
     var CN=EMAIL_NOISE.clients||{}, ord=['embody','medvi','elixa','altrx','trinity','other'], nm={embody:'Embody',medvi:'Medvi',elixa:'Elixa',altrx:'AltRx',trinity:'Trinity',other:'Other'};
     var kr=ord.filter(function(c){return CN[c];}).map(function(c){ var x=CN[c], ci=(x.ci&&x.ci[0]!=null)?('±'+Math.round((x.ci[1]-x.ci[0])/2*10)/10+'pp'):'—'; return '<tr><td>'+(nm[c]||c)+'</td><td class="v">'+x.pct+'%</td><td>'+ci+'</td><td>'+x.n+'</td></tr>'; }).join('');
     noiseDef='<div class="capm-t" style="margin-top:6px;">🔎 How “noise” is defined &amp; the per-client rate applied to email</div>'+
