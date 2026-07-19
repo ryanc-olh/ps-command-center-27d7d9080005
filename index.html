@@ -280,17 +280,6 @@
   <div class="panel" id="p6">
     <div class="lbl" style="margin-top:0;">Volume heatmap — day of week × hour</div>
     <div class="winbig">📅 Previous complete week: <span class="w" id="hmWin">Jul 6–12</span></div>
-    <details class="method">
-      <summary>How this is measured</summary>
-      <ul>
-        <li><b>Window:</b> the previous complete week, bucketed by <b>day-of-week × hour</b>. Voice comes from Amazon Connect, email from Zoho Desk. Phone hours are <b>Central</b>; email hours are the stored (offshore-heavy) time zone — directional, not exact.</li>
-        <li><b>Inbound volume</b> = total demand offered to the queues (calls offered / emails received). This is <b>whole-client demand and is NOT attributable to a specific BPO</b> — a contact isn't "owned" by a vendor until an agent picks it up. That's why the <b>BPO filter is greyed out on Inbound</b> and only applies to Handled &amp; Gap.</li>
-        <li><b>Handled</b> = calls answered / emails replied, <b>by BPO</b> — the only metric that splits by vendor (the BPO buttons sum to "All").</li>
-        <li><b>Gap</b> = Inbound − Handled = unmet demand (abandoned calls / unanswered emails). Shown per hour so you can see <i>when</i> coverage falls short. Gap is a total (not per-BPO), for the same reason Inbound is.</li>
-        <li><b>Scope:</b> patient inbound only. Back-office / clinical lines (pharmacy, CMA triage, retention, prior-auth, etc.) are excluded. <b>"Other"</b> = patient clients without a built dashboard.</li>
-        <li><b>🧮 Agents needed</b> &amp; <b>⚠️ Coverage gap</b>: staffing models (phone = Erlang C, email = throughput). When selected, a full <b>“How this is calculated”</b> panel appears below the grids with the formulas, every input + its source, live worked examples, and an honest list of assumptions/gaps. Assumptions are editable in the bar that appears.</li>
-      </ul>
-    </details>
     <div class="hmctl"><span class="hclab">Show</span>
       <button class="hbtn active" data-g="metric" data-v="inbound" onclick="setHM('metric','inbound')">Inbound volume</button>
       <button class="hbtn" data-g="metric" data-v="handled" onclick="setHM('metric','handled')">Handled</button>
