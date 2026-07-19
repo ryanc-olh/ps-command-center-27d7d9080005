@@ -156,7 +156,7 @@
       <thead><tr><th onclick="sortT('clientTable',0,true)">Client</th><th onclick="sortT('clientTable',1)">Offered</th><th onclick="sortT('clientTable',2)">Answered</th><th onclick="sortT('clientTable',3)">SL ≤30s</th><th onclick="sortT('clientTable',4)">Abandon</th><th>Status</th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="note">Target: <b>80% answered ≤30s</b>, abandon <b>&lt;5%</b>. RAG = meeting / near / breaching. Chat &amp; email SLA-by-client come from Zoho Desk (live) in v1; today Embody email = ~18% ≤1hr / 44% ≤4hr, chat = 94% ≤30s. Note: "MEDVi"/"Medvi" are a casing duplicate to merge.</div>
+    <div class="note">Target: <b>80% answered ≤30s</b>, abandon <b>&lt;5%</b>. RAG = meeting / near / breaching. Chat &amp; email SLA-by-client come from Zoho Desk (live) in v1; today Embody email = ~18% ≤1hr / 44% ≤4hr, chat = 94% ≤30s. Amazon Connect org-name variants (White Coat / casing / sub-brands) are combined into one row per client.</div>
   </div>
 
   <!-- ===== CAPACITY ===== -->
@@ -345,9 +345,29 @@ var BPO_CLIENT_LABEL={all:"all clients",embody:"Embody",medvi:"Medvi",elixa:"Eli
 function slPill(sl){ if(sl>=80) return '<span class="pill g">Meeting</span>'; if(sl>=65) return '<span class="pill a">Near</span>'; return '<span class="pill r">Breaching</span>'; }
 function cls(sl){ return sl>=80?'grn':(sl>=65?'amb':'red'); }
 
+// collapse Amazon Connect "Org Name" variants (White Coat, casing, Agile sub-brands) into one client per row
+function normClient(name){
+  var canon={'Embody':'Embody','White Coat - Embody':'Embody',
+    'MEDVi':'Medvi','Medvi':'Medvi','White Coat - MEDVi':'Medvi',
+    'ElixaMD':'Elixa','White Coat - ElixaMD':'Elixa',
+    'AltRx':'AltRx','White Coat - AltRx':'AltRx','Alt RX':'AltRx',
+    'Trinity':'Trinity','White Coat - Trinity Meds':'Trinity'};
+  if(canon[name]) return canon[name];
+  var n=name.replace(/^White Coat - /,'').trim();
+  if(/^Agile Telehealth/i.test(n)) return 'Agile Telehealth';
+  return n;
+}
+function mergedClients(){
+  var byc={};
+  CLIENTS.forEach(function(r){
+    var k=normClient(r.c), g=byc[k]||(byc[k]={c:k,o:0,a:0,s30:0,abn:0});
+    g.o+=r.o; g.a+=r.a; g.s30+=r.sl/100*r.o; g.abn+=r.ab/100*r.o;
+  });
+  return Object.keys(byc).map(function(k){var g=byc[k];return {c:k,o:g.o,a:g.a,sl:g.o?Math.round(g.s30/g.o*100):0,ab:g.o?Math.round(g.abn/g.o*100):0};}).sort(function(a,b){return b.o-a.o;});
+}
 function renderClients(){
   var tb=document.querySelector('#clientTable tbody');
-  tb.innerHTML=CLIENTS.map(function(r){
+  tb.innerHTML=mergedClients().map(function(r){
     return '<tr data-name="'+r.c.toLowerCase()+'" data-sl="'+r.sl+'"><td>'+r.c+'</td><td>'+r.o.toLocaleString()+'</td><td>'+r.a.toLocaleString()+'</td><td class="'+cls(r.sl)+'">'+r.sl+'%</td><td class="'+(r.ab>5?'red':'grn')+'">'+r.ab+'%</td><td>'+slPill(r.sl)+'</td></tr>';
   }).join('');
 }
@@ -650,7 +670,7 @@ function renderExec(){
   var r=0,fw=0; BPOS_EMAIL_BY_CLIENT.all.forEach(function(x){r+=x.rep;fw+=x.rep*x.frp;});
   var frt=Math.round(fw/r);
   e=document.getElementById('exFRT'); e.textContent=frt+'%'; e.className='v '+(frt>=70?'grn':frt>=50?'amb':'red');
-  var below=CLIENTS.filter(function(c){return c.sl<80;});
+  var below=mergedClients().filter(function(c){return c.sl<80;});
   document.getElementById('exBelow').textContent=below.length;
   document.querySelector('#exBreachTable tbody').innerHTML=below.slice().sort(function(a,b){return a.sl-b.sl;}).map(function(c){
     return '<tr><td>'+c.c+'</td><td>'+c.o.toLocaleString()+'</td><td class="'+cls(c.sl)+'">'+c.sl+'%</td><td class="'+(c.ab>5?'red':'grn')+'">'+c.ab+'%</td><td>'+slPill(c.sl)+'</td></tr>';
