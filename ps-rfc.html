@@ -74,38 +74,35 @@
       <li><b>Email reasons (all clients):</b> each week we take a <b>random sample of 100 tickets per client</b> from the previous complete week and <b>read every ticket's actual message</b> to classify why the patient contacted us. We don't use Zoho's built-in "category" field — it's blank on ~all email — so reasons are read from the real text.</li>
       <li><b>What the % means:</b> a reason's share of that client's 100-ticket sample (so columns total ~100%). It's a representative sample, not every ticket — directional for the mix, not an exact count.</li>
       <li><b>Refresh:</b> automatically every <b>Monday</b>. De-identified aggregates only — no patient info.</li>
-      <li><b>Phone reasons:</b> a one-time manual tagging exercise (Code Yellow, week of Jun 14), <b>calls only</b> — not yet auto-refreshed. Phone and email mixes differ, so compare within a channel.</li>
+      <li><b>Phone reasons &amp; sentiment:</b> live from <b>Amazon Connect Contact Lens</b> on answered inbound calls — topic tags are <b>multi-label</b> (one call can raise several), so % is share of answered calls and can total &gt;100%. Sentiment is the AWS call-end sentiment. Auto-refreshes daily. Phone and email mixes differ, so compare within a channel.</li>
       <li><b>"Other" client:</b> patient clients that don't have their own dashboard yet. ~71% of it is non-patient noise (vendor/marketing/system), so treat its patient reasons as a thin slice.</li>
     </ul>
   </details>
 
   <div id="phoneView">
-  <div class="sub" style="margin-top:10px;">Phone snapshot: <b>week of Jun 14, 2026</b> · phone only · ~21,790 categorized calls. Source: Code Yellow "Inbound Patient Support Needs."</div>
-  <div class="sec" style="margin-top:18px;">Headline</div>
+  <div class="sub" style="margin-top:10px;">Phone reasons &amp; sentiment from <b>Amazon Connect Contact Lens</b> — answered inbound calls, latest complete week (<b><span id="phWin">—</span></b>). De-identified · auto-refreshes daily.</div>
+  <div class="lbl" style="margin-top:16px;">Client</div>
+  <div id="phBtns" style="display:flex;gap:6px;flex-wrap:wrap;">
+    <button class="cdbtn2 active" onclick="renderPhone('all')">All built</button>
+    <button class="cdbtn2" onclick="renderPhone('embody')">Embody</button>
+    <button class="cdbtn2" onclick="renderPhone('medvi')">Medvi</button>
+    <button class="cdbtn2" onclick="renderPhone('elixa')">Elixa</button>
+    <button class="cdbtn2" onclick="renderPhone('altrx')">AltRx</button>
+    <button class="cdbtn2" onclick="renderPhone('trinity')">Trinity</button>
+  </div>
+  <div class="sec">Headline — <span id="phTitle">All built clients</span></div>
   <div class="grid kpis">
-    <div class="card"><div class="k">Categorized calls (wk)</div><div class="v">21,790</div><div class="n">week of Jun 14 · phone only</div></div>
-    <div class="card"><div class="k">Top driver</div><div class="v blue">23%</div><div class="n">Scheduling &amp; Appointments</div></div>
-    <div class="card"><div class="k">Top 3 = share</div><div class="v amb">60%</div><div class="n">Scheduling · Cancellation · Refund</div></div>
+    <div class="card"><div class="k">Calls answered</div><div class="v" id="phCalls">—</div><div class="n" id="phCat">—</div></div>
+    <div class="card"><div class="k">Top reason</div><div class="v blue" id="phTopPct">—</div><div class="n" id="phTopName">—</div></div>
+    <div class="card"><div class="k">Negative sentiment</div><div class="v" id="phNeg">—</div><div class="n">call ended negative / very negative</div></div>
   </div>
 
-  <div class="sec">Top reasons by volume</div>
-  <div id="rfcBars" class="bars"></div>
+  <div class="sec">Top reasons by volume — <span id="phTitle2">All built clients</span></div>
+  <div id="phBars" class="bars"></div>
 
-  <div class="sec">Full taxonomy</div>
-  <table id="rfcTable">
-    <thead><tr>
-      <th onclick="sortT(0,true)">#</th>
-      <th onclick="sortT(1,true)">Category</th>
-      <th onclick="sortT(2)">Calls</th>
-      <th onclick="sortT(3)">% of calls</th>
-      <th>Share</th>
-      <th onclick="sortT(5,true)">Owning queue</th>
-    </tr></thead>
-    <tbody></tbody>
-  </table>
-  <div class="note">Volumes are single-week phone calls; the % denominator includes no-category calls.</div>
-
-  <div class="note" style="margin-top:14px;"><b>Disposition ≠ reason.</b> These are <i>outcomes</i>, not reasons-for-contact, and belong in a separate tagging dimension (v1 fix): No Category 2,820 · HeyRevia Transfer 508 · Disconnected 399 · Queued–No Answer 343 · Agent Ghosted 165 · Queue Unstaffed 161 · Customer Ghosted 79 · IVR Disconnect 76 · External 34.</div>
+  <div class="sec">Call sentiment mix</div>
+  <div id="phSent" class="bars"></div>
+  <div class="note">Reasons are <b>Contact Lens topic tags</b> on answered inbound calls — <b>multi-label</b> (a call can raise several), so % is share of answered calls and can total &gt;100%. <span id="phCatNote"></span> Sentiment is the AWS call-end sentiment.</div>
 
   </div><!-- /phoneView -->
 
@@ -141,38 +138,49 @@
 </div>
 
 <script>
-// RFC categories — Code Yellow week of Jun 14 2026 (calls only). d = deflection: g/a/n
-var RFC=[
-  {n:"Scheduling & Appointments", c:5114, p:23.47, q:"PS-Tier1", d:"g"},
-  {n:"Cancellation (Account)",     c:4068, p:18.67, q:"Retention / PS-Tier1", d:"a"},
-  {n:"Refund",                     c:3932, p:18.04, q:"Billing / Refund", d:"a"},
-  {n:"Order Status",               c:2581, p:11.84, q:"PS-Tier1", d:"g"},
-  {n:"Medication Concern",         c:1683, p:7.72,  q:"RN / CMA", d:"n"},
-  {n:"Billing",                    c:1453, p:6.67,  q:"Billing", d:"a"},
-  {n:"General Question",           c:868,  p:3.98,  q:"PS-Tier1", d:"g"},
-  {n:"Refill / Intake Form",       c:819,  p:3.76,  q:"PS-Tier1 / Async", d:"a"},
-  {n:"Labs",                       c:466,  p:2.14,  q:"Lab team", d:"n"},
-  {n:"Complaint / Supervisor",     c:79,   p:0.36,  q:"PETE", d:"n"},
-  {n:"Portal / Login",             c:66,   p:0.30,  q:"PS-Tier1", d:"g"},
-  {n:"Patient Info Update",        c:65,   p:0.30,  q:"PS-Tier1", d:"g"},
-  {n:"Non-patient Inquiries",      c:41,   p:0.19,  q:"Route out", d:"g"},
-  {n:"Medical Records Request",    c:30,   p:0.14,  q:"PS-Tier1 / CMA", d:"a"}
-];
-var DEFL={g:"High",a:"Partial",n:"Low"};
-var max=Math.max.apply(null,RFC.map(function(r){return r.c;}));
-function pill(d){return '<span class="pill '+d+'">'+DEFL[d]+'</span>';}
-function render(){
-  var tb=document.querySelector('#rfcTable tbody');
-  tb.innerHTML=RFC.map(function(r,i){
-    var w=Math.round(r.c/max*100);
-    return '<tr><td>'+(i+1)+'</td><td>'+r.n+'</td><td>'+r.c.toLocaleString()+'</td><td>'+r.p.toFixed(1)+'%</td>'+
-      '<td><div class="bar"><span style="width:'+w+'%"></span></div></td>'+
-      '<td>'+r.q+'</td></tr>';
-  }).join('');
+// ===== PHONE RFC — live from Amazon Connect Contact Lens (topics multi-label + call-end sentiment), per client/week. Injected daily. =====
+var PHONE_RFC={"weeks":[{"start":"2026-06-01","end":"2026-06-07","label":"Jun 1\u20137","complete":true},{"start":"2026-06-08","end":"2026-06-14","label":"Jun 8\u201314","complete":true},{"start":"2026-06-15","end":"2026-06-21","label":"Jun 15\u201321","complete":true},{"start":"2026-06-22","end":"2026-06-28","label":"Jun 22\u201328","complete":true},{"start":"2026-06-29","end":"2026-07-05","label":"Jun 29\u2013Jul 5","complete":true},{"start":"2026-07-06","end":"2026-07-12","label":"Jul 6\u201312","complete":true},{"start":"2026-07-13","end":"2026-07-19","label":"Jul 13\u201319","complete":false}],"client":{"embody":{"answered":[87,80,96,67,107,5958,11309],"categorized":[66,57,70,52,77,4822,9619],"topics":{"Scheduling":[19,23,32,17,41,2489,4707],"Order status":[25,23,30,12,17,1808,4454],"Cancellation":[14,18,18,19,20,1192,1687],"Refund":[15,9,12,11,17,995,1612],"Medication":[16,15,8,14,21,1053,2342],"Labs":[4,7,4,0,2,297,238],"Refill / intake":[16,6,12,6,10,101,345],"Provider no-show":[0,0,0,0,0,34,76]},"sentiment":{"neg":[44,32,33,24,34,2785,5127],"pos":[4,8,9,5,7,450,1020],"neu":[38,38,52,37,63,2611,5027],"scored":[86,78,94,66,104,5846,11174]}},"medvi":{"answered":[10532,9889,10467,9459,8338,8739,7096],"categorized":[8474,8086,8725,7691,6644,7057,5671],"topics":{"Scheduling":[2505,2496,2745,2174,1766,1772,1416],"Order status":[3329,2976,2883,2904,2604,2704,2386],"Cancellation":[3678,3525,3826,3231,2794,2989,2421],"Refund":[2721,2395,2346,2208,2089,2275,1793],"Medication":[1367,1282,1280,1281,1099,1209,934],"Labs":[339,327,330,285,254,249,182],"Refill / intake":[1848,1719,1804,1820,1567,1532,1198],"Provider no-show":[32,41,22,35,23,25,13]},"sentiment":{"neg":[4933,3910,3846,3510,3172,3240,2608],"pos":[791,796,956,804,710,772,621],"neu":[4548,5025,5510,5007,4284,4588,3734],"scored":[10272,9731,10312,9321,8166,8600,6963]}},"elixa":{"answered":[7,12,13,77,277,288,167],"categorized":[6,7,7,58,225,233,138],"topics":{"Scheduling":[1,0,2,29,127,117,63],"Order status":[5,4,1,20,69,96,47],"Cancellation":[1,5,3,15,57,54,41],"Refund":[1,3,2,13,51,46,39],"Medication":[4,0,3,19,54,57,41],"Labs":[0,1,0,3,21,16,9],"Refill / intake":[2,5,1,4,6,9,11],"Provider no-show":[0,0,0,2,2,3,1]},"sentiment":{"neg":[3,7,6,53,150,147,95],"pos":[0,1,2,2,14,21,10],"neu":[3,4,5,20,109,117,55],"scored":[6,12,13,75,273,285,160]}},"altrx":{"answered":[17,108,64,36,122,338,509],"categorized":[13,74,43,25,80,259,400],"topics":{"Scheduling":[6,20,16,10,34,119,227],"Order status":[1,38,14,12,24,85,103],"Cancellation":[6,23,16,9,26,72,99],"Refund":[2,16,13,6,11,54,92],"Medication":[4,9,6,8,16,43,64],"Labs":[0,10,7,1,1,9,11],"Refill / intake":[1,2,1,4,8,26,26],"Provider no-show":[0,0,0,0,0,3,10]},"sentiment":{"neg":[9,43,23,17,46,156,235],"pos":[3,7,6,2,9,31,38],"neu":[5,54,28,16,66,145,219],"scored":[17,104,57,35,121,332,492]}},"trinity":{"answered":[6,9,6,3,11,112,583],"categorized":[6,8,6,2,7,90,486],"topics":{"Scheduling":[3,3,3,0,0,31,196],"Order status":[4,4,1,2,4,32,184],"Cancellation":[0,1,2,1,1,32,140],"Refund":[0,1,0,1,0,16,92],"Medication":[2,3,2,0,2,19,142],"Labs":[0,0,0,0,3,10,13],"Refill / intake":[1,1,1,0,2,1,21],"Provider no-show":[0,2,0,0,0,1,3]},"sentiment":{"neg":[3,5,0,1,4,61,283],"pos":[2,0,2,0,1,8,60],"neu":[1,3,4,2,4,39,234],"scored":[6,8,6,3,9,108,577]}},"all":{"answered":[10649,10098,10646,9642,8855,15435,19664],"categorized":[8565,8232,8851,7828,7033,12461,16314],"topics":{"Scheduling":[2534,2542,2798,2230,1968,4528,6609],"Order status":[3364,3045,2929,2950,2718,4725,7174],"Cancellation":[3699,3572,3865,3275,2898,4339,4388],"Refund":[2739,2424,2373,2239,2168,3386,3628],"Medication":[1393,1309,1299,1322,1192,2381,3523],"Labs":[343,345,341,289,281,581,453],"Refill / intake":[1868,1733,1819,1834,1593,1669,1601],"Provider no-show":[32,43,22,37,25,66,103]},"sentiment":{"neg":[4992,3997,3908,3605,3406,6389,8348],"pos":[800,812,975,813,741,1282,1749],"neu":[4595,5124,5599,5082,4526,7500,9269],"scored":[10387,9933,10482,9500,8673,15171,19366]}}}};
+function phLatest(){var w=PHONE_RFC.weeks||[];for(var i=w.length-1;i>=0;i--){if(w[i].complete)return i;}return w.length-1;}
+function renderPhone(client){
+  var btns=document.querySelectorAll('#phBtns .cdbtn2');
+  for(var b=0;b<btns.length;b++){btns[b].classList.remove('active');}
+  var map={all:0,embody:1,medvi:2,elixa:3,altrx:4,trinity:5};
+  if(btns[map[client]!=null?map[client]:0]) btns[map[client]!=null?map[client]:0].classList.add('active');
+  var names={all:'All built clients',embody:'Embody',medvi:'Medvi',elixa:'Elixa',altrx:'AltRx',trinity:'Trinity'};
+  var nm=names[client]||client;
+  document.getElementById('phTitle').textContent=nm;
+  document.getElementById('phTitle2').textContent=nm;
+  var i=phLatest();
+  var wk=(PHONE_RFC.weeks[i]||{}).label||'—';
+  document.getElementById('phWin').textContent=wk;
+  var a=(PHONE_RFC.client||{})[client];
+  if(!a){ document.getElementById('phBars').innerHTML='<div class="note">No data for this client.</div>'; document.getElementById('phSent').innerHTML='';
+    document.getElementById('phCalls').textContent='—';document.getElementById('phCat').textContent='';document.getElementById('phTopPct').textContent='—';document.getElementById('phTopName').textContent='';document.getElementById('phNeg').textContent='—';return; }
+  var answered=a.answered[i]||0, categorized=a.categorized[i]||0;
+  // topics -> sorted array {n, c, p}
+  var topics=Object.keys(a.topics).map(function(t){var c=a.topics[t][i]||0;return {n:t,c:c,p:answered?c/answered*100:0};});
+  topics.sort(function(x,y){return y.c-x.c;});
+  var tmax=topics.length?topics[0].c:1;
+  var s=a.sentiment, neg=s.neg[i]||0, pos=s.pos[i]||0, neu=s.neu[i]||0, scored=s.scored[i]||0;
+  var negpct=scored?Math.round(neg/scored*100):0;
+  // headline
+  document.getElementById('phCalls').textContent=answered.toLocaleString();
+  document.getElementById('phCat').textContent=answered?(Math.round(categorized/answered*100)+'% Contact Lens–categorised'):'';
+  var t0=topics[0]||{n:'—',p:0};
+  document.getElementById('phTopPct').textContent=Math.round(t0.p)+'%';
+  document.getElementById('phTopName').textContent=t0.n;
+  var negEl=document.getElementById('phNeg'); negEl.textContent=negpct+'%';
+  negEl.className='v '+(negpct>=40?'red':(negpct>=25?'amb':'grn'));
+  // reason bars
+  htmlBars('phBars', topics, tmax, function(r){return r.n;}, function(r){return r.c;},
+    function(r){return r.c.toLocaleString()+' · '+r.p.toFixed(1)+'%';}, function(){return '#2a78d6';});
+  // sentiment mix bars
+  var sent=[{n:'Negative',c:neg,col:'#b42318'},{n:'Neutral',c:neu,col:'#64748b'},{n:'Positive',c:pos,col:'#127a3e'}];
+  var smax=Math.max(neg,neu,pos,1);
+  htmlBars('phSent', sent, smax, function(r){return r.n;}, function(r){return r.c;},
+    function(r){return r.c.toLocaleString()+' · '+(scored?Math.round(r.c/scored*100):0)+'%';}, function(r){return r.col;});
+  document.getElementById('phCatNote').textContent='This week: '+categorized.toLocaleString()+' of '+answered.toLocaleString()+' answered calls were categorised; sentiment scored on '+scored.toLocaleString()+' calls.';
 }
-render();
-var col={g:'#127a3e',a:'#9a6a00',n:'#b42318'};
-var topR=RFC.slice(0,9);   // NOT 'top' — that's a read-only window.* built-in in browsers
 function htmlBars(elId, items, maxv, labelFn, valFn, dispFn, colorFn){
   var el=document.getElementById(elId); if(!el) return;
   el.innerHTML=items.map(function(r){
@@ -180,21 +188,7 @@ function htmlBars(elId, items, maxv, labelFn, valFn, dispFn, colorFn){
     return '<div class="hbar"><span class="hbl">'+labelFn(r)+'</span><span class="hbt"><span class="hbf" style="width:'+w+'%;background:'+colorFn(r)+'"></span></span><span class="hbv">'+dispFn(r)+'</span></div>';
   }).join('');
 }
-(function(){
-  var el=document.getElementById('rfcBars');
-  if(!el){return;}
-  try{
-    htmlBars('rfcBars', topR, max, function(r){return r.n;}, function(r){return r.c;},
-      function(r){return r.c.toLocaleString()+' · '+r.p.toFixed(1)+'%';}, function(){return '#2a78d6';});
-  }catch(e){ el.textContent='rfcBars error: '+e.message; el.style.color='#b42318'; }
-})();
-function sortT(c,txt){
-  var tb=document.querySelector('#rfcTable tbody');var rows=[].slice.call(tb.querySelectorAll('tr'));
-  var asc=tb.getAttribute('data-asc')===c+'';
-  rows.sort(function(a,b){var x=a.children[c].textContent.replace(/[,%]/g,''),y=b.children[c].textContent.replace(/[,%]/g,'');
-    if(txt)return asc?y.localeCompare(x):x.localeCompare(y);return asc?(parseFloat(y)-parseFloat(x)):(parseFloat(x)-parseFloat(y));});
-  tb.setAttribute('data-asc',asc?'':c+'');rows.forEach(function(r){tb.appendChild(r);});
-}
+renderPhone('all');
 // ===== EMAIL RFC — sampled 100 tickets/client, week of Jul 11-17 2026, classified from ticket bodies =====
 var EMAIL={"embody":{"Medication":26,"Billing complaint":7,"Other":2,"Pricing question":8,"Onboarding/admin":11,"Cancellation":10,"Order & shipping":7,"Labs":3,"Scheduling":15,"Account/access":8,"Care coaching":1,"Product quality":1,"Non-patient/noise":1},"medvi":{"Non-patient/noise":14,"Other":4,"Account/access":7,"Billing complaint":15,"Scheduling":4,"Order & shipping":13,"Medication":19,"Care coaching":1,"Cancellation":16,"Pricing question":5,"Onboarding/admin":1,"Labs":1},"elixa":{"Billing complaint":5,"Order & shipping":23,"Labs":7,"Account/access":9,"Medication":22,"Scheduling":7,"Pricing question":1,"Non-patient/noise":6,"Other":7,"Onboarding/admin":6,"Product quality":1,"Care coaching":1,"Cancellation":4},"altrx":{"Account/access":12,"Order & shipping":19,"Medication":16,"Billing complaint":6,"Other":7,"Pricing question":5,"Scheduling":20,"Care coaching":4,"Cancellation":7,"Onboarding/admin":3,"Non-patient/noise":1},"trinity":{"Account/access":9,"Medication":22,"Billing complaint":11,"Onboarding/admin":12,"Scheduling":5,"Cancellation":7,"Non-patient/noise":3,"Other":5,"Order & shipping":14,"Pricing question":11,"Care coaching":1},"other":{"Non-patient/noise":26,"Medication":22,"Billing complaint":6,"Scheduling":4,"Cancellation":9,"Order & shipping":8,"Onboarding/admin":13,"Labs":6,"Account/access":2,"Care coaching":1,"Other":3}};
 var EMMETA={"Order & shipping":{q:"PS-Tier1 / Narvar",d:"g"},"Medication":{q:"RN / CMA",d:"n"},"Scheduling":{q:"PS-Tier1",d:"g"},"Onboarding/admin":{q:"PS-Tier1 / Async",d:"a"},"Billing complaint":{q:"Billing",d:"a"},"Cancellation":{q:"Retention",d:"a"},"Pricing question":{q:"PS-Tier1",d:"g"},"Account/access":{q:"PS-Tier1",d:"g"},"Labs":{q:"Lab team",d:"n"},"Care coaching":{q:"Clinical",d:"n"},"Product quality":{q:"PS-Tier1",d:"a"},"Non-patient/noise":{q:"Route out / filter",d:"g"},"Other":{q:"PS-Tier1",d:"a"}};
@@ -241,7 +235,7 @@ function showChannel(ch){
   document.getElementById('chEmail').classList.toggle('active',ch==='email');
   if(ch==='email' && !emailChart) renderEmail('all');
 }
-document.getElementById('foot').textContent='RFC v1 — Phone: Code Yellow week of Jun 14 2026 (calls, view 2713211000068740630). Email: sampled 100 random tickets/client for week of Jul 11-17 2026, reason classified by reading each ticket body via Zoho Desk (n=600). De-identified aggregate counts; no PHI. Refresh cadence: weekly (sampled).';
+document.getElementById('foot').textContent='RFC v2 — Phone: live from Amazon Connect Contact Lens (answered inbound calls, topic tags multi-label + call-end sentiment), latest complete week, refreshed daily. Email: sampled 100 random tickets/client from the previous complete week, reason classified by reading each ticket body via Zoho Desk (n=600), refreshed weekly. De-identified aggregate counts; no PHI.';
 </script>
 </body>
 </html>
