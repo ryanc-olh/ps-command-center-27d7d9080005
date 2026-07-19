@@ -68,6 +68,9 @@
   table.mx td.dom{background:#eaf2fc;box-shadow:inset 0 0 0 1px #cfe0f5;}
   table.mx tr.grouphdr td{background:#efeee9;font-weight:700;text-align:left;color:var(--ink);border-top:2px solid var(--bds);padding:7px 10px;font-size:12.5px;letter-spacing:.03em;}
   table.mx tr.bandhdr td{background:#26251f;color:#fff;font-weight:800;text-align:left;padding:9px 10px;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;border-top:3px solid #000;}
+  /* WoW trend: scroll box with a frozen week-header row */
+  #trendWrap{max-height:74vh;overflow:auto;}
+  #trendTable thead th{position:sticky;top:0;z-index:5;box-shadow:0 2px 0 var(--bds);}
   table.mx td.metlab{text-align:left;font-weight:500;color:var(--sec);padding-left:16px;}
   .wdelta{display:block;font-size:9.5px;line-height:1.15;margin-top:1px;font-weight:600;}
   .wdelta.grn{color:var(--grn);} .wdelta.red{color:var(--red);} .wdelta.mut{color:var(--mut);}
@@ -211,7 +214,7 @@
         <button class="hbtn" onclick="setTrend('client','altrx')">AltRx</button>
         <button class="hbtn" onclick="setTrend('client','trinity')">Trinity</button>
       </div>
-      <div style="overflow-x:auto;"><table id="trendTable" class="mx">
+      <div id="trendWrap"><table id="trendTable" class="mx">
         <thead><tr id="trendHead"></tr></thead>
         <tbody></tbody>
       </table></div>
@@ -656,9 +659,9 @@ function renderTrend(){
     }).join('');
     return '<tr><td class="metlab">😞 Neg sentiment</td>'+cells+'</tr>';
   }
-  var bandC='<tr class="bandhdr"><td colspan="'+ncol+'">🏥 Client-level metrics — one row per client, per metric · aggregate across vendors (vendor-split cuts are in the 🏢 band below)</td></tr>';
   var bandV='<tr class="bandhdr"><td colspan="'+ncol+'">🏢 Vendor-level (BPO) metrics — one section per vendor · that vendor’s own handling</td></tr>';
-  var html=bandC+abHtml+senHtml+otHtml+rrHtml+bandV+bpos.map(function(b){
+  var bandC='<tr class="bandhdr"><td colspan="'+ncol+'">🏥 Client-level metrics — one row per client, per metric · aggregate across vendors</td></tr>';
+  var vendorHtml=bandV+bpos.map(function(b){
     var reb=((re[cl]||re.all||{})[b])||[];
     return '<tr class="grouphdr"><td colspan="'+ncol+'">🏢 '+b+' &nbsp;·&nbsp; BPO vendor</td></tr>'+
       mrow('📞 Answered', voice[b]||[], 'an','vol')+
@@ -670,8 +673,10 @@ function renderTrend(){
       mrow('✉️ 1-touch <span class="estlbl">est</span>', reb, 'ot','pts')+
       mrow('✉️ Repl/tix <span class="estlbl">est</span>', reb, 'avgrep','asa');
   }).join('');
+  // 🏢 Vendor (BPO) band first — we care more about vendor performance — then 🏥 client-level band
+  var html=vendorHtml+bandC+abHtml+senHtml+otHtml+rrHtml;
   document.querySelector('#trendTable tbody').innerHTML=html;
-  document.getElementById('trendNote').innerHTML='<b>Two bands:</b> 🏥 client-level metrics (one row per client) then 🏢 vendor-level metrics (one section per BPO), for '+(cl==='all'?'all built clients':(CLIENT_NAMES[cl]||cl))+'. <b>The small figure under each value is the change vs the prior week (WoW).</b> * = current partial week. Voice/sentiment per-BPO history begins Jun 22 (Connect tagging). Colors: ASA green ≤30s/amber ≤2m/red &gt;2m (Δ +%=slower, red); ≤4hr green ≥70%/amber ≥50%/red &lt;50% (Δ pts, +=better); sentiment/abandon green low/red high (Δ pp, +=worse, red); volume Δ neutral.';
+  document.getElementById('trendNote').innerHTML='<b>Two bands:</b> 🏢 vendor-level metrics (one section per BPO) first, then 🏥 client-level metrics (one row per client), for '+(cl==='all'?'all built clients':(CLIENT_NAMES[cl]||cl))+'. <b>The small figure under each value is the change vs the prior week (WoW).</b> * = current partial week. Voice/sentiment per-BPO history begins Jun 22 (Connect tagging). Colors: ASA green ≤30s/amber ≤2m/red &gt;2m (Δ +%=slower, red); ≤4hr green ≥70%/amber ≥50%/red &lt;50% (Δ pts, +=better); sentiment/abandon green low/red high (Δ pp, +=worse, red); volume Δ neutral.';
 }
 function setTrend(g,val){
   trend[g]=val;
