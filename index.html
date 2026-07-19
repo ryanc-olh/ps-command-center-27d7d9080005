@@ -132,7 +132,7 @@
   <h1>OpenLoop PS — Operations Command Center <span class="proto" style="background:var(--blue)">INTERNAL</span></h1>
   <div class="sub">All clients · all channels · capacity + live ops + SLAs, one screen. <b>Rebuilt daily ~5:15am MT</b><span id="buildStamp"></span> · de-identified aggregates (PHI not persisted).</div>
 
-  <details class="method" id="howto" style="margin-top:12px;">
+  <details class="method" id="howto" open style="margin-top:12px;">
     <summary>How to read this page — data sources, refresh cadence &amp; what's live vs. assumed</summary>
     <ul>
       <li><b>What this is:</b> the internal Patient Support operations command center — de-identified aggregates across all clients &amp; channels. <b>Internal only</b> (contains BPO/agent detail); not client-facing.</li>
@@ -140,13 +140,14 @@
       <li><b>Refresh cadence:</b> this command center + the phone Reasons-for-Contact view + per-client email noise rates rebuild <b>daily ~5:15am Mountain</b>; the email Reasons-for-Contact reason-mix rebuilds <b>weekly, Monday ~6:30am MT</b>; the embedded client dashboards refresh <b>every 4 hours</b>. It is an auto-rebuilt file (refreshed on a schedule), not a live stream.</li>
       <li><b>Three kinds of number on this page:</b>
         <ul>
-          <li><span class="dot live"></span><b>LIVE — measured, auto-refreshed daily:</b> voice answered / ASA / AHT / abandon / service level; email replies / first-response / one-touch / replies-per-ticket; intraday volumes; deployed agents; phone reasons + sentiment.</li>
-          <li><span class="dot daily"></span><b>MEASURED · STATIC — measured once, not auto-refreshed</b> (a script is re-run to update): the email throughput coefficient (<b>2.1</b> replies per active agent-hour) and the per-client email real-patient (noise) rates.</li>
+          <li><span class="dot live"></span><b>LIVE — measured, auto-refreshed daily:</b> voice answered / ASA / AHT / abandon / service level; email replies / first-response / one-touch / replies-per-ticket; intraday volumes; deployed agents; phone reasons + sentiment. <span class="mut">("Live" = re-measured on each daily rebuild — a daily batch current to the prior day, not a real-time stream.)</span></li>
+          <li><span class="dot daily"></span><b>MEASURED · STATIC — measured once, not auto-refreshed</b> (a script is re-run to update): the email throughput coefficient (<b>2.1</b> replies per active agent-hour) and the per-client email real-patient (noise) rates <span class="mut">(measured over Jun 22–Jul 12 2026, ~250 emails/client; e.g. Embody 98.8% real-patient, Medvi 85.1%, Other 45.2%)</span>.</li>
           <li><span class="dot off"></span><b>YOUR ASSUMPTION — editable inputs</b> (Capacity tab &amp; the Intraday "Agents needed" bar): Erlang target service-level % &amp; answer-seconds, email SLA-window hours, shrinkage %.</li>
         </ul>
       </li>
       <li><b>Models:</b> Voice staffing uses <b>Erlang C</b> — the contact-center industry-standard queueing model for staffing to a service-level target (full formula + rationale on the <b>Intraday</b> tab and the <b>Capacity</b> tab). Email staffing uses an asynchronous throughput / labor-balance floor. Call sentiment is AWS Contact Lens. Email noise is AI-classified (two passes + tiebreak).</li>
-      <li><b>Date windows</b> (each tab also shows its own 📅 window): Live Ops &amp; By-BPO scorecard = <b>latest complete week</b>; voice SLA tab = <b>trailing 7 days</b>; Week-over-week = <b>6 complete weeks + current partial (*)</b>; Intraday &amp; capacity = <b>previous complete week</b>; phone reasons = latest complete week; email reasons = previous complete week (sample).</li>
+      <li><b>Date windows</b> (each tab also shows its own 📅 window): Live Ops = <b>latest complete week</b> for contacts / email / sentiment / BPO, but <b>voice service level, abandon &amp; clients-below-SLA = trailing 7 days</b>; By-BPO scorecard &amp; By-Client = latest complete week; voice SLA tab = <b>trailing 7 days</b>; Week-over-week = <b>6 complete weeks + current partial (*)</b>; Intraday &amp; capacity = <b>previous complete week</b>; phone reasons = latest complete week; email reasons = previous complete week (~100-ticket sample/client).</li>
+      <li><b>Time zones:</b> refresh times are Mountain; voice &amp; phone volumes are reported in Central; email in its stored time zone.</li>
       <li><b>Email is patient-only:</b> every email volume/demand figure is scaled by each client's measured real-patient rate to strip automated/marketing/vendor/system noise; reply &amp; response-time metrics are not scaled, and voice is not adjusted.</li>
     </ul>
   </details>
@@ -197,13 +198,13 @@
       <div class="fbox"><div class="h">Top phone reasons <span class="mut">· Contact Lens · latest complete wk</span></div><span id="exReasons">—</span> <span class="mut">— full phone + email breakdown on the Reasons for Contact tab.</span></div>
       <div class="fbox"><div class="h">Data freshness</div>Whole page <span class="amb">rebuilt daily ~5:15am MT</span>. Voice = Amazon Connect (current to prior day) · Email/tickets = Zoho Desk <span class="amb">daily (≤1-day lag)</span> · Live real-time voice floor <span class="red">not connected</span> (needs Connect IAM).</div>
     </div>
-    <div class="note">Exec + BPO review — top numbers only; each tab has full detail and its own 📅 window. Windows here: contacts / email / sentiment / BPO = latest complete week (Jul 6–12); voice service level, abandon &amp; clients-below-SLA = trailing 7 days (SLAs tab); busiest-hour = previous complete week. Rebuilt daily ~5:15am MT.</div>
+    <div class="note">Exec + BPO review — top numbers only; each tab has full detail and its own 📅 window. Windows here: contacts / email / sentiment / BPO = latest complete week (Jul 6–12); voice service level, abandon &amp; clients-below-SLA = trailing 7 days (see SLAs tab for the exact dates); busiest-hour = previous complete week. Voice SL / abandon / clients-below-SLA span <b>all Connect voice queues</b> (org-wide, including in-house lines), matching the SLAs tab; contacts/email/BPO are the 5 built clients. Rebuilt daily ~5:15am MT.</div>
   </div>
 
   <!-- ===== SLAs ===== -->
 <div class="panel" id="p1">
     <div class="lbl" style="margin-top:0;">Voice service level by client <span class="proto" style="background:var(--grn);margin-left:6px;">LIVE · measured</span></div>
-    <div class="winbig">📅 Trailing 7 days: <span class="w" id="slaWin">Jul 5–12</span> <span style="font-weight:400;font-size:12px;color:var(--mut);">· Amazon Connect · rebuilt daily ~5:15am MT</span></div>
+    <div class="winbig">📅 Trailing 7 days: <span class="w" id="slaWin">—</span> <span style="font-weight:400;font-size:12px;color:var(--mut);">· Amazon Connect · rebuilt daily ~5:15am MT</span></div>
     <table id="clientTable">
       <thead><tr><th onclick="sortT('clientTable',0,true)">Client</th><th onclick="sortT('clientTable',1)">Offered</th><th onclick="sortT('clientTable',2)">Answered</th><th onclick="sortT('clientTable',3)">SL ≤30s</th><th onclick="sortT('clientTable',4)">Abandon</th><th>Status</th></tr></thead>
       <tbody></tbody>
@@ -336,7 +337,7 @@
     <div id="hmVoice" style="overflow-x:auto;"></div>
     <div class="mxhead" style="margin-top:20px;">✉️ Email <span class="win" id="hmEsum"></span></div>
     <div id="hmEmail" style="overflow-x:auto;"></div>
-    <div class="note" style="margin-top:12px;">Each cell = the chosen metric for that day &amp; hour; darker = higher. <b>Gap</b> (inbound − handled): <span style="color:var(--red);font-weight:600;">red</span> = demand outran handling that hour, <span style="color:var(--grn);font-weight:600;">green</span> = kept up/ahead. Inbound = calls offered / emails received (whole client, not per-BPO). <b>Email inbound is patient-only</b> — each client's email is scaled by its measured real-patient rate (noise stripped; see the capacity method panel for the per-client rates). Phone is not adjusted. Phone hours Central; email hours stored tz.</div>
+    <div class="note" style="margin-top:12px;">Each cell = the chosen metric for that day &amp; hour; darker = higher. <b>Gap</b> (inbound − handled): <span style="color:var(--red);font-weight:600;">red</span> = demand outran handling that hour, <span style="color:var(--grn);font-weight:600;">green</span> = kept up/ahead. Inbound = calls offered / emails received (whole client, not per-BPO). <b>Email inbound is patient-only</b> — each client's email is scaled by its <span class="capm-tag meas" style="font-size:9px;">measured · static</span> real-patient rate (noise stripped; select <b>🧮 Agents needed</b> or <b>⚠️ Coverage gap</b> to see the per-client rates + method). Phone is not adjusted. Phone hours Central; email hours stored tz.</div>
     <div class="note" id="capNote" style="display:none;margin-top:8px;"></div>
     <div id="capMethod" style="display:none;"></div>
   </div>
@@ -636,7 +637,7 @@ function buildCapMethod(agents,covgap){
   if(agents||covgap){
     var CN=EMAIL_NOISE.clients||{}, ord=['embody','medvi','elixa','altrx','trinity','other'], nm={embody:'Embody',medvi:'Medvi',elixa:'Elixa',altrx:'AltRx',trinity:'Trinity',other:'Other'};
     var kr=ord.filter(function(c){return CN[c];}).map(function(c){ var x=CN[c], ci=(x.ci&&x.ci[0]!=null)?('±'+Math.round((x.ci[1]-x.ci[0])/2*10)/10+'pp'):'—'; return '<tr><td>'+(nm[c]||c)+'</td><td class="v">'+x.pct+'%</td><td>'+ci+'</td><td>'+x.n+'</td></tr>'; }).join('');
-    noiseDef='<div class="capm-t" style="margin-top:6px;">🔎 How “noise” is defined &amp; the per-client rate applied to email</div>'+
+    noiseDef='<div class="capm-t" style="margin-top:6px;">🔎 How “noise” is defined &amp; the per-client rate applied to email <span class="capm-tag meas">measured · static</span></div>'+
       '<div style="color:var(--sec);margin-bottom:7px;"><b>Kept = real patient</b>: a genuine inbound message from a patient/member — or someone acting for them (a caregiver, or their pharmacy/provider about a specific patient) — that a support agent must read and act on. <b>Discounted = noise</b>: anything <i>not</i> real patient support — marketing/newsletters, vendor/partner operational or billing mail, system/service notifications, delivery/read receipts, out-of-office &amp; auto-replies, surveys, spam, internal/staff mail, no-reply/do-not-reply senders. Classified by <b>reading each email’s sender + subject</b> (two independent AI passes + a tiebreak); when unsure we lean <b>patient</b>, so noise is conservative. <b>Every email volume/demand figure on this dashboard is scaled by the client’s rate below</b> — reply &amp; response-time metrics are left alone (agents rarely reply to noise, so those are already patient-clean). Measured '+(EMAIL_NOISE.window||'—')+' · re-measured periodically ('+(EMAIL_NOISE.asof||'—')+').</div>'+
       '<table class="capm-in" style="max-width:460px;"><tr><th>Client</th><th>Real-patient rate (email)</th><th>95% CI</th><th>n</th></tr>'+kr+'</table>';
   }
@@ -893,7 +894,7 @@ function renderExec(){
   var best={v:0}; for(var d=0;d<7;d++)for(var hr=0;hr<24;hr++){var s=0;CL.forEach(function(c){s+=HM_CUBE.cube.voice.inbound[c][d][hr];});if(s>best.v)best={v:s,d:d,hr:hr};}
   document.getElementById('exPeak').textContent=HM_CUBE.days[best.d]+', '+((best.hr%12)||12)+(best.hr<12?'a':'p')+' — '+best.v.toLocaleString()+' calls';
 }
-var BUILD_STAMP=" \u00b7 data as of Jul 19, 2026";   // injected by cc_refresh.py at rebuild time, e.g. " · data as of Jul 19 2026"
+var BUILD_STAMP=" \u00b7 last build Jul 19, 2026 (each tab shows its own data window)";   // injected by cc_refresh.py at rebuild time, e.g. " · data as of Jul 19 2026"
 renderExec(); renderClients(); renderByBpo(); renderByClient(); showBpoView('trend'); applyFilter();
 (function(){ var b=document.getElementById('buildStamp'); if(b&&BUILD_STAMP) b.textContent=BUILD_STAMP; })();
 document.getElementById('foot').textContent='OpenLoop PS Command Center — rebuilt daily ~5:15am Mountain (launchd com.embody.cc). Sources: voice = Amazon Connect (mirrored, current to prior day); email = Zoho Desk (mirrored, up to ~1-day lag); phone reasons + call sentiment = Contact Lens. Email reason-mix rebuilds weekly (Mon ~6:30am). Headline voice/email metrics are measured &amp; live; the email throughput coefficient (2.1) and per-client noise rates are measured-static; Erlang/SLA/shrinkage inputs are user assumptions. De-identified aggregates; PHI not persisted.';
