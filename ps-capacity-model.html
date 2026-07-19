@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow, noarchive">
 <title>Patient Support — Capacity vs Demand & Surge Model</title>
 <style>
   :root{--ink:#0b0b0b;--sec:#52514e;--mut:#898781;--card:#f5f4f1;--bd:#e1e0d9;--bds:#c3c2b7;--red:#b42318;--amb:#9a6a00;--grn:#127a3e;--blue:#2a78d6;--panel:#fbfaf8;}
@@ -50,7 +49,14 @@
 <body>
 <div class="wrap">
   <h1>Patient Support — Capacity vs Demand &amp; Surge Model</h1>
-  <div class="sub">Single source of truth for staffing. Enter demand → get required agents &amp; FTEs by channel, sized to the intraday peak. Erlang C for voice/chat, throughput+backlog for email. Works for any client.</div>
+  <div class="sub">Staffing planning &amp; surge model. Enter demand → get required agents &amp; FTEs by channel, sized to the intraday peak. Erlang C for voice/chat, throughput+backlog for email. Works for any client.</div>
+
+  <div class="callout" style="border-left-color:var(--amb);background:#fbf6ec;">
+    <b>⚙️ Planning &amp; scenario tool — not a live dashboard.</b> Every number below is computed from the assumptions <b>you enter</b>; nothing here auto-refreshes (it recalculates as you type) and there is no "as-of" date. Defaults are <b>industry benchmarks, not OpenLoop-measured figures</b> — replace them with your measured AHT / contact-rate / shrinkage before acting. The one calibrated element is the intraday arrival curve (below), measured once on real telehealth launch data (re-derive per client).
+  </div>
+  <div class="callout">
+    <b>Why Erlang C (voice &amp; chat):</b> Erlang C is the telecom/contact-center <b>industry-standard queueing model</b> for inbound staffing. It treats calls as random (Poisson) arrivals into one shared queue and computes the probability a call must wait (P<sub>w</sub>), then projected service level <b>SL = 1 − P<sub>w</sub> · e<sup>−(N−A)·(T/AHT)</sup></b>, where offered load <b>A = calls/hr × AHT(s)/3600</b>, N = agents, T = answer-target seconds. Unlike a flat "volume ÷ AHT" estimate, it accounts for arrival randomness — so it does not undersize at the peak. (Engine reference-verified against the standard 200 calls/hr · 180s AHT · 80%/20s → 14-agent benchmark.)
+  </div>
 
   <div class="presets">
     <span style="font-size:12.5px;color:var(--sec);align-self:center;">Presets:</span>
@@ -84,8 +90,8 @@
     </div>
     <div class="fieldcard">
       <h4>Operating window &amp; staffing base</h4>
-      <div class="row"><label>Open from (hour, 0–23)</label><input id="opStart" type="number" value="6" oninput="recompute()"></div>
-      <div class="row"><label>Open to (hour, 0–23)</label><input id="opEnd" type="number" value="19" oninput="recompute()"></div>
+      <div class="row"><label>Open from (hour, CT 0–23)</label><input id="opStart" type="number" value="6" oninput="recompute()"></div>
+      <div class="row"><label>Open to (hour, CT 0–23)</label><input id="opEnd" type="number" value="19" oninput="recompute()"></div>
       <div class="row"><label>Operating days / week</label><input id="opDays" type="number" value="7" oninput="recompute()"></div>
       <div class="row"><label>FTE shift hours</label><input id="shiftHrs" type="number" value="8" oninput="recompute()"></div>
       <div class="row"><label>FTE work days / week</label><input id="workDays" type="number" value="5" oninput="recompute()"></div>
@@ -121,7 +127,7 @@
       <div class="row"><label>Handle time (min / email)</label><input id="eAht" type="number" step="0.1" value="8.0" oninput="recompute()"></div>
       <div class="row"><label>Response target (hours)</label><input id="eTarget" type="number" step="0.5" value="4" oninput="recompute()"></div>
       <div class="row"><label>Starting backlog</label><input id="eBacklog" type="number" value="0" oninput="recompute()"></div>
-      <div class="hint">Handle time = agent touch (drives FTEs). Response target = SLA (drives max backlog). Healthcare email ~6–10 min touch.</div>
+      <div class="hint">Handle time = agent touch (drives FTEs). Response target = SLA (drives max backlog). Healthcare email ~6–10 min touch. <b>Note:</b> OpenLoop's <i>measured</i> email throughput is ~2.1 replies per active agent-hour (≈29 min/reply, measured-static) — well above the 8-min benchmark default; use the measured figure for OpenLoop planning or this will undersize email.</div>
     </div>
   </div>
 
@@ -341,9 +347,9 @@ function recompute(){
   document.getElementById('methodNote').innerHTML=[
     '<b>Voice</b> — Erlang C (M/M/N), numerically stable via the Erlang B recurrence; verified against the Call Centre Helper reference (200 calls/hr, 180s AHT, 80/20 → 14 agents). Sized per hour on the intraday curve, capped at the occupancy ceiling, summed to agent-hours, grossed up for shrinkage.',
     '<b>Chat</b> — Erlang C on a concurrency-adjusted load (effective AHT = AHT ÷ concurrency). Cap concurrency ~3–4; beyond that quality/AHT degrade (not modeled as free capacity).',
-    '<b>Email</b> — async throughput (not Erlang): FTE = volume × handle-time ÷ (productive seconds × occupancy). Backlog projected day-by-day; SLA → max backlog via Little\'s Law (L = λ × target).',
+    '<b>Email</b> — async throughput (not Erlang): FTE = volume × handle-time ÷ productive seconds (async work carries no phone-style occupancy ceiling; shrinkage is the only haircut). Backlog projected day-by-day; SLA → max backlog via Little\'s Law (L = λ × target).',
     '<b>Deliberately included</b> (things basic models miss): shrinkage, occupancy ceiling, chat concurrency, staffing to the intraday PEAK not the daily average, launch-surge multiplier, and ramp + attrition hiring lead time.',
-    '<b>Not yet modeled</b> (add when data lands): agent-efficiency/productivity, reason-for-contact-level AHT, abandonment (Erlang A), repeat-contact feedback loop, blended/skills-based routing. Intraday curve calibrated on real telehealth launch data (Central Time) — re-derive per client if patterns differ.'
+    '<b>Not yet modeled</b> (add when data lands): agent-efficiency/productivity, reason-for-contact-level AHT, abandonment (Erlang A), repeat-contact feedback loop, blended/skills-based routing. Intraday curve calibrated on real telehealth launch data (Central Time, measured once — re-derive per client; not auto-refreshed).'
   ].map(function(s){return '• '+s;}).join('<br><br>');
 
   document.getElementById('foot').textContent='Intraday curve calibrated on real telehealth launch data (Central Time). Erlang C reference-verified. Defaults are industry benchmarks — replace with your own AHT / contact-rate / efficiency data as it lands. All figures are planning estimates.';
