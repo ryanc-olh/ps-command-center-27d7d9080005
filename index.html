@@ -117,7 +117,8 @@
 
   <!-- ===== LIVE OPS ===== -->
     <div class="panel active" id="p0">
-    <div class="lbl" style="margin-top:0;">Executive summary — Patient Support, week of Jul 6–12 2026 <span style="font-weight:400;color:var(--mut);font-size:12px;">· de-identified aggregates · snapshot for C-suite &amp; BPO review</span></div>
+    <div class="lbl" style="margin-top:0;">Executive summary — Patient Support <span style="font-weight:400;color:var(--mut);font-size:12px;">· de-identified aggregates · C-suite &amp; BPO review</span></div>
+    <div class="winbig">📅 Week of <span class="w">Jul 6–12</span> <span style="font-weight:400;font-size:12px;color:var(--mut);">(voice service level = last 7 days, Jul 5–12)</span></div>
     <div class="grid kpis">
       <div class="card"><div class="k">Patient contacts (wk)</div><div class="v" id="exTotal">—</div><div class="n" id="exTotalN">voice + email</div></div>
       <div class="card"><div class="k">Voice service level</div><div class="v" id="exSL">—</div><div class="n">answered ≤30s · target 80%</div></div>
@@ -149,7 +150,8 @@
 
   <!-- ===== SLAs ===== -->
 <div class="panel" id="p1">
-    <div class="lbl" style="margin-top:0;">Voice service level by client — last 7 days (Jul 5–12)</div>
+    <div class="lbl" style="margin-top:0;">Voice service level by client</div>
+    <div class="winbig">📅 Last 7 days: <span class="w">Jul 5–12</span></div>
     <table id="clientTable">
       <thead><tr><th onclick="sortT('clientTable',0,true)">Client</th><th onclick="sortT('clientTable',1)">Offered</th><th onclick="sortT('clientTable',2)">Answered</th><th onclick="sortT('clientTable',3)">SL ≤30s</th><th onclick="sortT('clientTable',4)">Abandon</th><th>Status</th></tr></thead>
       <tbody></tbody>
@@ -160,6 +162,7 @@
   <!-- ===== CAPACITY ===== -->
   <div class="panel" id="p2">
     <div class="lbl" style="margin-top:0;">Capacity vs Demand &amp; Surge model — embedded</div>
+    <div class="winbig">🧮 Interactive planning model <span style="font-weight:400;font-size:12px;color:var(--mut);">— you enter demand; not a dated snapshot</span></div>
     <div class="note">The full staffing model (Erlang C voice · concurrency chat · throughput/backlog email · intraday surge · sensitivity · hiring). Enter demand → required FTEs by channel. Per-BPO AHT from the By-BPO tab feeds the efficiency assumptions.</div>
     <iframe src="ps-capacity-model.html" title="Capacity model"></iframe>
   </div>
@@ -214,6 +217,7 @@
   <!-- ===== CLIENT DASHBOARDS ===== -->
   <div class="panel" id="p4">
     <div class="lbl" style="margin-top:0;">Client-facing performance dashboards — live</div>
+    <div class="winbig">📅 Live · auto-refreshed every 4 hours <span style="font-weight:400;font-size:12px;color:var(--mut);">— each dashboard = trailing complete week + today so far</span></div>
     <div class="picker" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 12px;padding:11px 14px;background:var(--panel);border:1px solid var(--bd);border-radius:10px;">
       <span style="font-size:13px;color:var(--sec);">Client</span>
       <div id="cdBtns" style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -237,13 +241,15 @@
   <!-- ===== REASONS FOR CONTACT ===== -->
   <div class="panel" id="p5">
     <div class="lbl" style="margin-top:0;">Reasons for Contact (RFC) — why patients contact PS</div>
+    <div class="winbig">📅 Phone: week of Jun 14 (one-time snapshot) · Email: sampled weekly <span style="font-weight:400;font-size:12px;color:var(--mut);">— pick the channel inside</span></div>
     <div class="note" style="margin:0 0 8px;">Ranked contact drivers, owning queues, and deflection potential. Phone (Code Yellow, wk Jun 14) + Email (weekly sampled, body-classified, all clients) — toggle inside. Internal planning view — not client-facing.</div>
     <iframe id="rfcFrame" title="Reasons for Contact"></iframe>
   </div>
 
   <!-- ===== INTRADAY BY HOUR ===== -->
   <div class="panel" id="p6">
-    <div class="lbl" style="margin-top:0;">Volume heatmap — day of week × hour <span style="font-weight:400;color:var(--mut);" id="hmWin">· previous week (Jul 6–12)</span></div>
+    <div class="lbl" style="margin-top:0;">Volume heatmap — day of week × hour</div>
+    <div class="winbig">📅 Previous complete week: <span class="w" id="hmWin">Jul 6–12</span></div>
     <details class="method">
       <summary>How this is measured</summary>
       <ul>
@@ -472,7 +478,7 @@ function renderHM(){
   var bpoDis=(hm.metric!=='handled');
   document.querySelectorAll('#p6 .hbtn[data-g="bpo"]').forEach(function(b){ b.style.opacity=bpoDis?'0.35':''; b.style.pointerEvents=bpoDis?'none':''; });
   document.getElementById('hmBpoNote').textContent = bpoDis ? 'BPO filter applies to Handled only (Inbound & Gap are total demand)' : '';
-  if(HM_CUBE.window) document.getElementById('hmWin').textContent='· previous week ('+HM_CUBE.window+')';
+  if(HM_CUBE.window) document.getElementById('hmWin').textContent=HM_CUBE.window;
 }
 function setHM(g,val){
   hm[g]=val;
@@ -638,7 +644,7 @@ function renderExec(){
   var best={v:0}; for(var d=0;d<7;d++)for(var hr=0;hr<24;hr++){var s=0;CL.forEach(function(c){s+=HM_CUBE.cube.voice.inbound[c][d][hr];});if(s>best.v)best={v:s,d:d,hr:hr};}
   document.getElementById('exPeak').textContent=HM_CUBE.days[best.d]+', '+((best.hr%12)||12)+(best.hr<12?'a':'p')+' — '+best.v.toLocaleString()+' calls';
 }
-renderExec(); renderClients(); renderByBpo(); renderByClient(); applyFilter();
+renderExec(); renderClients(); renderByBpo(); renderByClient(); showBpoView('trend'); applyFilter();
 document.getElementById('foot').textContent='Prototype v0 — real snapshot data (voice by client last 7d; agent efficiency by BPO Jul MTD; Embody email/chat from Desk). Live email feed proven via Zoho Desk API. Not auto-refreshing, not gated — v1 adds a backend poller + login. All figures planning/ops estimates; de-identified.';
 </script>
 </body>
