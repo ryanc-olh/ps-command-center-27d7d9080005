@@ -606,6 +606,16 @@ function buildCapMethod(agents,covgap){
     return '<tr><td>'+r[0]+'</td><td class="v">'+r[1]+'</td><td><span class="capm-tag '+(r[2]==='live'?'live':'assume')+'">'+(r[2]==='live'?'live data':'assumption')+'</span> '+r[3]+'</td></tr>';
   }).join('')+'</table>';
   var gapBlk = covgap ? '<div class="capm-t" style="margin-top:2px;">⚠️ Coverage gap</div><div style="margin-bottom:12px;color:var(--sec);">= <b>needed − deployed</b> per hour. <span style="color:var(--red);font-weight:700;">Red</span> = short, <span style="color:var(--grn);font-weight:700;">green</span> = covered/surplus; <b>Net</b> column = agent-hours short(+)/surplus(−) that day. <b>Phone deployed</b> = distinct agents who took ≥1 built call that hour (headcount incl. part-hours &amp; rotation) → read phone gap as coverage <b>alignment</b> (enough heads, wrong hours), not exact FTE over/under. <b>Email deployed</b> = distinct repliers that hour.</div>' : '';
+  // "How noise is defined" — only relevant to covgap (Other-email discount)
+  var noiseDef='';
+  if(covgap){
+    var k=OTHER_NOISE.kinds||{}, cats=[['patient','Patient — real inbound needing an agent',true],['system','System / service notifications',false],['vendor','Vendor / partner operational or billing',false],['spam','Spam',false],['marketing','Marketing / newsletters / promotions',false],['autoreply','Out-of-office / auto-replies / receipts',false],['internal','Internal / staff mail',false],['other','Other non-patient',false]];
+    var kr=cats.filter(function(c){return k[c[0]]!=null;}).map(function(c){ var pctc=OTHER_NOISE.n?Math.round(k[c[0]]/OTHER_NOISE.n*100):0; return '<tr><td>'+(c[2]?'✅ <b>':'🔕 ')+c[1]+(c[2]?'</b>':'')+'</td><td class="v">'+(k[c[0]]||0)+'</td><td>'+pctc+'%</td></tr>'; }).join('');
+    noiseDef='<div class="capm-t" style="margin-top:6px;">🔎 How “noise” is defined (Other-bucket email)</div>'+
+      '<div style="color:var(--sec);margin-bottom:7px;"><b>Kept = real patient</b>: a genuine inbound message from a patient/member — or someone acting for them (a caregiver, or their pharmacy/provider about a specific patient) — that a support agent must read and act on. <b>Discounted = noise</b>: anything that is <i>not</i> real patient support — marketing/newsletters, vendor/partner operational or billing mail, system/service notifications, delivery/read receipts needing no reply, out-of-office &amp; auto-replies, surveys, spam, internal/staff mail, no-reply/do-not-reply senders. Classified by <b>reading each email’s subject + sender + body</b> (two independent AI passes + a tiebreak on disagreements); when genuinely unsure we lean <b>patient</b>, so the noise share is conservative (if anything, understated).</div>'+
+      '<table class="capm-in" style="max-width:460px;"><tr><th>Category — measured on n='+OTHER_NOISE.n+' random Other emails</th><th>Count</th><th>Share</th></tr>'+kr+
+      '<tr style="border-top:2px solid var(--bds);font-weight:700;"><td>Real-patient rate applied to Other email demand</td><td class="v">'+OTHER_NOISE.pct+'%</td><td>±'+(OTHER_NOISE.ci[1]!=null?Math.round((OTHER_NOISE.ci[1]-OTHER_NOISE.ci[0])/2*10)/10:'—')+'pp</td></tr></table>';
+  }
   return '<div class="capm">'+
     '<div class="capm-h">🧮 How this is calculated</div>'+
     '<div class="capm-sub">Scope: <b>'+who+'</b> · week of <b>'+HM_CUBE.window+'</b> · edit any assumption in the “Assumes” bar above and every cell recomputes live.</div>'+
@@ -613,7 +623,7 @@ function buildCapMethod(agents,covgap){
       '<div><div class="capm-t">📞 Phone — Erlang C (real-time queue)</div><div class="capm-f">A (Erlangs) = calls offered/hr × AHT(min) ÷ 60<br>N = smallest agents where P(answer ≤ '+CAP.asa+'s) ≥ '+CAP.sl+'%<br>scheduled = ⌈ N ÷ (1 − shrinkage) ⌉</div><div class="capm-eg">'+egP+'</div></div>'+
       '<div><div class="capm-t">✉️ Email — throughput (async, deferrable)</div><div class="capm-f">work = emails received in trailing '+CAP.slaHrs+'h × replies/ticket<br>agents = ⌈ work ÷ '+CAP.coeff+' repl/agent-hr ÷ '+CAP.slaHrs+'h ⌉<br><span style="color:#9a6a00;">no shrinkage — coeff already reflects real deployed agents</span></div><div class="capm-eg">'+egE+'</div></div>'+
     '</div>'+
-    tbl + gapBlk +
+    tbl + gapBlk + noiseDef +
     '<div class="capm-warn"><b>Known gaps &amp; assumptions — read before staffing to these:</b><ul>'+
       '<li><b>Email throughput ('+CAP.coeff+') is measured but static</b> — a blended-agent effective rate (agents split phone+email), taken over 4 wks; not auto-refreshed. Re-measure periodically.</li>'+
       '<li><b>Email is a ρ=1 “floor”</b> — output just equals arrivals over the SLA window, with <b>no variance buffer</b>; real bursts will breach SLA. Lower the coeff for headroom.</li>'+
