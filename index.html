@@ -152,10 +152,10 @@
         <ul>
           <li><span class="dot live"></span><b>LIVE — measured, auto-refreshed daily:</b> voice answered / ASA / AHT / abandon / service level; email replies / first-response / one-touch / replies-per-ticket; intraday volumes; deployed agents; phone reasons + sentiment. <span class="mut">("Live" = re-measured on each daily rebuild — a daily batch current to the prior day, not a real-time stream.)</span></li>
           <li><span class="dot daily"></span><b>MEASURED · STATIC — measured once, not auto-refreshed</b> (a script is re-run to update): the email throughput coefficient (<b>2.1</b> replies per active agent-hour) and the per-client email real-patient (noise) rates <span class="mut">(measured over Jun 22–Jul 12 2026, ~250 emails/client; e.g. Embody 98.8% real-patient, Medvi 85.1%, Other 45.2%)</span>.</li>
-          <li><span class="dot off"></span><b>YOUR ASSUMPTION — editable inputs</b> (Capacity tab &amp; the Intraday "Agents needed" bar): Erlang target service-level % &amp; answer-seconds, email SLA-window hours, shrinkage %.</li>
+          <li><span class="dot off"></span><b>YOUR ASSUMPTION — editable inputs</b> (the Intraday "Agents needed" bar): Erlang target service-level % &amp; answer-seconds, email SLA-window hours, shrinkage %.</li>
         </ul>
       </li>
-      <li><b>Models:</b> Voice staffing uses <b>Erlang C</b> — the contact-center industry-standard queueing model for staffing to a service-level target (full formula + rationale on the <b>Intraday</b> tab and the <b>Capacity</b> tab). Email staffing uses an asynchronous throughput / labor-balance floor. Call sentiment is AWS Contact Lens. Email noise is AI-classified (two passes + tiebreak).</li>
+      <li><b>Models:</b> Voice staffing uses <b>Erlang C</b> — the contact-center industry-standard queueing model for staffing to a service-level target (full formula + rationale on the <b>Intraday</b> tab, under "Agents needed"). Email staffing uses an asynchronous throughput / labor-balance floor. Call sentiment is AWS Contact Lens. Email noise is AI-classified (two passes + tiebreak).</li>
       <li><b>Date windows</b> (each tab also shows its own 📅 window): Live Ops = <b>latest complete week</b> for contacts / email / sentiment / BPO, but <b>voice service level, abandon &amp; clients-below-SLA = trailing 7 days</b>; By-BPO scorecard &amp; By-Client = latest complete week; voice SLA tab = <b>trailing 7 days</b>; Week-over-week = <b>6 complete weeks + current partial (*)</b>; Intraday &amp; capacity = <b>previous complete week</b>; phone reasons = latest complete week; email reasons = previous complete week (~100-ticket sample/client).</li>
       <li><b>Time zones:</b> refresh times are Mountain; voice &amp; phone volumes are reported in Central; email in its stored time zone.</li>
       <li><b>Email is patient-only:</b> every email volume/demand figure is scaled by each client's measured real-patient rate to strip automated/marketing/vendor/system noise; reply &amp; response-time metrics are not scaled, and voice is not adjusted.</li>
@@ -167,10 +167,9 @@
     <button class="tab" onclick="showTab(1)">By BPO</button>
     <button class="tab" onclick="showTab(2)">By Client</button>
     <button class="tab" onclick="showTab(3)">SLAs — all clients</button>
-    <button class="tab" onclick="showTab(4)">Capacity vs Demand</button>
-    <button class="tab" onclick="showTab(5)">Client Dashboards</button>
-    <button class="tab" onclick="showTab(6)">Reasons for Contact</button>
-    <button class="tab" onclick="showTab(7)">Intraday by Hour</button>
+    <button class="tab" onclick="showTab(4)">Client Dashboards</button>
+    <button class="tab" onclick="showTab(5)">Reasons for Contact</button>
+    <button class="tab" onclick="showTab(6)">Intraday by Hour</button>
   </div>
 
   <!-- ===== LIVE OPS ===== -->
@@ -287,14 +286,6 @@
       <tbody></tbody>
     </table>
     <div class="note">Target 80% answered ≤30s · abandon &lt;5%. All Connect voice queues (incl. OpenLoop internal lines). <span class="info" data-pop="slatab" onclick="showPop(this)">i</span> for method &amp; definitions.</div>
-  </div>
-
-  <!-- ===== CAPACITY ===== -->
-  <div class="panel" id="p2">
-    <div class="lbl" style="margin-top:0;">Capacity vs Demand &amp; Surge model — embedded</div>
-    <div class="winbig">🧮 Interactive planning model <span style="font-weight:400;font-size:12px;color:var(--mut);">— you enter demand; not a dated snapshot</span></div>
-    <div class="note">The full staffing model (Erlang C voice · concurrency chat · throughput/backlog email · intraday surge · sensitivity · hiring). Enter demand → required FTEs by channel. Per-BPO AHT from the By-BPO tab feeds the efficiency assumptions.</div>
-    <iframe src="ps-capacity-model.html" title="Capacity model"></iframe>
   </div>
 
   <!-- ===== CLIENT DASHBOARDS ===== -->
@@ -518,8 +509,8 @@ function applyFilter(){
 function showTab(i){
   document.querySelectorAll('.tabs .tab').forEach(function(t,j){t.classList.toggle('active',j===i);});
   document.querySelectorAll('.panel').forEach(function(p,j){p.classList.toggle('active',j===i);});
-  if(i===6){ var rf=document.getElementById('rfcFrame'); if(rf) rf.src='ps-rfc.html?cb='+Date.now(); }
-  if(i===7){ renderHM(); }
+  if(i===5){ var rf=document.getElementById('rfcFrame'); if(rf) rf.src='ps-rfc.html?cb='+Date.now(); }
+  if(i===6){ renderHM(); }
 }
 // ---- progressive-disclosure info popovers: glanceable by default, detail on click ----
 var POP={
