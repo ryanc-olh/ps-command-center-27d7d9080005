@@ -74,6 +74,9 @@
   .exsum{cursor:pointer;font-weight:600;font-size:13px;color:var(--sec);padding:4px 0;}
   .sprow{display:flex;align-items:center;gap:10px;margin-bottom:4px;font-size:13px;} .splab{width:150px;color:var(--sec);}
   .spk{font-family:ui-monospace,Menlo,monospace;letter-spacing:2px;font-size:15px;color:var(--fg);}
+  .lonote{color:var(--mut);font-size:12.5px;margin:2px 0 4px;}
+  .lostat{font-size:12px;color:#555;margin:6px 0 0;line-height:1.8;} .lostat b{color:#111;}
+  .logap{font-size:13.5px;padding:5px 0;} .logap .gi{display:inline-block;width:22px;}
   .note{font-size:12px;color:var(--mut);margin-top:10px;}
   iframe{width:100%;height:1400px;border:1px solid var(--bd);border-radius:10px;margin-top:8px;}
   .foot{font-size:11px;color:var(--mut);margin-top:26px;border-top:1px solid var(--bd);padding-top:10px;}
@@ -198,29 +201,24 @@
 
   <!-- ===== LIVE OPS ===== -->
     <div class="panel active" id="p0">
-    <div class="lbl" style="margin-top:0;">Patient Support — Live Ops <span class="info" data-pop="legend" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· internal · de-identified aggregates</span></div>
-    <div id="exRibbon" class="frib"></div>
-    <div id="exContacts" class="note" style="margin:0 0 8px;"></div>
-    <div class="grid kpis" id="exGlance"></div>
+    <div class="lbl" style="margin-top:0;">Patient Support — Live Ops <span class="info" data-pop="legend" onclick="showPop(this)">i</span></div>
+    <div id="loSub" class="lonote"></div>
 
-    <div class="lbl">⚠️ Exceptions — worst first <span class="info" data-pop="exc" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· ranked by patient impact = miss × volume × trend</span></div>
-    <div id="exList"></div>
+    <div class="lbl">🏢 BPO volume — last 3 days</div>
+    <div id="loBpo" style="text-align:center;overflow-x:auto;"></div>
+    <div id="loBpoStat" class="lostat"></div>
 
-    <div class="lbl">Clients — worst first <span class="info" data-pop="breach" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· voice + email, only off-target shown</span></div>
-    <table id="exBreachTable">
-      <thead><tr><th>Client</th><th>Offered</th><th>Voice SL ≤30s</th><th>Abandon</th><th>Email ≤4hr</th><th>Sentiment</th></tr></thead>
-      <tbody></tbody>
-    </table>
-    <div id="exClientHealthy" class="note" style="margin:6px 0 0;"></div>
+    <div class="lbl">🏥 Top clients by volume — last 3 days</div>
+    <div id="loCli" style="overflow-x:auto;"></div>
+    <div id="loCliStat" class="lostat"></div>
 
-    <div class="lbl">BPO scorecard — worst first <span class="info" data-pop="exbpo" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· latest complete week</span></div>
-    <table id="exBpoTable">
-      <thead><tr><th>BPO</th><th>Answered</th><th>ASA</th><th>AHT</th><th>Email replies</th><th>≤4hr</th><th>Sentiment</th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <div style="display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;margin-top:20px;">
+      <div style="flex:1;min-width:300px;"><div class="lbl" style="margin-top:0;">📞 Why patients contact us <span class="info" data-pop="reasons" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· phone, this week</span></div><div id="loRfc"></div></div>
+      <div style="text-align:center;"><div class="lbl" style="margin-top:0;">Call sentiment</div><div id="loSent"></div><div class="mut" style="font-size:11px;">% of calls ending negative</div></div>
+    </div>
 
-    <details id="exTrends" style="margin-top:14px;"><summary class="exsum">▸ 7-week trends</summary><div id="exSpark" style="margin-top:8px;"></div></details>
-    <details id="exMore"><summary class="exsum">▸ Load &amp; demand drivers</summary><div id="exDrivers" style="margin-top:8px;"></div></details>
+    <div class="lbl">⏰ Biggest gap hours <span class="info" data-pop="gaps" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· volume that outran handling · prev complete week</span></div>
+    <div id="loGap"></div>
   </div>
 
   <!-- ===== BY BPO ===== -->
@@ -1159,105 +1157,57 @@ function showCliTab(v){   // By Client tab: Week-over-week (default) ↔ Day-ove
   if(v==='dod') renderDod();
 }
 function renderExec(){
+  var dv=BPO_WOW.dod, de=EMAIL_WOW.dod;
+  if(!dv||!de||!document.getElementById('loBpo')) return;
+  var days=dv.days;
   function ageH(iso){ if(!iso) return null; var t=new Date(String(iso).replace(' ','T')); return isNaN(t)?null:(Date.now()-t)/36e5; }
-  function fmtWhen(iso){ if(!iso) return '—'; var t=new Date(String(iso).replace(' ','T')); if(isNaN(t)) return '—'; var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],h=t.getHours(),ap=h<12?'a':'p',h12=(h%12)||12; return dn[t.getDay()]+' '+mo[t.getMonth()]+' '+t.getDate()+', '+h12+(t.getMinutes()<10?':0':':')+t.getMinutes()+ap; }
-  var vAge=ageH(DATA_ASOF.voice), eAge=ageH(DATA_ASOF.email), vstale=(vAge!=null&&vAge>40);
-  var sflag=vstale?' <span class="stflag">❄STALE</span>':'', vcl=vstale?' stale':'';
-  var vShort=(function(){var t=new Date(String(DATA_ASOF.voice||'').replace(' ','T'));if(isNaN(t))return 'the last complete voice day';var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];return dn[t.getDay()]+' '+(t.getMonth()+1)+'/'+t.getDate();})();
-  // ---- freshness ribbon ----
-  function pill(lab,iso,h){ var st=h==null?'bad':(h<=26?'ok':(h<=40?'warn':'bad')); var age=h==null?'no data':(h<26?'current':(Math.round(h/24*10)/10)+'d behind'); return '<span class="fpill '+st+'"><span class="fdot"></span>'+lab+' · '+age+' <span class="fwhen">('+fmtWhen(iso)+')</span></span>'; }
-  document.getElementById('exRibbon').innerHTML=pill('📞 Voice',DATA_ASOF.voice,vAge)+pill('✉️ Email',DATA_ASOF.email,eAge)+'<span class="fpill '+(vstale?'bad':'ok')+'"><span class="fdot"></span>😊 Sentiment · rides voice feed</span>';
-  // ---- indices + trend/lookup helpers ----
-  var vwk=wowLastComplete(), ewk=(function(){var w=EMAIL_WOW.weeks||[];for(var i=w.length-1;i>=0;i--)if(w[i].complete)return i;return w.length-1;})(), swk=phIdx();
-  function arrPP(cur,prev,hw){ if(cur==null||prev==null) return ''; var d=Math.round((cur-prev)*10)/10; if(d===0) return ''; var bad=hw?(d>0):(d<0); return ' <span class="wdelta '+(bad?'red':'grn')+'">'+(d>0?'▲':'▼')+Math.abs(d)+'pp</span>'; }
-  function emailFRwk(slug,wk){ var m=EMAIL_WOW.email[slug]; if(!m) return null; var r=0,fw=0; Object.keys(m).forEach(function(b){var s=m[b];if(s&&s[wk]&&s[wk].frp!=null){r+=s[wk].rep;fw+=s[wk].rep*s[wk].frp;}}); return r?Math.round(fw/r):null; }
-  function emailRepCli(slug){ var m=BPOS_EMAIL_BY_CLIENT[slug]; return m?m.reduce(function(s,x){return s+x.rep;},0):0; }
-  function emailFRcli(slug){ var m=BPOS_EMAIL_BY_CLIENT[slug]; if(!m) return null; var r=0,fw=0; m.forEach(function(x){if(x.frp!=null){r+=x.rep;fw+=x.rep*x.frp;}}); return r?Math.round(fw/r):null; }
-  function abWk(slug,wk){ var a=(BPO_WOW.abandon||{})[slug]; return (a&&a[wk])?a[wk].ab:null; }
-  function sentWk(slug,wk){ var a=(PHONE_RFC.client||{})[slug]; if(!a||!a.sentiment) return null; var sc=a.sentiment.scored[wk]||0; return sc?Math.round((a.sentiment.neg[wk]||0)/sc*100):null; }
-  var mc=mergedClients();
-  function slugOf(name){ var s=name.toLowerCase(); return BPOS_EMAIL_BY_CLIENT[s]?s:null; }
-  // ---- patient contacts sub-line ----
-  var CL=HM_CLIENTS; function gtot(g){return g.reduce(function(s,x){return s+x.reduce(function(a,b){return a+b;},0);},0);}
-  var vi=0,ei=0; CL.forEach(function(c){vi+=gtot(HM_CUBE.cube.voice.inbound[c]);ei+=gtot(HM_CUBE.cube.email.inbound[c])*emailRate(c);}); ei=Math.round(ei);
-  document.getElementById('exContacts').innerHTML='<b>'+(vi+ei).toLocaleString()+'</b> patient contacts (prev complete wk) · voice '+vi.toLocaleString()+(vstale?' ❄':'')+' · patient email '+ei.toLocaleString();
-  // ---- glance strip ----
-  var o=0,slw=0,abw=0; CLIENTS.forEach(function(c){o+=c.o;slw+=c.o*c.sl;abw+=c.o*c.ab;});
-  var slv=o?Math.round(slw/o):0, abv=o?Math.round(abw/o):0;
-  var frtAll=emailFRcli('all'), negAll=phNegPct('all');
-  var vBreach=mc.filter(function(c){return c.sl<80||c.ab>5;}).length;
-  var eBreach=mc.filter(function(c){var s=slugOf(c.c);var fr=s?emailFRcli(s):null;return fr!=null&&fr<70;}).length;
-  function rag(v,g,a){ return v==null?'':(v>=g?'grn':(v>=a?'amb':'red')); }
-  function tile(k,v,cl,sub){ return '<div class="card"><div class="k">'+k+'</div><div class="v '+cl+'">'+v+'</div><div class="n">'+sub+'</div></div>'; }
-  document.getElementById('exGlance').innerHTML=
-    tile('🔥 On fire', vBreach+' + '+eBreach, (vBreach+eBreach>0?'red':'grn'), 'voice'+(vstale?' ❄':'')+' + email client breaches')+
-    tile('Voice service level', slv+'%'+sflag, rag(slv,80,65), 'target 80% · '+(vstale?'through '+vShort:'trailing 7d'))+
-    tile('Voice abandon', abv+'%'+sflag, (abv<5?'grn':abv<10?'amb':'red'), 'target &lt;5%'+arrPP(abWk('all',vwk),abWk('all',vwk-1),true))+
-    tile('Email first response', (frtAll!=null?frtAll+'%':'—'), rag(frtAll,70,50), '≤4hr · tgt 70%'+arrPP(emailFRwk('all',ewk),emailFRwk('all',ewk-1),false))+
-    tile('Call sentiment', (negAll!=null?negAll+'%':'—')+sflag, negCls(negAll), '% ending negative'+arrPP(negAll,sentWk('all',swk-1),true));
-  // ---- exceptions (volume-weighted) ----
-  var exc=[];
-  if(vstale){ exc.push({sev:9e15,html:'<div class="exr pin"><span class="exdot bad"></span><div class="exmain"><b>📞 Voice feed frozen</b> — last call '+fmtWhen(DATA_ASOF.voice)+' ('+(Math.round(vAge/24*10)/10)+'d ago). Voice &amp; sentiment numbers below are as-of then, not current.</div></div>'}); }
-  mc.forEach(function(c){
-    var slug=slugOf(c.c), vol=c.o||0;
-    if(c.sl<80||c.ab>5){
-      var slMiss=c.sl<80?(80-c.sl):0, abMiss=c.ab>5?(c.ab-5):0;
-      var tr=slug?arrPP(abWk(slug,vwk),abWk(slug,vwk-1),true):''; var tm=/red/.test(tr)?1.3:(/grn/.test(tr)?0.8:1);
-      var sev=(slMiss+abMiss*3)*Math.max(vol,1)*tm;
-      var parts=[]; if(c.sl<80)parts.push('voice SL <b>'+c.sl+'%</b> (tgt 80)'); if(c.ab>5)parts.push('abandon <b>'+c.ab+'%</b> (tgt &lt;5)'+tr);
-      exc.push({sev:sev,html:'<div class="exr"><span class="exdot '+(c.sl<65||c.ab>=10?'bad':'warn')+'"></span><div class="exmain"><b>'+c.c+'</b> — '+parts.join(' · ')+(vstale?' <span class="stflag">❄as-of '+vShort+'</span>':'')+'</div><div class="exvol">'+vol.toLocaleString()+' calls</div></div>'});
-    }
-    if(slug){ var fr=emailFRcli(slug); if(fr!=null&&fr<70){ var rep=emailRepCli(slug); var etr=arrPP(emailFRwk(slug,ewk),emailFRwk(slug,ewk-1),false); var etm=/red/.test(etr)?1.3:(/grn/.test(etr)?0.8:1); exc.push({sev:(70-fr)*Math.max(rep,1)*etm,html:'<div class="exr"><span class="exdot '+(fr<50?'bad':'warn')+'"></span><div class="exmain"><b>'+c.c+'</b> — email ≤4hr <b>'+fr+'%</b> (tgt 70)'+etr+'</div><div class="exvol">'+rep.toLocaleString()+' replies</div></div>'}); } }
-  });
-  exc.sort(function(a,b){return b.sev-a.sev;});
-  var movers=[];
-  mc.forEach(function(c){ var slug=slugOf(c.c); if(!slug) return; var cur=abWk(slug,vwk),prev=abWk(slug,vwk-1);
-    if(cur!=null&&prev!=null&&c.ab<=5&&(cur-prev)>=2){ movers.push({d:cur-prev,html:'<div class="exmover"><b>'+c.c+'</b> abandon '+cur+'% — <span class="wdelta red">▲'+(Math.round((cur-prev)*10)/10)+'pp</span> WoW, still under 5% (watch)</div>'}); }
-  });
-  movers.sort(function(a,b){return b.d-a.d;});
-  var okC=mc.filter(function(c){var s=slugOf(c.c);var fr=s?emailFRcli(s):null; return c.sl>=80&&c.ab<=5&&(fr==null||fr>=70);}).length;
-  var listHtml=exc.map(function(x){return x.html;}).join('');
-  if(movers.length) listHtml+='<div class="exmoverhdr">EARLY WARNING · moving adversely, not yet breaching</div>'+movers.slice(0,4).map(function(m){return m.html;}).join('');
-  listHtml+='<div class="exhealthy">✓ '+okC+' of '+mc.length+' clients on target</div>';
-  document.getElementById('exList').innerHTML=listHtml;
-  // ---- clients — worst first (off-target only) ----
-  function inTrouble(c){ var s=slugOf(c.c),fr=s?emailFRcli(s):null; return c.sl<80||c.ab>5||(fr!=null&&fr<70); }
-  var showC=mc.filter(inTrouble).sort(function(a,b){return a.sl-b.sl;});
-  document.querySelector('#exBreachTable tbody').innerHTML=showC.map(function(c){
-    var s=slugOf(c.c), fr=s?emailFRcli(s):null, neg=s?phNegPct(s):null;
-    return '<tr><td>'+c.c+'</td><td>'+c.o.toLocaleString()+'</td>'+
-      '<td class="'+(vstale?'stale':cls(c.sl))+'">'+c.sl+'%'+(vstale?' ❄':'')+'</td>'+
-      '<td class="'+(vstale?'stale':(c.ab<5?'grn':c.ab<10?'amb':'red'))+'">'+c.ab+'%'+arrPP(s?abWk(s,vwk):null,s?abWk(s,vwk-1):null,true)+'</td>'+
-      '<td class="'+(fr==null?'':frpCls(fr))+'">'+(fr==null?'—':fr+'%'+arrPP(s?emailFRwk(s,ewk):null,s?emailFRwk(s,ewk-1):null,false))+'</td>'+
-      '<td class="'+(neg==null?'':negCls(neg))+(vstale?' stale':'')+'">'+(neg==null?'—':neg+'%')+'</td></tr>';
-  }).join('')||'<tr><td colspan="6" class="mut">All clients on target.</td></tr>';
-  document.getElementById('exClientHealthy').innerHTML=(mc.length-showC.length)+' other client(s) on target (collapsed).';
-  // ---- BPO scorecard — worst first ----
-  var _ev=voiceBuiltAt(vwk), bpo={};
-  WOW_B.forEach(function(b){ if(_ev[b]){bpo[b]={an:_ev[b].an,asa:_ev[b].asa,aht:_ev[b].aht};} });
-  BPOS_EMAIL_BY_CLIENT.all.forEach(function(x){(bpo[x.b]=bpo[x.b]||{}).rep=x.rep;bpo[x.b].frp=x.frp;});
-  function bpoNeg(b){ var s=((PHONE_RFC.bpo||{}).all||{})[b]; if(!s) return null; var sc=s.scored[swk]||0; return sc?Math.round((s.neg[swk]||0)/sc*100):null; }
-  var bpoRows=['RESPONSE','TTEC','NARITH','NEXTVAS'].filter(function(b){return bpo[b];});
-  bpoRows.sort(function(a,b){ var fa=bpo[a].frp==null?101:bpo[a].frp, fb=bpo[b].frp==null?101:bpo[b].frp; return fa-fb; });
-  document.querySelector('#exBpoTable tbody').innerHTML=bpoRows.map(function(b){ var x=bpo[b], neg=bpoNeg(b), worst=(x.frp!=null&&x.frp<50)||(neg!=null&&neg>=40);
-    return '<tr'+(worst?' class="exworst"':'')+'><td>'+b+'</td><td class="'+(vstale?'stale':'')+'">'+(x.an!=null?x.an.toLocaleString()+(vstale?' ❄':''):'—')+'</td><td class="'+(x.asa==null?'':asaCls(x.asa))+(vstale?' stale':'')+'">'+(x.asa==null?'—':asaFmt(x.asa))+'</td><td class="'+(vstale?'stale':'')+'">'+(x.aht==null?'—':x.aht+'m')+'</td><td>'+(x.rep!=null?x.rep.toLocaleString():'—')+'</td><td class="'+(x.frp==null?'':frpCls(x.frp))+'">'+(x.frp==null?'—':x.frp+'%')+'</td><td class="'+(neg==null?'':negCls(neg))+(vstale?' stale':'')+'">'+(neg==null?'—':neg+'%')+'</td></tr>';
-  }).join('');
-  // ---- 7-week trends (sparklines) ----
-  function spark(vals){ var b='▁▂▃▄▅▆▇█'.split(''); var v=vals.filter(function(x){return x!=null;}); if(!v.length) return '—'; var mn=Math.min.apply(null,v),mx=Math.max.apply(null,v),rng=(mx-mn)||1; return vals.map(function(x){return x==null?'·':b[Math.min(7,Math.floor((x-mn)/rng*7.999))];}).join(''); }
-  var wks=BPO_WOW.weeks||[];
-  var abS=(BPO_WOW.weeks||[]).map(function(w,i){return w.complete?((BPO_WOW.abandon.all||[])[i]||{}).ab:null;});
-  var frS=(EMAIL_WOW.weeks||[]).map(function(w,i){return w.complete?emailFRwk('all',i):null;});
-  var ngS=(PHONE_RFC.weeks||[]).map(function(w,i){return w.complete?sentWk('all',i):null;});
-  var cwks=wks.filter(function(w){return w.complete;});
-  document.getElementById('exSpark').innerHTML=
-    '<div class="sprow"><span class="splab">Voice abandon</span><span class="spk">'+spark(abS)+'</span> <span class="mut">'+abv+'% now'+(vstale?' ❄':'')+'</span></div>'+
-    '<div class="sprow"><span class="splab">Email ≤4hr</span><span class="spk">'+spark(frS)+'</span> <span class="mut">'+(frtAll!=null?frtAll+'% now':'')+'</span></div>'+
-    '<div class="sprow"><span class="splab">Call sentiment %neg</span><span class="spk">'+spark(ngS)+'</span> <span class="mut">'+(negAll!=null?negAll+'% now'+(vstale?' ❄':''):'')+'</span></div>'+
-    '<div class="mut" style="margin-top:5px;font-size:11.5px;">'+(cwks.length?cwks[0].label+' → '+cwks[cwks.length-1].label:'')+' · left→right = oldest→newest · complete weeks only'+(vstale?' · voice series frozen at '+vShort:'')+'</div>';
-  // ---- load & drivers (collapsed) ----
-  var best={v:0}; for(var d=0;d<7;d++)for(var hr=0;hr<24;hr++){var s=0;CL.forEach(function(c){s+=HM_CUBE.cube.voice.inbound[c][d][hr];});if(s>best.v)best={v:s,d:d,hr:hr};}
-  var pr=(PHONE_RFC.client||{}).all, reasons='—'; if(pr&&pr.topics){var pi=phIdx();var ts=Object.keys(pr.topics).map(function(t){return {n:t,c:(pr.topics[t]||[])[pi]||0};}).sort(function(a,b){return b.c-a.c;}).slice(0,5);reasons=ts.map(function(x){return x.n;}).join(' · ');}
-  document.getElementById('exDrivers').innerHTML='<div><b>Busiest voice hour:</b> '+HM_CUBE.days[best.d]+' '+((best.hr%12)||12)+(best.hr<12?'a':'p')+' — '+best.v.toLocaleString()+' calls'+sflag+'</div><div style="margin-top:5px;"><b>Top phone reasons:</b> '+reasons+'</div><div class="mut" style="margin-top:7px;font-size:11.5px;">Full staffing coverage-gap → <b>Intraday</b> tab · full reason breakdown → <b>Reasons for Contact</b> tab.</div>';
+  var vstale=(function(){var h=ageH(DATA_ASOF.voice);return h!=null&&h>40;})();
+  function hasV(i){ return WOW_B.some(function(b){var a=(dv.voice.all[b]||[])[i]; return a&&a.an>0;}); }
+  var vdays=[]; for(var i=0;i<days.length;i++) if(hasV(i)) vdays.push(i);
+  var L3=vdays.slice(-3); if(!L3.length) L3=[days.length-1];
+  var winLbl=days[L3[0]].label+' – '+days[L3[L3.length-1]].label;
+  document.getElementById('loSub').innerHTML='Last 3 days with data ('+winLbl+') · phone reasons &amp; sentiment = this week · '+(vstale?'<span class="red">⚠️ voice current only through '+days[L3[L3.length-1]].label+' — feed behind</span>':'all feeds current');
+  function cAsa(v){ return v==null?'':(v<=30?'grn':(v<=120?'amb':'red')); }
+  function cFr(v){ return v==null?'':(v>=70?'grn':(v>=50?'amb':'red')); }
+  function cAb(v){ return v==null?'':(v<5?'grn':(v<10?'amb':'red')); }
+  function asaF(v){ return v==null?'—':(v>=60?(Math.round(v/6)/10)+'m':v+'s'); }
+  function pctF(v){ return v==null?'—':v+'%'; }
+  var BN={RESPONSE:'Response',TTEC:'TTEC',NARITH:'NARITH',NEXTVAS:'NextVas'};
+  function bpo3(b){ var v=dv.voice.all[b]||[], e=(de.email.all||{})[b]||[], an=0,asw=0,ahw=0,rep=0,frw=0,frr=0;
+    L3.forEach(function(i){ var x=v[i]||{}; an+=(x.an||0); if(x.asa!=null)asw+=x.asa*(x.an||0); if(x.aht!=null)ahw+=x.aht*(x.an||0); var y=e[i]||{}; rep+=(y.rep||0); if(y.frp!=null){frw+=y.frp*(y.rep||0);frr+=(y.rep||0);} });
+    return {an:an,asa:(an?Math.round(asw/an):null),aht:(an?Math.round(ahw/an*10)/10:null),rep:rep,frp:(frr?Math.round(frw/frr):null)}; }
+  var BPO=WOW_B.map(function(b){return {n:BN[b]||b,d:bpo3(b)};}).filter(function(x){return x.d.an>50||x.d.rep>50;});
+  function cli3(cl){ var vc=dv.voiceCli[cl]||[], ab=dv.abandon[cl]||[], ec=(de.emailCli||{})[cl]||[], an=0,off=0,ans=0,rep=0,frw=0,frr=0;
+    L3.forEach(function(i){ an+=((vc[i]||{}).an||0); off+=((ab[i]||{}).off||0); ans+=((ab[i]||{}).ans||0); var y=ec[i]||{}; rep+=(y.rep||0); if(y.frp!=null){frw+=y.frp*(y.rep||0);frr+=(y.rep||0);} });
+    return {an:an,ab:(off?Math.round((off-ans)/off*100):null),rep:rep,frp:(frr?Math.round(frw/frr):null),vol:an+rep}; }
+  var CLI=BUILT_CL.map(function(c){return {n:CLIENT_NAMES[c]||c,d:cli3(c)};}).sort(function(a,b){return b.d.vol-a.d.vol;});
+  function svgV(items){ var mx=Math.max.apply(null,items.map(function(x){return x.d.an;}))||1, x0=8, bw=46, step=72, w=x0+items.length*step, bars='';
+    items.forEach(function(it,i){ var v=it.d.an, bh=Math.round(v/mx*112), x=x0+i*step;
+      bars+='<rect x="'+x+'" y="'+(138-bh)+'" width="'+bw+'" height="'+bh+'" rx="4" fill="#2563eb"></rect>';
+      bars+='<text x="'+(x+bw/2)+'" y="154" font-size="11" text-anchor="middle" fill="#666">'+it.n+'</text>';
+      bars+='<text x="'+(x+bw/2)+'" y="'+(132-bh)+'" font-size="11" font-weight="700" text-anchor="middle" fill="#111">'+v.toLocaleString()+'</text>'; });
+    return '<svg width="'+w+'" height="166">'+bars+'</svg>'; }
+  function svgH(items,color){ var mx=Math.max.apply(null,items.map(function(x){return x.v;}))||1, y=4, W=280, lx=112, rows='';
+    items.forEach(function(it){ var ww=Math.round(it.v/mx*W); rows+='<text x="0" y="'+(y+13)+'" font-size="12.5" fill="#333">'+it.n+'</text><rect x="'+lx+'" y="'+y+'" width="'+ww+'" height="17" rx="4" fill="'+color+'"></rect><text x="'+(lx+ww+6)+'" y="'+(y+13)+'" font-size="11.5" font-weight="700" fill="#111">'+it.lab+'</text>'; y+=25; });
+    return '<svg width="'+(lx+W+70)+'" height="'+(y+2)+'">'+rows+'</svg>'; }
+  function svgDonut(pct,color){ var r=34,c=2*Math.PI*r,off=c*(1-pct/100); return '<svg width="88" height="88" viewBox="0 0 90 90"><circle cx="45" cy="45" r="34" fill="none" stroke="#eef0f2" stroke-width="12"></circle><circle cx="45" cy="45" r="34" fill="none" stroke="'+color+'" stroke-width="12" stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 45 45)"></circle><text x="45" y="50" font-size="18" font-weight="700" text-anchor="middle" fill="#111">'+pct+'%</text></svg>'; }
+  document.getElementById('loBpo').innerHTML=svgV(BPO);
+  document.getElementById('loBpoStat').innerHTML=BPO.map(function(x){return '<b>'+x.n+'</b> ASA <span class="'+cAsa(x.d.asa)+'">'+asaF(x.d.asa)+'</span> · ≤4hr <span class="'+cFr(x.d.frp)+'">'+pctF(x.d.frp)+'</span>';}).join(' &nbsp;&nbsp; ');
+  document.getElementById('loCli').innerHTML=svgH(CLI.map(function(x){return {n:x.n,v:x.d.vol,lab:x.d.vol.toLocaleString()};}),'#7c3aed');
+  document.getElementById('loCliStat').innerHTML=CLI.map(function(x){return '<b>'+x.n+'</b> abandon <span class="'+cAb(x.d.ab)+'">'+pctF(x.d.ab)+'</span> · ≤4hr <span class="'+cFr(x.d.frp)+'">'+pctF(x.d.frp)+'</span>';}).join(' &nbsp;&nbsp; ');
+  var pr=(PHONE_RFC.client||{}).all, pw=phIdx(), answ=(pr&&pr.answered?(pr.answered[pw]||0):0)||1;
+  var tops=Object.keys((pr&&pr.topics)||{}).map(function(t){return {t:t,c:((pr.topics[t]||[])[pw])||0};}).sort(function(a,b){return b.c-a.c;}).slice(0,6);
+  document.getElementById('loRfc').innerHTML=svgH(tops.map(function(x){var p=Math.round(x.c/answ*100);return {n:x.t,v:p,lab:p+'%'};}),'#0d9488');
+  var neg=phNegPct('all'), ncol=(neg==null?'#8a8d91':(neg<25?'#1a7f37':(neg<40?'#9a6a00':'#b3261e')));
+  document.getElementById('loSent').innerHTML=svgDonut(neg==null?0:neg,ncol);
+  var C=HM_CUBE.cube, cdays=HM_CUBE.days;
+  function hnd(ch,cl,d,h){ var hh=C[ch].handled[cl]||{}, sm=0; for(var b in hh) sm+=hh[b][d][h]; return sm; }
+  function hlab(h){ function f(x){x%=24;return ((x%12)||12)+(x<12?'a':'p');} return f(h)+'–'+f(h+1); }
+  var vg=[],eg=[];
+  for(var d=0;d<7;d++)for(var h=0;h<24;h++){ var vo=0,vh=0,eo=0,eh=0; BUILT_CL.forEach(function(cl){ vo+=C.voice.inbound[cl][d][h]; vh+=hnd('voice',cl,d,h); eo+=C.email.inbound[cl][d][h]; eh+=hnd('email',cl,d,h); }); vg.push({g:Math.round(vo-vh),d:d,h:h}); eg.push({g:Math.round(eo-eh),d:d,h:h}); }
+  vg.sort(function(a,b){return b.g-a.g;}); eg.sort(function(a,b){return b.g-a.g;});
+  function gline(icon,lab,arr,unit){ return '<div class="logap"><span class="gi">'+icon+'</span><b>'+lab+':</b> '+arr.slice(0,2).map(function(g){return cdays[g.d]+' '+hlab(g.h)+' <span class="red">+'+g.g.toLocaleString()+'</span>';}).join(' &nbsp;·&nbsp; ')+' <span class="mut">'+unit+' outran handling</span></div>'; }
+  document.getElementById('loGap').innerHTML=gline('📞','Voice',vg,'calls')+gline('✉️','Email',eg,'emails');
 }
 var BUILD_STAMP=" \u00b7 last build Jul 20, 2026 (each tab shows its own data window)";   // injected by cc_refresh.py at rebuild time, e.g. " · data as of Jul 19 2026"
 renderExec(); renderClients(); renderByBpo(); renderByClient(); renderTrend(); renderDod(); renderPlanner(); applyFilter();
