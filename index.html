@@ -89,6 +89,8 @@
   .bpnum{font-size:11px;font-weight:700;margin-bottom:3px;} .bpnm{font-size:12.5px;font-weight:600;color:#444;margin-top:6px;}
   .bpchip{display:block;font-size:12px;font-weight:700;border-radius:6px;padding:4px 0;margin-top:5px;} .bpchip .cl{display:block;font-size:8.5px;color:#999;font-weight:600;letter-spacing:.03em;}
   .gbg{background:#e7f5ec;} .abg{background:#fdf6e3;} .rbg{background:#fdecea;} .mbg{background:#eef0f2;}
+  .lowin{font-weight:400;color:var(--mut);font-size:11px;}
+  .lotbl{width:100%;border-collapse:collapse;font-size:13px;} .lotbl th,.lotbl td{text-align:left;padding:7px 9px;border-bottom:1px solid #f0f0f0;} .lotbl th{font-size:10.5px;color:var(--mut);font-weight:600;} .lotbl td.v{font-weight:600;} .lotbl td.rag{font-weight:700;text-align:center;} .lomini{display:inline-block;height:9px;border-radius:3px;background:#7c3aed;vertical-align:middle;margin-right:6px;}
   .note{font-size:12px;color:var(--mut);margin-top:10px;}
   iframe{width:100%;height:1400px;border:1px solid var(--bd);border-radius:10px;margin-top:8px;}
   .foot{font-size:11px;color:var(--mut);margin-top:26px;border-top:1px solid var(--bd);padding-top:10px;}
@@ -218,8 +220,8 @@
     <div class="lokpis" id="loKpi"></div>
     <div class="locard" style="margin-bottom:16px;"><div class="losec">📈 Total contact volume — last 4 weeks</div><div id="loTrend" style="text-align:center;"></div></div>
     <div class="logrid">
-      <div class="locard"><div class="losec">🏢 BPO — last 3 days</div><div id="loBpo" style="overflow-x:auto;"></div></div>
-      <div class="locard"><div class="losec">🏥 Top clients by volume — last 3 days</div><div id="loCli" style="overflow-x:auto;"></div><div id="loCliStat" class="lostat"></div></div>
+      <div class="locard"><div class="losec">🏢 BPO <span class="lowin" id="loBpoWin"></span></div><div id="loBpo" style="overflow-x:auto;"></div></div>
+      <div class="locard"><div class="losec">🏥 Top clients by volume <span class="lowin" id="loCliWin"></span></div><div id="loCli" style="overflow-x:auto;"></div></div>
       <div class="locard"><div class="losec">📞 Why patients contact us <span class="info" data-pop="reasons" onclick="showPop(this)">i</span></div><div id="loRfc" style="overflow-x:auto;"></div></div>
       <div class="locard"><div style="display:flex;gap:16px;align-items:flex-start;"><div style="text-align:center;"><div class="losec">Sentiment</div><div id="loSent"></div><div class="mut" style="font-size:10.5px;">ending negative</div></div><div style="flex:1;min-width:0;"><div class="losec">⏰ Biggest gap hours <span class="info" data-pop="gaps" onclick="showPop(this)">i</span></div><div id="loGap"></div></div></div></div>
     </div>
@@ -1171,6 +1173,9 @@ function renderExec(){
   var L3=vdays.slice(-3); if(!L3.length) L3=[days.length-1];
   var winLbl=days[L3[0]].label+' – '+days[L3[L3.length-1]].label;
   document.getElementById('loSub').innerHTML='Last 3 days with data ('+winLbl+') · reasons &amp; sentiment = this week · '+(vstale?'<span class="red">⚠️ voice current only through '+days[L3[L3.length-1]].label+' — feed behind</span>':'all feeds current');
+  var winTxt='· last 3 days ('+winLbl+')';
+  var _bw=document.getElementById('loBpoWin'); if(_bw) _bw.textContent=winTxt;
+  var _cw=document.getElementById('loCliWin'); if(_cw) _cw.textContent=winTxt;
   function cAsa(v){ return v==null?'mut':(v<=30?'grn':(v<=120?'amb':'red')); }
   function cFr(v){ return v==null?'mut':(v>=70?'grn':(v>=50?'amb':'red')); }
   function cAb(v){ return v==null?'mut':(v<5?'grn':(v<10?'amb':'red')); }
@@ -1215,8 +1220,10 @@ function renderExec(){
   document.getElementById('loBpo').innerHTML='<div class="bparow">'+BPO.map(function(x){ var bh=Math.round(x.d.an/mxb*104);
     return '<div class="bpcol"><div class="bpnum">'+x.d.an.toLocaleString()+'</div><div class="bpbar" style="height:'+bh+'px"></div><div class="bpnm">'+x.n+'</div><div class="bpchip '+bg(cAsa(x.d.asa))+' '+cAsa(x.d.asa)+'"><span class="cl">ASA</span>'+asaF(x.d.asa)+'</div><div class="bpchip '+bg(cFr(x.d.frp))+' '+cFr(x.d.frp)+'"><span class="cl">EMAIL ≤4HR</span>'+pctF(x.d.frp)+'</div></div>';
   }).join('')+'</div>';
-  document.getElementById('loCli').innerHTML=svgH(CLI.map(function(x){return {n:x.n,v:x.d.vol,lab:x.d.vol.toLocaleString()};}),'#7c3aed');
-  document.getElementById('loCliStat').innerHTML=CLI.map(function(x){return '<b>'+x.n+'</b> ab <span class="'+cAb(x.d.ab)+'">'+pctF(x.d.ab)+'</span>/≤4hr <span class="'+cFr(x.d.frp)+'">'+pctF(x.d.frp)+'</span>';}).join(' &nbsp; ');
+  var mxv=Math.max.apply(null,CLI.map(function(x){return x.d.vol;}))||1;
+  document.getElementById('loCli').innerHTML='<table class="lotbl"><thead><tr><th>Client</th><th>Volume</th><th>Abandon</th><th>Email ≤4hr</th></tr></thead><tbody>'+CLI.map(function(x){ var w=Math.round(x.d.vol/mxv*64);
+    return '<tr><td class="v">'+x.n+'</td><td><span class="lomini" style="width:'+w+'px"></span>'+x.d.vol.toLocaleString()+'</td><td class="rag '+bg(cAb(x.d.ab))+' '+cAb(x.d.ab)+'">'+pctF(x.d.ab)+'</td><td class="rag '+bg(cFr(x.d.frp))+' '+cFr(x.d.frp)+'">'+pctF(x.d.frp)+'</td></tr>';
+  }).join('')+'</tbody></table>';
   document.getElementById('loRfc').innerHTML=svgH(tops.map(function(x){var p=Math.round(x.c/answ*100);return {n:x.t,v:p,lab:p+'%'};}),'#0d9488');
   var ncol=(neg==null?'#8a8d91':(neg<25?'#1a7f37':(neg<40?'#9a6a00':'#b3261e')));
   document.getElementById('loSent').innerHTML=svgDonut(neg==null?0:neg,ncol);
