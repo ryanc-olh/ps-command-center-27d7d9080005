@@ -216,7 +216,7 @@
     <div class="lbl" style="margin-top:0;">Patient Support — Live Ops <span class="info" data-pop="legend" onclick="showPop(this)">i</span></div>
     <div id="loSub" class="lonote"></div>
     <div class="lokpis" id="loKpi"></div>
-    <div class="locard" style="margin-bottom:16px;"><div class="losec">📈 Total contact volume — last 7 weeks</div><div id="loTrend" style="text-align:center;"></div></div>
+    <div class="locard" style="margin-bottom:16px;"><div class="losec">📈 Total contact volume — last 4 weeks</div><div id="loTrend" style="text-align:center;"></div></div>
     <div class="logrid">
       <div class="locard"><div class="losec">🏢 BPO — last 3 days</div><div id="loBpo" style="overflow-x:auto;"></div></div>
       <div class="locard"><div class="losec">🏥 Top clients by volume — last 3 days</div><div id="loCli" style="overflow-x:auto;"></div><div id="loCliStat" class="lostat"></div></div>
@@ -1203,12 +1203,13 @@ function renderExec(){
     var cd=pts.map(function(p,i){ return [10+i*((W-20)/(n>1?n-1:1)), H-12-(p.v-mn)/rng*(H-30)]; });
     var d='M'+cd.map(function(c){return c[0].toFixed(0)+' '+c[1].toFixed(0);}).join(' L');
     var dots=cd.map(function(c){return '<circle cx="'+c[0].toFixed(0)+'" cy="'+c[1].toFixed(0)+'" r="2.5" fill="#2563eb"></circle>';}).join('');
-    var labs=cd.map(function(c,i){return '<text x="'+c[0].toFixed(0)+'" y="'+(H-1)+'" font-size="9" text-anchor="middle" fill="#8a8d91">'+pts[i].l.replace('Jun ','').replace('Jul ','')+'</text>';}).join('');
+    var labs=cd.map(function(c,i){return '<text x="'+c[0].toFixed(0)+'" y="'+(H-1)+'" font-size="9.5" text-anchor="middle" fill="#8a8d91">'+pts[i].l.split('–')[0]+'</text>';}).join('');
     var last='<text x="'+cd[n-1][0].toFixed(0)+'" y="'+(cd[n-1][1]-6).toFixed(0)+'" font-size="10.5" font-weight="700" text-anchor="end" fill="#111">'+pts[n-1].v.toLocaleString()+'</text>';
     return '<svg width="100%" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><path d="'+d+'" fill="none" stroke="#2563eb" stroke-width="2"></path>'+dots+labs+last+'</svg>'; }
   function kpi(k,v,cl,n){ return '<div class="lokpi"><div class="k">'+k+'</div><div class="v '+cl+'">'+v+'</div><div class="n">'+n+'</div></div>'; }
   document.getElementById('loKpi').innerHTML=kpi('Contacts (3d)',contacts.toLocaleString(),'','voice + email')+kpi('Voice abandon',pctF(ab3),cAb(ab3),'target &lt;5%')+kpi('Email ≤4hr',pctF(fr3),cFr(fr3),'target 70%')+kpi('Call sentiment',(neg==null?'—':neg+'%'),cNeg(neg),'ending negative')+kpi('Top reason',topR.t,'',topR.p+'% of calls');
   var wt=[]; (BPO_WOW.weeks||[]).forEach(function(w,i){ if(!w.complete) return; var tv=0,te=0; WOW_B.forEach(function(b){tv+=((BPO_WOW.voice.all[b]||[])[i]||{}).an||0;}); Object.keys(EMAIL_WOW.email.all||{}).forEach(function(b){te+=((EMAIL_WOW.email.all[b]||[])[i]||{}).rep||0;}); wt.push({l:w.label,v:tv+te}); });
+  wt=wt.slice(-4);
   document.getElementById('loTrend').innerHTML=svgLine(wt);
   var mxb=Math.max.apply(null,BPO.map(function(x){return x.d.an;}))||1;
   document.getElementById('loBpo').innerHTML='<div class="bparow">'+BPO.map(function(x){ var bh=Math.round(x.d.an/mxb*104);
