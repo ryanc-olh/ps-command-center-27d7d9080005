@@ -211,6 +211,7 @@
     <button class="tab" onclick="showTab(5)">Reasons for Contact</button>
     <button class="tab" onclick="showTab(6)">Intraday by Hour</button>
     <button class="tab" onclick="showTab(7)">Capacity Planner</button>
+    <button class="tab" onclick="showTab(8)">CRM Adoption</button>
   </div>
 
   <!-- ===== LIVE OPS ===== -->
@@ -453,6 +454,18 @@
     <div class="note" id="plNote"></div>
   </div>
 
+  <div class="panel" id="pcrm">
+    <div class="lbl" style="margin-top:0;">CRM adoption — HeyRevia Patient CRM <span class="info" data-pop="crm" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· agents logging in ÷ BPO roster</span></div>
+    <div id="crmSub" class="lonote"></div>
+    <div class="lokpis" id="crmKpi"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 12px;">
+      <button id="crmWkBtn" class="hbtn active" onclick="setCrm('weekly')">📆 Weekly</button>
+      <button id="crmMoBtn" class="hbtn" onclick="setCrm('monthly')">🗓️ Monthly</button>
+    </div>
+    <div class="locard" style="margin-bottom:16px;"><div class="losec" id="crmTrendTitle">Overall adoption</div><div id="crmTrend" style="text-align:center;"></div></div>
+    <div class="locard"><div class="losec" id="crmTblTitle">Adoption by BPO</div><div id="crmTbl" style="overflow-x:auto;"></div></div>
+  </div>
+
   <div class="foot" id="foot"></div>
 </div>
 
@@ -603,9 +616,11 @@ function showTab(i){
   if(i===5){ var rf=document.getElementById('rfcFrame'); if(rf) rf.src='ps-rfc.html?cb='+Date.now(); }
   if(i===6){ renderHM(); }
   if(i===7){ renderPlanner(); }
+  if(i===8){ renderCrm(); }
 }
 // ---- progressive-disclosure info popovers: glanceable by default, detail on click ----
 var POP={
+  crm:'<div class="h">CRM adoption</div>Agents who logged into the <b>HeyRevia Patient CRM</b> in the period ÷ that BPO\'s rostered headcount. <b>Weekly</b> (Mon-start) and <b>Monthly</b> views; the current period is partial (marked *) and excluded from the WoW/MoM delta. <b>Adoption %</b> colors: <span class="grn">green ≥50%</span> · <span class="amb">amber ≥25%</span> · <span class="red">red &lt;25%</span>. Numerator = distinct `user_logged_in` by `@openloophealth.com` email, joined to the BPO roster (`email_bpo.csv`); denominator = roster headcount (may include churned agents → true adoption a bit higher). <span class="hint2">Source: PostHog "HeyRevia - Patient CRM - Production". Auto-refreshes once a PostHog key is configured; otherwise last-measured.</span>',
   legend:'<div class="h">How to read the numbers</div><b><span class="sd live"></span>Live</b> — measured, auto-refreshed on the daily rebuild (a daily batch, current to the prior day; not real-time).<br><b><span class="sd stat"></span>Measured · static</b> — measured once, not auto-refreshed (a script is re-run to update): the email throughput coefficient (2.4 replies/agent-hr) &amp; the per-client email noise rates.<br><b><span class="sd assum"></span>Assumption</b> — an editable input you set (Erlang target, email SLA hours, shrinkage).<br><br><b>Cell colors</b> — <span class="grn">green</span> meets target · <span class="amb">amber</span> near · <span class="red">red</span> breaching.',
   contacts:'<div class="h">Patient contacts (week)</div>Voice calls offered + patient emails received, latest complete week. <b>Email is patient-only:</b> each client\'s email is scaled by its measured real-patient rate (strips marketing/vendor/system/auto-reply noise). Voice is not adjusted. <span class="hint2">Voice = Amazon Connect · Email = Zoho Desk.</span>',
   vsl:'<div class="h">Voice service level</div>Calls answered within 30s ÷ calls offered, across all Connect voice queues (org-wide). <b>Target 80%.</b> <span class="hint2"><span class="sd live"></span>Live · Amazon Connect · trailing 7 days.</span>',
@@ -654,6 +669,7 @@ var HM_CUBE={"window":"Jul 13\u201319","days":["Mon 7/13","Tue 7/14","Wed 7/15",
 var HM_CLIENTS=['embody','medvi','elixa','altrx','trinity','other'], HM_BPOS=['RESPONSE','TTEC','NEXTVAS','NARITH'], HM_NONBPO=['BOOTH','OTHER'];
 var HM_BUILT=['embody','medvi','elixa','altrx','trinity'];
 var DATA_ASOF={"voice":"2026-07-17 21:57:20","email":"2026-07-20 07:15:36"};   // latest voice/email record in the mirrors — drives the "data delayed" banner; injected daily
+var CRM_ADOPTION={"roster":{"RESPONSE":1032,"TTEC":226,"NARITH":319,"NEXTVAS":865,"BOOTH":142},"roster_total":2584,"weekly":[{"period":"2026-05-25","total":481,"bpo":{"RESPONSE":{"active":244,"pct":24},"TTEC":{"active":6,"pct":3},"NARITH":{"active":3,"pct":1},"NEXTVAS":{"active":79,"pct":9},"BOOTH":{"active":15,"pct":11}},"in_roster":347},{"period":"2026-06-01","total":530,"bpo":{"RESPONSE":{"active":248,"pct":24},"TTEC":{"active":24,"pct":11},"NARITH":{"active":4,"pct":1},"NEXTVAS":{"active":105,"pct":12},"BOOTH":{"active":14,"pct":10}},"in_roster":395},{"period":"2026-06-08","total":561,"bpo":{"RESPONSE":{"active":251,"pct":24},"TTEC":{"active":16,"pct":7},"NARITH":{"active":39,"pct":12},"NEXTVAS":{"active":108,"pct":12},"BOOTH":{"active":13,"pct":9}},"in_roster":427},{"period":"2026-06-15","total":520,"bpo":{"RESPONSE":{"active":247,"pct":24},"TTEC":{"active":15,"pct":7},"NARITH":{"active":43,"pct":13},"NEXTVAS":{"active":87,"pct":10},"BOOTH":{"active":11,"pct":8}},"in_roster":403},{"period":"2026-06-22","total":508,"bpo":{"RESPONSE":{"active":247,"pct":24},"TTEC":{"active":11,"pct":5},"NARITH":{"active":52,"pct":16},"NEXTVAS":{"active":90,"pct":10},"BOOTH":{"active":10,"pct":7}},"in_roster":410},{"period":"2026-06-29","total":410,"bpo":{"RESPONSE":{"active":234,"pct":23},"TTEC":{"active":15,"pct":7},"NARITH":{"active":4,"pct":1},"NEXTVAS":{"active":92,"pct":11},"BOOTH":{"active":8,"pct":6}},"in_roster":353},{"period":"2026-07-06","total":495,"bpo":{"RESPONSE":{"active":296,"pct":29},"TTEC":{"active":23,"pct":10},"NARITH":{"active":3,"pct":1},"NEXTVAS":{"active":94,"pct":11},"BOOTH":{"active":11,"pct":8}},"in_roster":427},{"period":"2026-07-13","total":781,"bpo":{"RESPONSE":{"active":330,"pct":32},"TTEC":{"active":145,"pct":64},"NARITH":{"active":90,"pct":28},"NEXTVAS":{"active":107,"pct":12},"BOOTH":{"active":11,"pct":8}},"in_roster":683},{"period":"2026-07-20","total":273,"bpo":{"RESPONSE":{"active":139,"pct":13},"TTEC":{"active":41,"pct":18},"NARITH":{"active":19,"pct":6},"NEXTVAS":{"active":39,"pct":5},"BOOTH":{"active":4,"pct":3}},"in_roster":242}],"monthly":[{"period":"2026-05-01","total":1070,"bpo":{"RESPONSE":{"active":354,"pct":34},"TTEC":{"active":116,"pct":51},"NARITH":{"active":140,"pct":44},"NEXTVAS":{"active":124,"pct":14},"BOOTH":{"active":21,"pct":15}},"in_roster":755},{"period":"2026-06-01","total":970,"bpo":{"RESPONSE":{"active":413,"pct":40},"TTEC":{"active":41,"pct":18},"NARITH":{"active":122,"pct":38},"NEXTVAS":{"active":141,"pct":16},"BOOTH":{"active":20,"pct":14}},"in_roster":737},{"period":"2026-07-01","total":986,"bpo":{"RESPONSE":{"active":439,"pct":43},"TTEC":{"active":152,"pct":67},"NARITH":{"active":98,"pct":31},"NEXTVAS":{"active":144,"pct":17},"BOOTH":{"active":14,"pct":10}},"in_roster":847}],"window":{"weeks":9,"months":3}};   // CRM adoption by BPO (PostHog "HeyRevia - Patient CRM"); injected by cc_refresh via pull_crm_adoption.py
 var DEPLOYED={"voice":[[5,8,2,2,8,19,42,79,116,138,169,184,172,186,205,181,152,137,100,77,51,32,21,16],[6,7,7,5,7,17,42,70,125,146,171,169,177,183,198,184,157,140,106,81,61,44,37,22],[17,3,7,6,9,20,44,80,137,137,170,165,174,187,191,162,152,133,113,94,70,42,23,9],[11,9,8,7,5,20,38,71,111,139,165,162,186,186,185,160,151,139,124,101,69,33,28,14],[12,9,6,8,6,21,40,70,108,131,163,177,182,180,186,172,157,128,110,92,61,32,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"email":[[30,24,22,28,36,58,70,68,72,81,83,98,98,104,88,66,55,48,46,46,54,55,48,49],[44,46,41,42,55,64,88,87,78,95,88,107,110,102,89,78,54,49,51,47,54,53,57,53],[40,40,43,42,66,79,90,88,89,98,106,112,118,125,112,101,68,60,59,43,45,47,49,46],[45,40,40,39,48,57,90,97,115,121,123,122,135,145,112,109,78,74,65,64,54,55,54,50],[48,44,39,46,49,53,75,96,110,109,121,119,121,125,122,101,80,69,63,57,60,51,47,44],[38,31,34,18,32,39,53,40,41,40,30,68,87,87,81,71,55,64,55,47,42,51,48,37],[32,30,28,26,32,40,55,73,63,65,68,70,67,66,60,43,43,51,49,53,48,53,55,42]]};   // distinct agents active per day×hour (all patient), injected daily
 // Other-bucket email real-patient rate (classified sample) — discounts Other email demand in the coverage gap so we don't staff to noise. Injected; re-measured periodically.
 var EMAIL_NOISE={"window":"Jun 22\u2013Jul 12, 2026","asof":"2026-07-19","method":"subject+sender \u00b7 2 AI passes + tiebreak","clients":{"embody":{"rate":0.988,"pct":98.8,"ci":[96.5,99.6],"n":249,"noise":3,"kinds":{"patient":246,"system":3}},"medvi":{"rate":0.8514,"pct":85.1,"ci":[80.2,89.0],"n":249,"noise":37,"kinds":{"patient":212,"system":27,"marketing":5,"autoreply":5}},"elixa":{"rate":0.976,"pct":97.6,"ci":[94.9,98.9],"n":250,"noise":6,"kinds":{"patient":244,"autoreply":2,"marketing":1,"vendor":1,"system":1,"spam":1}},"altrx":{"rate":0.9679,"pct":96.8,"ci":[93.8,98.4],"n":249,"noise":8,"kinds":{"patient":241,"system":6,"autoreply":1,"marketing":1}},"trinity":{"rate":0.9213,"pct":92.1,"ci":[87.8,95.0],"n":216,"noise":17,"kinds":{"patient":199,"internal":8,"marketing":6,"system":1,"autoreply":1,"vendor":1}},"other":{"rate":0.452,"pct":45.2,"ci":[39.1,51.4],"n":250,"noise":137,"kinds":{"patient":113,"system":85,"vendor":29,"spam":9,"marketing":8,"autoreply":4,"internal":1,"other":1}}}};
@@ -1237,7 +1253,56 @@ function renderExec(){
   document.getElementById('loGap').innerHTML=gline('📞','Voice',vg)+gline('✉️','Email',eg)+'<div class="mut" style="font-size:10.5px;margin-top:3px;">calls/emails that outran handling · prev complete wk</div>';
 }
 var BUILD_STAMP=" \u00b7 last build Jul 20, 2026 (each tab shows its own data window)";   // injected by cc_refresh.py at rebuild time, e.g. " · data as of Jul 19 2026"
-renderExec(); renderClients(); renderByBpo(); renderByClient(); renderTrend(); renderDod(); renderPlanner(); applyFilter();
+// ---- CRM adoption tab (weekly / monthly / WoW) ----
+var crmView='weekly';
+function setCrm(v){ crmView=v;
+  document.getElementById('crmWkBtn').classList.toggle('active',v==='weekly');
+  document.getElementById('crmMoBtn').classList.toggle('active',v==='monthly');
+  renderCrm();
+}
+function renderCrm(){
+  var el=document.getElementById('crmTbl'); if(!el) return;
+  var A=CRM_ADOPTION, series=((crmView==='weekly'?A.weekly:A.monthly)||[]).slice(), rtot=A.roster_total||0;
+  var BPOS=['RESPONSE','TTEC','NARITH','NEXTVAS','BOOTH'], NM={RESPONSE:'Response',TTEC:'TTEC',NARITH:'NARITH',NEXTVAS:'NextVas',BOOTH:'Booth'};
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function bg(cl){ return {grn:'gbg',amb:'abg',red:'rbg'}[cl]||''; }
+  function cAd(v){ return v>=50?'grn':(v>=25?'amb':'red'); }
+  if(!series.length||!rtot){ document.getElementById('crmSub').innerHTML='CRM adoption not yet loaded — a PostHog key must be configured so the daily job can populate this. <span class="info" data-pop="crm" onclick="showPop(this)">i</span>'; document.getElementById('crmKpi').innerHTML=''; document.getElementById('crmTrend').innerHTML=''; el.innerHTML=''; return; }
+  function complete(p){ var d=new Date(p+'T00:00:00Z'), now=new Date(); if(crmView==='weekly') return (now-d)>=7*864e5; return now>=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1)); }
+  function lbl(p){ var d=new Date(p+'T00:00:00Z'); return crmView==='weekly'? mo[d.getUTCMonth()]+' '+d.getUTCDate() : mo[d.getUTCMonth()]; }
+  series.forEach(function(s){ s._c=complete(s.period); s._ov=rtot?Math.round(100*s.in_roster/rtot):0; });
+  var completeS=series.filter(function(s){return s._c;});
+  var cur=completeS.length?completeS[completeS.length-1]:series[series.length-1];
+  var prev=completeS.length>1?completeS[completeS.length-2]:null;
+  var per=(crmView==='weekly'?'week':'month');
+  function kpi(k,v,cl,n){ return '<div class="lokpi"><div class="k">'+k+'</div><div class="v '+cl+'">'+v+'</div><div class="n">'+n+'</div></div>'; }
+  var dd=prev?(cur._ov-prev._ov):null, dtxt=(dd==null?'—':(dd>0?'▲':dd<0?'▼':'±')+Math.abs(dd)+'pp');
+  var bl=BPOS.map(function(b){return {b:b,pct:cur.bpo[b].pct};});
+  var best=bl.slice().sort(function(a,b){return b.pct-a.pct;})[0], worst=bl.slice().sort(function(a,b){return a.pct-b.pct;})[0];
+  document.getElementById('crmKpi').innerHTML=
+    kpi('Overall adoption', cur._ov+'%', cAd(cur._ov), lbl(cur.period)+' · '+cur.in_roster+'/'+rtot+' agents')+
+    kpi((crmView==='weekly'?'WoW change':'MoM change'), dtxt, (dd==null?'':dd>=0?'grn':'red'), 'vs prior complete '+per)+
+    kpi('Top BPO', NM[best.b]+' '+best.pct+'%', cAd(best.pct), 'highest adoption')+
+    kpi('Lagging BPO', NM[worst.b]+' '+worst.pct+'%', cAd(worst.pct), 'lowest adoption')+
+    kpi('Roster', rtot.toLocaleString(), '', 'BPO agents (denominator)');
+  document.getElementById('crmSub').innerHTML='HeyRevia Patient CRM logins ÷ BPO roster · '+series.length+' '+per+'s · current '+per+' (*) is partial, excluded from the delta.';
+  document.getElementById('crmTrendTitle').textContent='Overall adoption % — by '+per;
+  (function(){ var W=680,H=92,pad=44,pts=series.map(function(s){return {l:lbl(s.period),v:s._ov,c:s._c};}), n=pts.length;
+    var mx=Math.max.apply(null,pts.map(function(p){return p.v;}).concat([10]));
+    var cd=pts.map(function(p,i){return [pad+i*((W-2*pad)/(n>1?n-1:1)), H-16-(p.v/mx)*(H-36)];});
+    var path='M'+cd.map(function(c){return c[0].toFixed(0)+' '+c[1].toFixed(0);}).join(' L');
+    var dots=cd.map(function(c,i){return '<circle cx="'+c[0].toFixed(0)+'" cy="'+c[1].toFixed(0)+'" r="3" fill="'+(pts[i].c?'#2563eb':'#b9c0cc')+'"></circle><text x="'+c[0].toFixed(0)+'" y="'+(c[1]-7).toFixed(0)+'" font-size="9.5" font-weight="700" text-anchor="middle" fill="#111">'+pts[i].v+'%</text>';}).join('');
+    var labs=cd.map(function(c,i){var an=(i===0?'start':(i===n-1?'end':'middle'));return '<text x="'+c[0].toFixed(0)+'" y="'+(H-2)+'" font-size="9.5" text-anchor="'+an+'" fill="#8a8d91">'+pts[i].l+(pts[i].c?'':'*')+'</text>';}).join('');
+    document.getElementById('crmTrend').innerHTML='<svg width="100%" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><path d="'+path+'" fill="none" stroke="#2563eb" stroke-width="2"></path>'+dots+labs+'</svg>';
+  })();
+  document.getElementById('crmTblTitle').textContent='Adoption % by BPO — '+per+' over '+per;
+  function delta(b){ if(!prev) return '—'; var x=cur.bpo[b].pct-prev.bpo[b].pct; return x===0?'0':'<span class="'+(x>0?'grn':'red')+'">'+(x>0?'▲':'▼')+Math.abs(x)+'</span>'; }
+  var head='<tr><th>BPO</th><th>Roster</th>'+series.map(function(s){return '<th>'+lbl(s.period)+(s._c?'':'*')+'</th>';}).join('')+'<th>'+(crmView==='weekly'?'WoW':'MoM')+'</th></tr>';
+  var rows=BPOS.map(function(b){ return '<tr><td class="v">'+NM[b]+'</td><td class="mut">'+(A.roster[b]||0)+'</td>'+series.map(function(s){var p=s.bpo[b].pct;return '<td class="rag '+bg(cAd(p))+' '+cAd(p)+(s._c?'':' stale')+'">'+p+'%</td>';}).join('')+'<td class="v">'+delta(b)+'</td></tr>'; }).join('');
+  var ov='<tr style="border-top:2px solid var(--brd);"><td class="v">Overall</td><td class="mut">'+rtot+'</td>'+series.map(function(s){return '<td class="rag '+bg(cAd(s._ov))+' '+cAd(s._ov)+(s._c?'':' stale')+'"><b>'+s._ov+'%</b></td>';}).join('')+'<td class="v">'+(prev?((dd>0?'<span class="grn">▲':dd<0?'<span class="red">▼':'<span>')+Math.abs(dd)+'</span>'):'—')+'</td></tr>';
+  el.innerHTML='<table class="lotbl">'+head+rows+ov+'</table>';
+}
+renderExec(); renderClients(); renderByBpo(); renderByClient(); renderTrend(); renderDod(); renderPlanner(); renderCrm(); applyFilter();
 (function(){ var b=document.getElementById('buildStamp'); if(b&&BUILD_STAMP) b.textContent=BUILD_STAMP; })();
 // data-delayed banner: shows only when a feed's latest record is >40h old (auto-clears when the pipeline recovers)
 (function(){
