@@ -77,6 +77,18 @@
   .lonote{color:var(--mut);font-size:12.5px;margin:2px 0 4px;}
   .lostat{font-size:12px;color:#555;margin:6px 0 0;line-height:1.8;} .lostat b{color:#111;}
   .logap{font-size:13.5px;padding:5px 0;} .logap .gi{display:inline-block;width:22px;}
+  .lokpis{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 16px;}
+  .lokpi{flex:1;min-width:118px;background:#f7f8fa;border:1px solid var(--brd);border-radius:11px;padding:9px 12px;}
+  .lokpi .k{font-size:11px;color:var(--mut);font-weight:600;} .lokpi .v{font-size:21px;font-weight:700;margin-top:1px;} .lokpi .n{font-size:10.5px;color:var(--mut);}
+  .locard{border:1px solid var(--brd);border-radius:12px;padding:13px 15px;}
+  .losec{font-size:12.5px;font-weight:700;color:#333;margin:0 0 10px;}
+  .logrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:720px){.logrid{grid-template-columns:1fr;}}
+  .bparow{display:flex;gap:18px;justify-content:center;align-items:flex-end;text-align:center;padding-top:6px;}
+  .bpcol{width:96px;} .bpbar{background:#2563eb;border-radius:5px 5px 0 0;width:46px;margin:0 auto;}
+  .bpnum{font-size:11px;font-weight:700;margin-bottom:3px;} .bpnm{font-size:12.5px;font-weight:600;color:#444;margin-top:6px;}
+  .bpchip{display:block;font-size:12px;font-weight:700;border-radius:6px;padding:4px 0;margin-top:5px;} .bpchip .cl{display:block;font-size:8.5px;color:#999;font-weight:600;letter-spacing:.03em;}
+  .gbg{background:#e7f5ec;} .abg{background:#fdf6e3;} .rbg{background:#fdecea;} .mbg{background:#eef0f2;}
   .note{font-size:12px;color:var(--mut);margin-top:10px;}
   iframe{width:100%;height:1400px;border:1px solid var(--bd);border-radius:10px;margin-top:8px;}
   .foot{font-size:11px;color:var(--mut);margin-top:26px;border-top:1px solid var(--bd);padding-top:10px;}
@@ -203,22 +215,14 @@
     <div class="panel active" id="p0">
     <div class="lbl" style="margin-top:0;">Patient Support — Live Ops <span class="info" data-pop="legend" onclick="showPop(this)">i</span></div>
     <div id="loSub" class="lonote"></div>
-
-    <div class="lbl">🏢 BPO volume — last 3 days</div>
-    <div id="loBpo" style="text-align:center;overflow-x:auto;"></div>
-    <div id="loBpoStat" class="lostat"></div>
-
-    <div class="lbl">🏥 Top clients by volume — last 3 days</div>
-    <div id="loCli" style="overflow-x:auto;"></div>
-    <div id="loCliStat" class="lostat"></div>
-
-    <div style="display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;margin-top:20px;">
-      <div style="flex:1;min-width:300px;"><div class="lbl" style="margin-top:0;">📞 Why patients contact us <span class="info" data-pop="reasons" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· phone, this week</span></div><div id="loRfc"></div></div>
-      <div style="text-align:center;"><div class="lbl" style="margin-top:0;">Call sentiment</div><div id="loSent"></div><div class="mut" style="font-size:11px;">% of calls ending negative</div></div>
+    <div class="lokpis" id="loKpi"></div>
+    <div class="locard" style="margin-bottom:16px;"><div class="losec">📈 Total contact volume — last 7 weeks</div><div id="loTrend" style="text-align:center;"></div></div>
+    <div class="logrid">
+      <div class="locard"><div class="losec">🏢 BPO — last 3 days</div><div id="loBpo" style="overflow-x:auto;"></div></div>
+      <div class="locard"><div class="losec">🏥 Top clients by volume — last 3 days</div><div id="loCli" style="overflow-x:auto;"></div><div id="loCliStat" class="lostat"></div></div>
+      <div class="locard"><div class="losec">📞 Why patients contact us <span class="info" data-pop="reasons" onclick="showPop(this)">i</span></div><div id="loRfc" style="overflow-x:auto;"></div></div>
+      <div class="locard"><div style="display:flex;gap:16px;align-items:flex-start;"><div style="text-align:center;"><div class="losec">Sentiment</div><div id="loSent"></div><div class="mut" style="font-size:10.5px;">ending negative</div></div><div style="flex:1;min-width:0;"><div class="losec">⏰ Biggest gap hours <span class="info" data-pop="gaps" onclick="showPop(this)">i</span></div><div id="loGap"></div></div></div></div>
     </div>
-
-    <div class="lbl">⏰ Biggest gap hours <span class="info" data-pop="gaps" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· volume that outran handling · prev complete week</span></div>
-    <div id="loGap"></div>
   </div>
 
   <!-- ===== BY BPO ===== -->
@@ -1166,39 +1170,54 @@ function renderExec(){
   var vdays=[]; for(var i=0;i<days.length;i++) if(hasV(i)) vdays.push(i);
   var L3=vdays.slice(-3); if(!L3.length) L3=[days.length-1];
   var winLbl=days[L3[0]].label+' – '+days[L3[L3.length-1]].label;
-  document.getElementById('loSub').innerHTML='Last 3 days with data ('+winLbl+') · phone reasons &amp; sentiment = this week · '+(vstale?'<span class="red">⚠️ voice current only through '+days[L3[L3.length-1]].label+' — feed behind</span>':'all feeds current');
-  function cAsa(v){ return v==null?'':(v<=30?'grn':(v<=120?'amb':'red')); }
-  function cFr(v){ return v==null?'':(v>=70?'grn':(v>=50?'amb':'red')); }
-  function cAb(v){ return v==null?'':(v<5?'grn':(v<10?'amb':'red')); }
+  document.getElementById('loSub').innerHTML='Last 3 days with data ('+winLbl+') · reasons &amp; sentiment = this week · '+(vstale?'<span class="red">⚠️ voice current only through '+days[L3[L3.length-1]].label+' — feed behind</span>':'all feeds current');
+  function cAsa(v){ return v==null?'mut':(v<=30?'grn':(v<=120?'amb':'red')); }
+  function cFr(v){ return v==null?'mut':(v>=70?'grn':(v>=50?'amb':'red')); }
+  function cAb(v){ return v==null?'mut':(v<5?'grn':(v<10?'amb':'red')); }
+  function cNeg(v){ return v==null?'mut':(v<25?'grn':(v<40?'amb':'red')); }
+  function bg(cl){ return {grn:'gbg',amb:'abg',red:'rbg',mut:'mbg'}[cl]; }
   function asaF(v){ return v==null?'—':(v>=60?(Math.round(v/6)/10)+'m':v+'s'); }
   function pctF(v){ return v==null?'—':v+'%'; }
   var BN={RESPONSE:'Response',TTEC:'TTEC',NARITH:'NARITH',NEXTVAS:'NextVas'};
-  function bpo3(b){ var v=dv.voice.all[b]||[], e=(de.email.all||{})[b]||[], an=0,asw=0,ahw=0,rep=0,frw=0,frr=0;
-    L3.forEach(function(i){ var x=v[i]||{}; an+=(x.an||0); if(x.asa!=null)asw+=x.asa*(x.an||0); if(x.aht!=null)ahw+=x.aht*(x.an||0); var y=e[i]||{}; rep+=(y.rep||0); if(y.frp!=null){frw+=y.frp*(y.rep||0);frr+=(y.rep||0);} });
-    return {an:an,asa:(an?Math.round(asw/an):null),aht:(an?Math.round(ahw/an*10)/10:null),rep:rep,frp:(frr?Math.round(frw/frr):null)}; }
+  function bpo3(b){ var v=dv.voice.all[b]||[], e=(de.email.all||{})[b]||[], an=0,asw=0,rep=0,frw=0,frr=0;
+    L3.forEach(function(i){ var x=v[i]||{}; an+=(x.an||0); if(x.asa!=null)asw+=x.asa*(x.an||0); var y=e[i]||{}; rep+=(y.rep||0); if(y.frp!=null){frw+=y.frp*(y.rep||0);frr+=(y.rep||0);} });
+    return {an:an,asa:(an?Math.round(asw/an):null),rep:rep,frp:(frr?Math.round(frw/frr):null)}; }
   var BPO=WOW_B.map(function(b){return {n:BN[b]||b,d:bpo3(b)};}).filter(function(x){return x.d.an>50||x.d.rep>50;});
   function cli3(cl){ var vc=dv.voiceCli[cl]||[], ab=dv.abandon[cl]||[], ec=(de.emailCli||{})[cl]||[], an=0,off=0,ans=0,rep=0,frw=0,frr=0;
     L3.forEach(function(i){ an+=((vc[i]||{}).an||0); off+=((ab[i]||{}).off||0); ans+=((ab[i]||{}).ans||0); var y=ec[i]||{}; rep+=(y.rep||0); if(y.frp!=null){frw+=y.frp*(y.rep||0);frr+=(y.rep||0);} });
     return {an:an,ab:(off?Math.round((off-ans)/off*100):null),rep:rep,frp:(frr?Math.round(frw/frr):null),vol:an+rep}; }
   var CLI=BUILT_CL.map(function(c){return {n:CLIENT_NAMES[c]||c,d:cli3(c)};}).sort(function(a,b){return b.d.vol-a.d.vol;});
-  function svgV(items){ var mx=Math.max.apply(null,items.map(function(x){return x.d.an;}))||1, x0=8, bw=46, step=72, w=x0+items.length*step, bars='';
-    items.forEach(function(it,i){ var v=it.d.an, bh=Math.round(v/mx*112), x=x0+i*step;
-      bars+='<rect x="'+x+'" y="'+(138-bh)+'" width="'+bw+'" height="'+bh+'" rx="4" fill="#2563eb"></rect>';
-      bars+='<text x="'+(x+bw/2)+'" y="154" font-size="11" text-anchor="middle" fill="#666">'+it.n+'</text>';
-      bars+='<text x="'+(x+bw/2)+'" y="'+(132-bh)+'" font-size="11" font-weight="700" text-anchor="middle" fill="#111">'+v.toLocaleString()+'</text>'; });
-    return '<svg width="'+w+'" height="166">'+bars+'</svg>'; }
-  function svgH(items,color){ var mx=Math.max.apply(null,items.map(function(x){return x.v;}))||1, y=4, W=280, lx=112, rows='';
-    items.forEach(function(it){ var ww=Math.round(it.v/mx*W); rows+='<text x="0" y="'+(y+13)+'" font-size="12.5" fill="#333">'+it.n+'</text><rect x="'+lx+'" y="'+y+'" width="'+ww+'" height="17" rx="4" fill="'+color+'"></rect><text x="'+(lx+ww+6)+'" y="'+(y+13)+'" font-size="11.5" font-weight="700" fill="#111">'+it.lab+'</text>'; y+=25; });
-    return '<svg width="'+(lx+W+70)+'" height="'+(y+2)+'">'+rows+'</svg>'; }
-  function svgDonut(pct,color){ var r=34,c=2*Math.PI*r,off=c*(1-pct/100); return '<svg width="88" height="88" viewBox="0 0 90 90"><circle cx="45" cy="45" r="34" fill="none" stroke="#eef0f2" stroke-width="12"></circle><circle cx="45" cy="45" r="34" fill="none" stroke="'+color+'" stroke-width="12" stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 45 45)"></circle><text x="45" y="50" font-size="18" font-weight="700" text-anchor="middle" fill="#111">'+pct+'%</text></svg>'; }
-  document.getElementById('loBpo').innerHTML=svgV(BPO);
-  document.getElementById('loBpoStat').innerHTML=BPO.map(function(x){return '<b>'+x.n+'</b> ASA <span class="'+cAsa(x.d.asa)+'">'+asaF(x.d.asa)+'</span> · ≤4hr <span class="'+cFr(x.d.frp)+'">'+pctF(x.d.frp)+'</span>';}).join(' &nbsp;&nbsp; ');
-  document.getElementById('loCli').innerHTML=svgH(CLI.map(function(x){return {n:x.n,v:x.d.vol,lab:x.d.vol.toLocaleString()};}),'#7c3aed');
-  document.getElementById('loCliStat').innerHTML=CLI.map(function(x){return '<b>'+x.n+'</b> abandon <span class="'+cAb(x.d.ab)+'">'+pctF(x.d.ab)+'</span> · ≤4hr <span class="'+cFr(x.d.frp)+'">'+pctF(x.d.frp)+'</span>';}).join(' &nbsp;&nbsp; ');
+  function sumL3(arr,k){ var t=0; L3.forEach(function(i){t+=((arr[i]||{})[k]||0);}); return t; }
+  var abAll=dv.abandon.all||[], off3=sumL3(abAll,'off'), ans3=sumL3(abAll,'ans'), ab3=(off3?Math.round((off3-ans3)/off3*100):null);
+  var ecAll=(de.emailCli||{}).all||[]; var frw=0,frr=0; L3.forEach(function(i){var y=ecAll[i]||{}; if(y.frp!=null){frw+=y.frp*(y.rep||0);frr+=(y.rep||0);}}); var fr3=(frr?Math.round(frw/frr):null);
+  var contacts=CLI.reduce(function(s,x){return s+x.d.vol;},0);
+  var neg=phNegPct('all');
   var pr=(PHONE_RFC.client||{}).all, pw=phIdx(), answ=(pr&&pr.answered?(pr.answered[pw]||0):0)||1;
   var tops=Object.keys((pr&&pr.topics)||{}).map(function(t){return {t:t,c:((pr.topics[t]||[])[pw])||0};}).sort(function(a,b){return b.c-a.c;}).slice(0,6);
+  var topR=tops.length?{t:tops[0].t,p:Math.round(tops[0].c/answ*100)}:{t:'—',p:0};
+  function svgH(items,color){ var mx=Math.max.apply(null,items.map(function(x){return x.v;}))||1, y=4, W=250, lx=104, rows='';
+    items.forEach(function(it){ var ww=Math.round(it.v/mx*W); rows+='<text x="0" y="'+(y+12)+'" font-size="12" fill="#333">'+it.n+'</text><rect x="'+lx+'" y="'+y+'" width="'+ww+'" height="15" rx="3" fill="'+color+'"></rect><text x="'+(lx+ww+5)+'" y="'+(y+12)+'" font-size="11" font-weight="700" fill="#111">'+it.lab+'</text>'; y+=23; });
+    return '<svg width="'+(lx+W+58)+'" height="'+(y+2)+'">'+rows+'</svg>'; }
+  function svgDonut(pct,color){ var r=32,c=2*Math.PI*r,off=c*(1-pct/100); return '<svg width="82" height="82" viewBox="0 0 84 84"><circle cx="42" cy="42" r="32" fill="none" stroke="#eef0f2" stroke-width="11"></circle><circle cx="42" cy="42" r="32" fill="none" stroke="'+color+'" stroke-width="11" stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 42 42)"></circle><text x="42" y="47" font-size="17" font-weight="700" text-anchor="middle" fill="#111">'+pct+'%</text></svg>'; }
+  function svgLine(pts){ if(!pts.length) return ''; var W=680,H=78,vs=pts.map(function(p){return p.v;}),mx=Math.max.apply(null,vs),mn=Math.min.apply(null,vs),rng=(mx-mn)||1,n=pts.length;
+    var cd=pts.map(function(p,i){ return [10+i*((W-20)/(n>1?n-1:1)), H-12-(p.v-mn)/rng*(H-30)]; });
+    var d='M'+cd.map(function(c){return c[0].toFixed(0)+' '+c[1].toFixed(0);}).join(' L');
+    var dots=cd.map(function(c){return '<circle cx="'+c[0].toFixed(0)+'" cy="'+c[1].toFixed(0)+'" r="2.5" fill="#2563eb"></circle>';}).join('');
+    var labs=cd.map(function(c,i){return '<text x="'+c[0].toFixed(0)+'" y="'+(H-1)+'" font-size="9" text-anchor="middle" fill="#8a8d91">'+pts[i].l.replace('Jun ','').replace('Jul ','')+'</text>';}).join('');
+    var last='<text x="'+cd[n-1][0].toFixed(0)+'" y="'+(cd[n-1][1]-6).toFixed(0)+'" font-size="10.5" font-weight="700" text-anchor="end" fill="#111">'+pts[n-1].v.toLocaleString()+'</text>';
+    return '<svg width="100%" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><path d="'+d+'" fill="none" stroke="#2563eb" stroke-width="2"></path>'+dots+labs+last+'</svg>'; }
+  function kpi(k,v,cl,n){ return '<div class="lokpi"><div class="k">'+k+'</div><div class="v '+cl+'">'+v+'</div><div class="n">'+n+'</div></div>'; }
+  document.getElementById('loKpi').innerHTML=kpi('Contacts (3d)',contacts.toLocaleString(),'','voice + email')+kpi('Voice abandon',pctF(ab3),cAb(ab3),'target &lt;5%')+kpi('Email ≤4hr',pctF(fr3),cFr(fr3),'target 70%')+kpi('Call sentiment',(neg==null?'—':neg+'%'),cNeg(neg),'ending negative')+kpi('Top reason',topR.t,'',topR.p+'% of calls');
+  var wt=[]; (BPO_WOW.weeks||[]).forEach(function(w,i){ if(!w.complete) return; var tv=0,te=0; WOW_B.forEach(function(b){tv+=((BPO_WOW.voice.all[b]||[])[i]||{}).an||0;}); Object.keys(EMAIL_WOW.email.all||{}).forEach(function(b){te+=((EMAIL_WOW.email.all[b]||[])[i]||{}).rep||0;}); wt.push({l:w.label,v:tv+te}); });
+  document.getElementById('loTrend').innerHTML=svgLine(wt);
+  var mxb=Math.max.apply(null,BPO.map(function(x){return x.d.an;}))||1;
+  document.getElementById('loBpo').innerHTML='<div class="bparow">'+BPO.map(function(x){ var bh=Math.round(x.d.an/mxb*104);
+    return '<div class="bpcol"><div class="bpnum">'+x.d.an.toLocaleString()+'</div><div class="bpbar" style="height:'+bh+'px"></div><div class="bpnm">'+x.n+'</div><div class="bpchip '+bg(cAsa(x.d.asa))+' '+cAsa(x.d.asa)+'"><span class="cl">ASA</span>'+asaF(x.d.asa)+'</div><div class="bpchip '+bg(cFr(x.d.frp))+' '+cFr(x.d.frp)+'"><span class="cl">EMAIL ≤4HR</span>'+pctF(x.d.frp)+'</div></div>';
+  }).join('')+'</div>';
+  document.getElementById('loCli').innerHTML=svgH(CLI.map(function(x){return {n:x.n,v:x.d.vol,lab:x.d.vol.toLocaleString()};}),'#7c3aed');
+  document.getElementById('loCliStat').innerHTML=CLI.map(function(x){return '<b>'+x.n+'</b> ab <span class="'+cAb(x.d.ab)+'">'+pctF(x.d.ab)+'</span>/≤4hr <span class="'+cFr(x.d.frp)+'">'+pctF(x.d.frp)+'</span>';}).join(' &nbsp; ');
   document.getElementById('loRfc').innerHTML=svgH(tops.map(function(x){var p=Math.round(x.c/answ*100);return {n:x.t,v:p,lab:p+'%'};}),'#0d9488');
-  var neg=phNegPct('all'), ncol=(neg==null?'#8a8d91':(neg<25?'#1a7f37':(neg<40?'#9a6a00':'#b3261e')));
+  var ncol=(neg==null?'#8a8d91':(neg<25?'#1a7f37':(neg<40?'#9a6a00':'#b3261e')));
   document.getElementById('loSent').innerHTML=svgDonut(neg==null?0:neg,ncol);
   var C=HM_CUBE.cube, cdays=HM_CUBE.days;
   function hnd(ch,cl,d,h){ var hh=C[ch].handled[cl]||{}, sm=0; for(var b in hh) sm+=hh[b][d][h]; return sm; }
@@ -1206,8 +1225,8 @@ function renderExec(){
   var vg=[],eg=[];
   for(var d=0;d<7;d++)for(var h=0;h<24;h++){ var vo=0,vh=0,eo=0,eh=0; BUILT_CL.forEach(function(cl){ vo+=C.voice.inbound[cl][d][h]; vh+=hnd('voice',cl,d,h); eo+=C.email.inbound[cl][d][h]; eh+=hnd('email',cl,d,h); }); vg.push({g:Math.round(vo-vh),d:d,h:h}); eg.push({g:Math.round(eo-eh),d:d,h:h}); }
   vg.sort(function(a,b){return b.g-a.g;}); eg.sort(function(a,b){return b.g-a.g;});
-  function gline(icon,lab,arr,unit){ return '<div class="logap"><span class="gi">'+icon+'</span><b>'+lab+':</b> '+arr.slice(0,2).map(function(g){return cdays[g.d]+' '+hlab(g.h)+' <span class="red">+'+g.g.toLocaleString()+'</span>';}).join(' &nbsp;·&nbsp; ')+' <span class="mut">'+unit+' outran handling</span></div>'; }
-  document.getElementById('loGap').innerHTML=gline('📞','Voice',vg,'calls')+gline('✉️','Email',eg,'emails');
+  function gline(icon,lab,arr){ return '<div class="logap"><span class="gi">'+icon+'</span><b>'+lab+':</b> '+arr.slice(0,2).map(function(g){return cdays[g.d]+' '+hlab(g.h)+' <span class="red">+'+g.g.toLocaleString()+'</span>';}).join(' &nbsp;·&nbsp; ')+'</div>'; }
+  document.getElementById('loGap').innerHTML=gline('📞','Voice',vg)+gline('✉️','Email',eg)+'<div class="mut" style="font-size:10.5px;margin-top:3px;">calls/emails that outran handling · prev complete wk</div>';
 }
 var BUILD_STAMP=" \u00b7 last build Jul 20, 2026 (each tab shows its own data window)";   // injected by cc_refresh.py at rebuild time, e.g. " · data as of Jul 19 2026"
 renderExec(); renderClients(); renderByBpo(); renderByClient(); renderTrend(); renderDod(); renderPlanner(); applyFilter();
