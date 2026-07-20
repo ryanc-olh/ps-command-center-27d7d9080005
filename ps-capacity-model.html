@@ -54,9 +54,12 @@
   <div class="callout" style="border-left-color:var(--amb);background:#fbf6ec;">
     <b>⚙️ Planning &amp; scenario tool — not a live dashboard.</b> Every number below is computed from the assumptions <b>you enter</b>; nothing here auto-refreshes (it recalculates as you type) and there is no "as-of" date. Defaults are <b>industry benchmarks, not OpenLoop-measured figures</b> — replace them with your measured AHT / contact-rate / shrinkage before acting. The one calibrated element is the intraday arrival curve (below), measured once on real telehealth launch data (re-derive per client).
   </div>
-  <div class="callout">
-    <b>Why Erlang C (voice &amp; chat):</b> Erlang C is the telecom/contact-center <b>industry-standard queueing model</b> for inbound staffing. It treats calls as random (Poisson) arrivals into one shared queue and computes the probability a call must wait (P<sub>w</sub>), then projected service level <b>SL = 1 − P<sub>w</sub> · e<sup>−(N−A)·(T/AHT)</sup></b>, where offered load <b>A = calls/hr × AHT(s)/3600</b>, N = agents, T = answer-target seconds. Unlike a flat "volume ÷ AHT" estimate, it accounts for arrival randomness — so it does not undersize at the peak. (Engine reference-verified against the standard 200 calls/hr · 180s AHT · 80%/20s → 14-agent benchmark.)
-  </div>
+  <details style="margin:-14px 0 20px;">
+    <summary style="cursor:pointer;font-size:12.5px;color:var(--blue);font-weight:600;">ⓘ Why Erlang C is the model behind voice &amp; chat (click)</summary>
+    <div class="callout" style="margin-top:8px;">
+    Erlang C is the telecom/contact-center <b>industry-standard queueing model</b> for inbound staffing. It treats calls as random (Poisson) arrivals into one shared queue and computes the probability a call must wait (P<sub>w</sub>), then projected service level <b>SL = 1 − P<sub>w</sub> · e<sup>−(N−A)·(T/AHT)</sup></b>, where offered load <b>A = calls/hr × AHT(s)/3600</b>, N = agents, T = answer-target seconds. Unlike a flat "volume ÷ AHT" estimate, it accounts for arrival randomness — so it does not undersize at the peak. (Engine reference-verified against the standard 200 calls/hr · 180s AHT · 80%/20s → 14-agent benchmark.)
+    </div>
+  </details>
 
   <div class="presets">
     <span style="font-size:12.5px;color:var(--sec);align-self:center;">Presets:</span>
