@@ -32,6 +32,7 @@
   .pill.g{background:#e4f2ea;color:var(--grn);} .pill.a{background:#f6efdc;color:var(--amb);} .pill.n{background:#ecebe6;color:var(--sec);}
   .lbl{font-size:13px;font-weight:600;color:var(--sec);margin:18px 0 6px;}
   .note{font-size:12px;color:var(--mut);margin-top:10px;}
+  .mut{color:var(--mut);}
   .defl{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:6px;}
   .db{border:1px solid var(--bd);border-radius:10px;padding:13px 15px;background:var(--panel);}
   .db .t{font-size:12.5px;font-weight:600;}
@@ -81,7 +82,7 @@
   </details>
 
   <div id="phoneView">
-  <div class="sub" style="margin-top:10px;">Phone reasons &amp; sentiment from <b>Amazon Connect Contact Lens</b> — answered inbound calls, latest complete week (<b><span id="phWin">—</span></b>). De-identified · auto-refreshes daily.</div>
+  <div class="sub" style="margin-top:10px;"><b>Census — every answered call auto-tagged</b> by <b>Amazon Connect Contact Lens</b>, latest complete week (<b><span id="phWin">—</span></b>). Shares are exact (multi-label, can total &gt;100%). De-identified · updated daily. <span class="mut">(Email, in the other tab, is a weekly ~100-ticket sample — directional; compare within a channel.)</span></div>
   <div class="lbl" style="margin-top:16px;">Client</div>
   <div id="phBtns" style="display:flex;gap:6px;flex-wrap:wrap;">
     <button class="cdbtn2 active" onclick="renderPhone('all')">All built</button>
@@ -133,7 +134,7 @@
       <thead><tr><th>#</th><th>Category</th><th>Tickets</th><th>% of sample</th><th>Share</th><th>Owning queue</th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="note">Reason mix from a random 100-ticket sample per client (% = share of that client's sample). Bodies read &amp; classified individually — not from the (largely blank) ticket category field. <b>"Other"</b> = clients without a built dashboard, and it's ~<b>55% non-patient noise</b> (vendor/marketing/system — measured, n=250) so only ~45% is genuine patient contact; treat its patient reasons as a thin slice. (Built-client inboxes are far cleaner — see each client's measured real-patient rate above.)</div>
+    <div class="note">Reason mix from a random 100-ticket sample per client (% = share of that client's sample; directional, not exact). Full method in "How these numbers are pulled" above.</div>
   </div>
 
   <div class="foot" id="foot"></div>

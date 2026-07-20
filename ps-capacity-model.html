@@ -130,7 +130,7 @@
       <div class="row"><label>Handle time (min / email)</label><input id="eAht" type="number" step="0.1" value="8.0" oninput="recompute()"></div>
       <div class="row"><label>Response target (hours)</label><input id="eTarget" type="number" step="0.5" value="4" oninput="recompute()"></div>
       <div class="row"><label>Starting backlog</label><input id="eBacklog" type="number" value="0" oninput="recompute()"></div>
-      <div class="hint">Handle time = agent <i>touch</i> time per email (pure active minutes; drives FTEs). Response target = SLA (drives max backlog). Healthcare email ~6–10 min touch. <b>Note:</b> this is a different measure from the command center's email capacity metric, which uses a measured <i>blended</i> rate of ~2.1 replies per active agent-hour (that rate already nets out agents' multi-channel time, so it is not the same as pure touch time). Calibrate this input to OpenLoop's actual per-reply touch time before relying on it.</div>
+      <div class="hint">Handle time = agent <i>touch</i> time per email (drives FTEs). Response target = SLA (drives max backlog). Benchmark ~6–10 min touch — calibrate to OpenLoop before acting (see Method note; not the same as the command center's blended ~2.1 replies/agent-hr rate).</div>
     </div>
   </div>
 
@@ -164,6 +164,7 @@
         <div class="row"><label>Annual attrition %</label><input id="attr" type="number" value="42" oninput="recompute()"></div>
         <div class="row"><label>Ramp to productivity (weeks)</label><input id="ramp" type="number" value="6" oninput="recompute()"></div>
       </div>
+      <div class="hint">Attrition &amp; ramp are <b>benchmark placeholders</b> — replace with OpenLoop/BPO-measured values before planning to them.</div>
       <div class="callout" id="hireNote"></div>
     </div>
   </div>
