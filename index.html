@@ -79,8 +79,8 @@
   table.mx tr.grouphdr td{background:#efeee9;font-weight:700;text-align:left;color:var(--ink);border-top:2px solid var(--bds);padding:7px 10px;font-size:12.5px;letter-spacing:.03em;}
   table.mx tr.bandhdr td{background:#26251f;color:#fff;font-weight:800;text-align:left;padding:9px 10px;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;border-top:3px solid #000;}
   /* WoW trend: scroll box with a frozen week-header row */
-  #trendWrap{max-height:74vh;overflow:auto;}
-  #trendTable thead th{position:sticky;top:0;z-index:5;box-shadow:0 2px 0 var(--bds);}
+  .twrap{max-height:74vh;overflow:auto;}
+  .twrap table thead th{position:sticky;top:0;z-index:5;box-shadow:0 2px 0 var(--bds);}
   table.mx td.metlab{text-align:left;font-weight:500;color:var(--sec);padding-left:16px;}
   .wdelta{display:block;font-size:9.5px;line-height:1.15;margin-top:1px;font-weight:600;}
   .wdelta.grn{color:var(--grn);} .wdelta.red{color:var(--red);} .wdelta.mut{color:var(--mut);}
@@ -164,12 +164,13 @@
 
   <div class="tabs">
     <button class="tab active" onclick="showTab(0)">Live Ops</button>
-    <button class="tab" onclick="showTab(1)">SLAs — all clients</button>
-    <button class="tab" onclick="showTab(2)">Capacity vs Demand</button>
-    <button class="tab" onclick="showTab(3)">By BPO &amp; Client</button>
-    <button class="tab" onclick="showTab(4)">Client Dashboards</button>
-    <button class="tab" onclick="showTab(5)">Reasons for Contact</button>
-    <button class="tab" onclick="showTab(6)">Intraday by Hour</button>
+    <button class="tab" onclick="showTab(1)">By BPO</button>
+    <button class="tab" onclick="showTab(2)">By Client</button>
+    <button class="tab" onclick="showTab(3)">SLAs — all clients</button>
+    <button class="tab" onclick="showTab(4)">Capacity vs Demand</button>
+    <button class="tab" onclick="showTab(5)">Client Dashboards</button>
+    <button class="tab" onclick="showTab(6)">Reasons for Contact</button>
+    <button class="tab" onclick="showTab(7)">Intraday by Hour</button>
   </div>
 
   <!-- ===== LIVE OPS ===== -->
@@ -205,6 +206,68 @@
     </div>
   </div>
 
+  <!-- ===== BY BPO ===== -->
+  <div class="panel" id="pbpo">
+    <div class="lbl" style="margin-top:0;">By BPO — vendor performance <span class="info" data-pop="bybpo" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· 🏢 a BPO = an outsourcing vendor (Response · TTEC · NARITH · NextVAS)</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px;">
+      <button id="bpoWowBtn" class="hbtn active" onclick="showBpoTab('wow')">📈 Week-over-week</button>
+      <button id="bpoWeekBtn" class="hbtn" onclick="showBpoTab('week')">📅 This week</button>
+    </div>
+    <div id="bpoWow">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 8px;">
+        <span style="font-size:13px;color:var(--sec);">Client</span>
+        <button class="hbtn tcbtn active" data-c="all" onclick="setTrend('client','all')">All</button>
+        <button class="hbtn tcbtn" data-c="embody" onclick="setTrend('client','embody')">Embody</button>
+        <button class="hbtn tcbtn" data-c="medvi" onclick="setTrend('client','medvi')">Medvi</button>
+        <button class="hbtn tcbtn" data-c="elixa" onclick="setTrend('client','elixa')">Elixa</button>
+        <button class="hbtn tcbtn" data-c="altrx" onclick="setTrend('client','altrx')">AltRx</button>
+        <button class="hbtn tcbtn" data-c="trinity" onclick="setTrend('client','trinity')">Trinity</button>
+      </div>
+      <div class="twrap"><table id="bpoTrendTable" class="mx"><thead><tr id="bpoTrendHead"></tr></thead><tbody></tbody></table></div>
+      <div class="note" id="bpoTrendNote"></div>
+    </div>
+    <div id="bpoWeek" style="display:none">
+      <div class="winbig">📅 Week of <span class="w" id="bpoVoiceWin">—</span></div>
+      <div class="mxsub"><b>🏢 One row per BPO vendor</b>, across all 5 built clients · latest complete week <span class="info" data-pop="bybpo" onclick="showPop(this)">i</span></div>
+      <div style="overflow-x:auto;"><table id="bpoScorecard" class="mx">
+        <thead><tr><th>BPO</th><th>Region · HC</th><th>📞 Answered</th><th>📞 ASA</th><th>📞 AHT</th><th>✉️ Replies</th><th>✉️ ≤4hr</th><th>✉️ 1-touch <span class="estlbl">est</span></th><th>✉️ Repl/tix <span class="estlbl">est</span></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="note"><b>Client-level, all 5 (real): abandon <span id="bpoAbandon">—</span> · one-touch <span id="bpoOneTouch">—</span> · neg sentiment <span id="bpoNeg">—</span>.</b> Per-BPO 1-touch &amp; Repl/tix are <span class="estlbl">est</span>. <span class="info" data-pop="bybpo" onclick="showPop(this)">i</span></div>
+    </div>
+  </div>
+
+  <!-- ===== BY CLIENT ===== -->
+  <div class="panel" id="pcli">
+    <div class="lbl" style="margin-top:0;">By Client <span class="info" data-pop="byclient" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· 🏥 a client = a brand we serve (Embody · Medvi · Elixa · AltRx · Trinity)</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px;">
+      <button id="cliWowBtn" class="hbtn active" onclick="showCliTab('wow')">📈 Week-over-week</button>
+      <button id="cliWeekBtn" class="hbtn" onclick="showCliTab('week')">📅 This week</button>
+    </div>
+    <div id="cliWow">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 8px;">
+        <span style="font-size:13px;color:var(--sec);">Client</span>
+        <button class="hbtn tcbtn active" data-c="all" onclick="setTrend('client','all')">All</button>
+        <button class="hbtn tcbtn" data-c="embody" onclick="setTrend('client','embody')">Embody</button>
+        <button class="hbtn tcbtn" data-c="medvi" onclick="setTrend('client','medvi')">Medvi</button>
+        <button class="hbtn tcbtn" data-c="elixa" onclick="setTrend('client','elixa')">Elixa</button>
+        <button class="hbtn tcbtn" data-c="altrx" onclick="setTrend('client','altrx')">AltRx</button>
+        <button class="hbtn tcbtn" data-c="trinity" onclick="setTrend('client','trinity')">Trinity</button>
+      </div>
+      <div class="twrap"><table id="cliTrendTable" class="mx"><thead><tr id="cliTrendHead"></tr></thead><tbody></tbody></table></div>
+      <div class="note" id="cliTrendNote"></div>
+    </div>
+    <div id="cliWeek" style="display:none">
+      <div class="winbig">📅 Week of <span class="w" id="cbVoiceWin">—</span></div>
+      <div class="mxsub"><b>🏥 Each client → 🏢 its vendors</b> · latest complete week <span class="info" data-pop="byclient" onclick="showPop(this)">i</span></div>
+      <div style="overflow-x:auto;"><table id="clientBpoTable" class="mx">
+        <thead><tr><th>Client · BPO</th><th>📞 Answered</th><th>📞 ASA</th><th>📞 AHT</th><th>✉️ Replies</th><th>✉️ ≤4hr</th><th>✉️ 1-touch <span class="estlbl">est</span></th><th>✉️ Repl/tix <span class="estlbl">est</span></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="note">In-house/clinical excluded; same window as the scorecard. 1-touch &amp; Repl/tix are <span class="estlbl">est</span>. <span class="info" data-pop="byclient" onclick="showPop(this)">i</span></div>
+    </div>
+  </div>
+
   <!-- ===== SLAs ===== -->
 <div class="panel" id="p1">
     <div class="lbl" style="margin-top:0;">Voice service level by client <span class="info" data-pop="slatab" onclick="showPop(this)">i</span> <span class="proto" style="background:var(--grn);margin-left:6px;">LIVE</span></div>
@@ -222,54 +285,6 @@
     <div class="winbig">🧮 Interactive planning model <span style="font-weight:400;font-size:12px;color:var(--mut);">— you enter demand; not a dated snapshot</span></div>
     <div class="note">The full staffing model (Erlang C voice · concurrency chat · throughput/backlog email · intraday surge · sensitivity · hiring). Enter demand → required FTEs by channel. Per-BPO AHT from the By-BPO tab feeds the efficiency assumptions.</div>
     <iframe src="ps-capacity-model.html" title="Capacity model"></iframe>
-  </div>
-
-  <!-- ===== BY BPO & CLIENT ===== -->
-  <div class="panel" id="p3">
-    <div class="lbl" style="margin-top:0;">BPO performance — vendor comparison &amp; per-client split</div>
-    <div class="mxsub" style="margin:4px 0 6px;"><b>Two units on this page:</b> a <b>🏢 BPO</b> is an outsourcing <b>vendor</b> (Response, TTEC, NARITH, NextVAS) that handles calls/emails; a <b>🏥 Client</b> is the brand whose patients we serve (Embody, Medvi, Elixa, AltRx, Trinity). Each view below states which unit its rows are.</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px;">
-      <button id="bvBpo" class="hbtn active" onclick="showBpoView('bpo')">🏢 By BPO — rows = vendors</button>
-      <button id="bvClient" class="hbtn" onclick="showBpoView('client')">🏥 By Client — rows = each client's vendors</button>
-      <button id="bvTrend" class="hbtn" onclick="showBpoView('trend')">📈 Week-over-week trend</button>
-    </div>
-
-    <div id="bpoView">
-      <div class="winbig">📅 Week of <span class="w" id="bpoVoiceWin">—</span></div>
-      <div class="mxsub"><b>🏢 One row per BPO vendor</b>, across all 5 built clients · latest complete week <span class="info" data-pop="bybpo" onclick="showPop(this)">i</span></div>
-      <div style="overflow-x:auto;"><table id="bpoScorecard" class="mx">
-        <thead><tr><th>BPO</th><th>Region · HC</th><th>📞 Answered</th><th>📞 ASA</th><th>📞 AHT</th><th>✉️ Replies</th><th>✉️ ≤4hr</th><th>✉️ 1-touch <span class="estlbl">est</span></th><th>✉️ Repl/tix <span class="estlbl">est</span></th></tr></thead>
-        <tbody></tbody>
-      </table></div>
-      <div class="note"><b>Client-level, all 5 (real): abandon <span id="bpoAbandon">—</span> · one-touch <span id="bpoOneTouch">—</span> · neg sentiment <span id="bpoNeg">—</span>.</b> Per-BPO 1-touch &amp; Repl/tix are <span class="estlbl">est</span>. <span class="info" data-pop="bybpo" onclick="showPop(this)">i</span></div>
-    </div>
-
-    <div id="clientBpoView" style="display:none">
-      <div class="winbig">📅 Week of <span class="w" id="cbVoiceWin">—</span></div>
-      <div class="mxsub"><b>🏥 Each client → 🏢 its vendors</b> · latest complete week <span class="info" data-pop="byclient" onclick="showPop(this)">i</span></div>
-      <div style="overflow-x:auto;"><table id="clientBpoTable" class="mx">
-        <thead><tr><th>Client · BPO</th><th>📞 Answered</th><th>📞 ASA</th><th>📞 AHT</th><th>✉️ Replies</th><th>✉️ ≤4hr</th><th>✉️ 1-touch <span class="estlbl">est</span></th><th>✉️ Repl/tix <span class="estlbl">est</span></th></tr></thead>
-        <tbody></tbody>
-      </table></div>
-      <div class="note">In-house/clinical excluded; same window as the scorecard. 1-touch &amp; Repl/tix are <span class="estlbl">est</span>. <span class="info" data-pop="byclient" onclick="showPop(this)">i</span></div>
-    </div>
-
-    <div id="trendView" style="display:none">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 8px;">
-        <span style="font-size:13px;color:var(--sec);">Client</span>
-        <button id="tcAll" class="hbtn active" onclick="setTrend('client','all')">All</button>
-        <button class="hbtn" onclick="setTrend('client','embody')">Embody</button>
-        <button class="hbtn" onclick="setTrend('client','medvi')">Medvi</button>
-        <button class="hbtn" onclick="setTrend('client','elixa')">Elixa</button>
-        <button class="hbtn" onclick="setTrend('client','altrx')">AltRx</button>
-        <button class="hbtn" onclick="setTrend('client','trinity')">Trinity</button>
-      </div>
-      <div id="trendWrap"><table id="trendTable" class="mx">
-        <thead><tr id="trendHead"></tr></thead>
-        <tbody></tbody>
-      </table></div>
-      <div class="note" id="trendNote">Voice inbound by BPO, week over week. Latest column (*) is a partial week. ASA colored: green ≤30s · amber ≤2m · red &gt;2m.</div>
-    </div>
   </div>
 
   <!-- ===== CLIENT DASHBOARDS ===== -->
@@ -493,8 +508,8 @@ function applyFilter(){
 function showTab(i){
   document.querySelectorAll('.tabs .tab').forEach(function(t,j){t.classList.toggle('active',j===i);});
   document.querySelectorAll('.panel').forEach(function(p,j){p.classList.toggle('active',j===i);});
-  if(i===5){ var rf=document.getElementById('rfcFrame'); if(rf) rf.src='ps-rfc.html?cb='+Date.now(); }
-  if(i===6){ renderHM(); }
+  if(i===6){ var rf=document.getElementById('rfcFrame'); if(rf) rf.src='ps-rfc.html?cb='+Date.now(); }
+  if(i===7){ renderHM(); }
 }
 // ---- progressive-disclosure info popovers: glanceable by default, detail on click ----
 var POP={
@@ -512,6 +527,7 @@ var POP={
   bybpo:'<div class="h">By BPO — vendor scorecard</div>One row per vendor, aggregated across the 5 built clients, latest complete week. 1-touch &amp; Repl/tix are <b>est</b> (attributed to the first responder\'s vendor). HC = static reference headcount. <b>Colors:</b> ASA green ≤30s/amber ≤2m/red &gt;2m · ≤4hr green ≥70%/amber ≥50%/red &lt;50%; AHT uncolored. <span class="hint2">Voice = Amazon Connect · Email = Zoho Desk (≤1-day lag) · rebuilt daily.</span>',
   byclient:'<div class="h">By Client → vendor split</div>Each client, then one row per BPO vendor, latest complete week (same window as the scorecard). ASA = avg secs to answer; AHT = avg handle mins. 1-touch &amp; Repl/tix are <b>est</b>. <span class="hint2">Voice = Amazon Connect · Email = Zoho Desk (≤1-day lag) · rebuilt daily.</span>',
   reasons:'<div class="h">Reasons for contact</div><b>Phone</b> = live Amazon Connect Contact Lens topic tags on answered calls (latest complete week, rebuilt daily; multi-label, so shares can total &gt;100%) — an exact census. <b>Email</b> = a random ~100 tickets/client, body-classified (previous complete week, rebuilt weekly Mon) — a directional sample. Read phone as exact, email as approximate.',
+  wow:'<div class="h">Week-over-week</div>6 complete weeks + the current partial (*). The small figure under each value is the change vs the prior week. <b>Colors:</b> ASA green ≤30s/amber ≤2m/red &gt;2m · ≤4hr &amp; one-touch green ≥70%/amber ≥50%/red &lt;50% (Δ in points, + = better) · sentiment &amp; abandon green low/red high (Δ in points, + = worse) · volumes neutral. <span class="hint2">Voice/sentiment = Amazon Connect &amp; Contact Lens; email = Zoho Desk (≤1-day lag). Rebuilt daily ~5:15am MT.</span>',
   hm:'<div class="h">Intraday heatmap</div>Previous complete week, day × hour; darker = higher. <b>Gap</b> (inbound − handled): <span class="red">red</span> = demand outran handling that hour, <span class="grn">green</span> = kept up/ahead. Inbound = calls offered / emails received (whole client, not per-BPO). <b>Email inbound is patient-only</b> — each client\'s email is scaled by its measured real-patient rate (noise stripped); pick <b>Agents needed</b> or <b>Coverage gap</b> for the per-client rates + capacity method. Phone is not adjusted. <span class="hint2">Voice = Amazon Connect (prior day); email = Zoho Desk (≤1-day lag); rebuilt daily ~5:15am MT. Phone hours Central; email stored tz.</span>'
 };
 function showPop(el){
@@ -811,7 +827,7 @@ function renderTrend(){
   var WKS=EMAIL_WOW.weeks;                                       // 7 wks (same boundaries as voice)
   var voice=BPO_WOW.voice[cl]||BPO_WOW.voice.all;
   var email=EMAIL_WOW.email[cl]||EMAIL_WOW.email.all;
-  document.getElementById('trendHead').innerHTML='<th>Client / vendor · metric</th>'+WKS.map(function(w){return '<th>'+w.label+(w.complete?'':'*')+'</th>';}).join('');
+  var wkHead=WKS.map(function(w){return '<th>'+w.label+(w.complete?'':'*')+'</th>';}).join('');
   var ncol=WKS.length+1;
   var bpos=WOW_B.filter(function(b){ return WKS.some(function(w,i){ var vc=(voice[b]||[])[i]||{},ec=(email[b]||[])[i]||{}; return (vc.an||0)>0 || (ec.rep||0)>0; }); });
   // per-week cell with a delta vs the prior week
@@ -869,9 +885,8 @@ function renderTrend(){
     }).join('');
     return '<tr><td class="metlab">😞 Neg sentiment</td>'+cells+'</tr>';
   }
-  var bandV='<tr class="bandhdr"><td colspan="'+ncol+'">🏢 Vendor-level (BPO) metrics — one section per vendor · that vendor’s own handling</td></tr>';
-  var bandC='<tr class="bandhdr"><td colspan="'+ncol+'">🏥 Client-level metrics — one row per client, per metric · aggregate across vendors</td></tr>';
-  var vendorHtml=bandV+bpos.map(function(b){
+  // ---- By BPO tab → vendor bands (one section per vendor) ----
+  var vendorHtml=bpos.map(function(b){
     var reb=((re[cl]||re.all||{})[b])||[];
     return '<tr class="grouphdr"><td colspan="'+ncol+'">🏢 '+b+' &nbsp;·&nbsp; BPO vendor</td></tr>'+
       mrow('📞 Answered', voice[b]||[], 'an','vol')+
@@ -882,25 +897,33 @@ function renderTrend(){
       mrow('✉️ ≤4hr',     email[b]||[], 'frp','pts')+
       mrow('✉️ 1-touch <span class="estlbl">est</span>', reb, 'ot','pts')+
       mrow('✉️ Repl/tix <span class="estlbl">est</span>', reb, 'avgrep','asa');
-  }).join('');
-  // 🏢 Vendor (BPO) band first — we care more about vendor performance — then 🏥 client-level band
-  var html=vendorHtml+bandC+abHtml+senHtml+otHtml+rrHtml;
-  document.querySelector('#trendTable tbody').innerHTML=html;
-  document.getElementById('trendNote').innerHTML='<b>Two bands:</b> 🏢 vendor-level metrics (one section per BPO) first, then 🏥 client-level metrics (one row per client), for '+(cl==='all'?'all built clients':(CLIENT_NAMES[cl]||cl))+'. <b>The small figure under each value is the change vs the prior week (WoW).</b> * = current partial week. Voice/sentiment per-BPO history begins Jun 22 (Connect tagging). Colors: ASA green ≤30s/amber ≤2m/red &gt;2m (Δ +%=slower, red); ≤4hr green ≥70%/amber ≥50%/red &lt;50% (Δ pts, +=better); sentiment/abandon green low/red high (Δ pp, +=worse, red); volume Δ neutral. Sources: voice/sentiment = Amazon Connect &amp; Contact Lens; email = Zoho Desk (≤1-day lag). Rebuilt daily ~5:15am Mountain; shows 6 complete weeks + current partial (*).';
+  }).join('') || '<tr><td colspan="'+ncol+'" class="mut">no vendor data for this client</td></tr>';
+  // ---- By Client tab → client bands (one row per client, per metric) ----
+  var clientHtml=abHtml+senHtml+otHtml+rrHtml;
+  var who=(cl==='all'?'all built clients':(CLIENT_NAMES[cl]||cl));
+  var bt=document.getElementById('bpoTrendTable');
+  if(bt){ document.getElementById('bpoTrendHead').innerHTML='<th>Vendor · metric</th>'+wkHead; bt.querySelector('tbody').innerHTML=vendorHtml;
+    document.getElementById('bpoTrendNote').innerHTML='Each BPO vendor\'s voice + email, week over week · '+who+'. The small figure under a value is the change vs the prior week. * = current partial week; per-BPO history begins Jun 22 (Connect tagging). <span class="info" data-pop="wow" onclick="showPop(this)">i</span>'; }
+  var ct=document.getElementById('cliTrendTable');
+  if(ct){ document.getElementById('cliTrendHead').innerHTML='<th>Client · metric</th>'+wkHead; ct.querySelector('tbody').innerHTML=clientHtml;
+    document.getElementById('cliTrendNote').innerHTML='Client-level metrics (abandon · sentiment · one-touch · replies/ticket), week over week · '+who+'. The small figure is the WoW change. * = current partial week. <span class="info" data-pop="wow" onclick="showPop(this)">i</span>'; }
 }
-function setTrend(g,val){
+function setTrend(g,val){   // shared client filter across both By-BPO and By-Client week-over-week views
   trend[g]=val;
-  document.querySelectorAll('#trendView .hbtn').forEach(function(b){ var on=b.getAttribute('onclick')||''; if(on.indexOf("'"+g+"'")>=0) b.classList.toggle('active', on.indexOf("'"+val+"'")>=0); });
+  document.querySelectorAll('.tcbtn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-c')===val); });
   renderTrend();
 }
-function showBpoView(v){
-  document.getElementById('bpoView').style.display=v==='bpo'?'block':'none';
-  document.getElementById('clientBpoView').style.display=v==='client'?'block':'none';
-  document.getElementById('trendView').style.display=v==='trend'?'block':'none';
-  document.getElementById('bvBpo').classList.toggle('active',v==='bpo');
-  document.getElementById('bvClient').classList.toggle('active',v==='client');
-  document.getElementById('bvTrend').classList.toggle('active',v==='trend');
-  if(v==='trend') renderTrend();
+function showBpoTab(v){   // By BPO tab: Week-over-week (default) ↔ This week
+  document.getElementById('bpoWow').style.display=v==='wow'?'block':'none';
+  document.getElementById('bpoWeek').style.display=v==='week'?'block':'none';
+  document.getElementById('bpoWowBtn').classList.toggle('active',v==='wow');
+  document.getElementById('bpoWeekBtn').classList.toggle('active',v==='week');
+}
+function showCliTab(v){   // By Client tab: Week-over-week (default) ↔ This week
+  document.getElementById('cliWow').style.display=v==='wow'?'block':'none';
+  document.getElementById('cliWeek').style.display=v==='week'?'block':'none';
+  document.getElementById('cliWowBtn').classList.toggle('active',v==='wow');
+  document.getElementById('cliWeekBtn').classList.toggle('active',v==='week');
 }
 function renderExec(){
   var CL=HM_CLIENTS;
@@ -939,7 +962,7 @@ function renderExec(){
   document.getElementById('exPeak').textContent=HM_CUBE.days[best.d]+', '+((best.hr%12)||12)+(best.hr<12?'a':'p')+' — '+best.v.toLocaleString()+' calls';
 }
 var BUILD_STAMP=" \u00b7 last build Jul 19, 2026 (each tab shows its own data window)";   // injected by cc_refresh.py at rebuild time, e.g. " · data as of Jul 19 2026"
-renderExec(); renderClients(); renderByBpo(); renderByClient(); showBpoView('trend'); applyFilter();
+renderExec(); renderClients(); renderByBpo(); renderByClient(); renderTrend(); applyFilter();
 (function(){ var b=document.getElementById('buildStamp'); if(b&&BUILD_STAMP) b.textContent=BUILD_STAMP; })();
 document.getElementById('foot').textContent='OpenLoop PS Command Center — internal · rebuilt daily ~5:15am Mountain · de-identified aggregates, PHI not persisted. See “ⓘ How this dashboard works” up top for sources, cadence & methods.';
 </script>
