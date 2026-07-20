@@ -223,6 +223,11 @@
         <button class="hbtn tcbtn" data-c="altrx" onclick="setTrend('client','altrx')">AltRx</button>
         <button class="hbtn tcbtn" data-c="trinity" onclick="setTrend('client','trinity')">Trinity</button>
       </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;">
+        <span style="font-size:13px;color:var(--sec);">Group by</span>
+        <button id="bpoLayoutVendor" class="hbtn active" onclick="setBpoLayout('vendor')">🏢 Vendor <span class="hint2" style="font-weight:400;">(rows = metrics)</span></button>
+        <button id="bpoLayoutMetric" class="hbtn" onclick="setBpoLayout('metric')">📊 Metric <span class="hint2" style="font-weight:400;">(rows = vendors)</span></button>
+      </div>
       <div class="twrap"><table id="bpoTrendTable" class="mx"><thead><tr id="bpoTrendHead"></tr></thead><tbody></tbody></table></div>
       <div class="note" id="bpoTrendNote"></div>
     </div>
@@ -821,7 +826,7 @@ function renderByClient(){
   }).join('');
   document.querySelector('#clientBpoTable tbody').innerHTML=html;
 }
-var trend={client:'all'};
+var trend={client:'all', bpoLayout:'vendor'};
 function renderTrend(){
   var cl=trend.client;
   var WKS=EMAIL_WOW.weeks;                                       // 7 wks (same boundaries as voice)
@@ -873,8 +878,8 @@ function renderTrend(){
   var rrHtml=clGroup('✉️ Email replies / ticket (real) — per client · lower is better',
     function(c,i){var a=RESOLUTION.client[c]; return (a&&a[i])?a[i].avgrep:null;}, null, +1, ratF, '');
   var re=(RESOLUTION.bpoest||{});
-  // per-BPO negative sentiment row (attributable to the answering vendor) — Contact Lens
-  function bpoSentRow(b){
+  // per-BPO negative sentiment row (attributable to the answering vendor) — Contact Lens; label lets it read either as the metric (vendor view) or the vendor (metric view)
+  function bpoSentRow(b, label){
     var src=((PHONE_RFC.bpo||{})[cl]||(PHONE_RFC.bpo||{}).all||{})[b]||{neg:[],scored:[]};
     var cells=WKS.map(function(w,i){
       var sc=src.scored[i]||0, cur=sc?Math.round(src.neg[i]/sc*100):null;
@@ -883,30 +888,46 @@ function renderTrend(){
       if(cur!=null&&prev!=null){ var dd=cur-prev; if(dd!==0) d='<span class="wdelta '+(dd>0?'red':'grn')+'">'+(dd>0?'+':'')+dd+'pp</span>'; }
       return '<td'+(cls?' class="'+cls+'"':'')+'>'+val+d+'</td>';
     }).join('');
-    return '<tr><td class="metlab">😞 Neg sentiment</td>'+cells+'</tr>';
+    return '<tr><td class="metlab">'+label+'</td>'+cells+'</tr>';
   }
-  // ---- By BPO tab → vendor bands (one section per vendor) ----
+  var reb=function(b){ return ((re[cl]||re.all||{})[b])||[]; };
+  // metric definitions shared by both layouts
+  var METS=[
+    {lab:'📞 Answered', src:function(b){return voice[b]||[];}, key:'an', kind:'vol'},
+    {lab:'📞 ASA', src:function(b){return voice[b]||[];}, key:'asa', kind:'asa'},
+    {lab:'📞 AHT', src:function(b){return voice[b]||[];}, key:'aht', kind:'asa'},
+    {lab:'😞 Neg sentiment', sent:true},
+    {lab:'✉️ Replies', src:function(b){return email[b]||[];}, key:'rep', kind:'vol'},
+    {lab:'✉️ ≤4hr', src:function(b){return email[b]||[];}, key:'frp', kind:'pts'},
+    {lab:'✉️ 1-touch <span class="estlbl">est</span>', src:function(b){return reb(b);}, key:'ot', kind:'pts'},
+    {lab:'✉️ Repl/tix <span class="estlbl">est</span>', src:function(b){return reb(b);}, key:'avgrep', kind:'asa'}
+  ];
+  // ---- Layout A: grouped by vendor (rows = metrics) ----
   var vendorHtml=bpos.map(function(b){
-    var reb=((re[cl]||re.all||{})[b])||[];
     return '<tr class="grouphdr"><td colspan="'+ncol+'">🏢 '+b+' &nbsp;·&nbsp; BPO vendor</td></tr>'+
-      mrow('📞 Answered', voice[b]||[], 'an','vol')+
-      mrow('📞 ASA',      voice[b]||[], 'asa','asa')+
-      mrow('📞 AHT',      voice[b]||[], 'aht','asa')+
-      bpoSentRow(b)+
-      mrow('✉️ Replies',  email[b]||[], 'rep','vol')+
-      mrow('✉️ ≤4hr',     email[b]||[], 'frp','pts')+
-      mrow('✉️ 1-touch <span class="estlbl">est</span>', reb, 'ot','pts')+
-      mrow('✉️ Repl/tix <span class="estlbl">est</span>', reb, 'avgrep','asa');
+      METS.map(function(m){ return m.sent? bpoSentRow(b,m.lab) : mrow(m.lab, m.src(b), m.key, m.kind); }).join('');
+  }).join('') || '<tr><td colspan="'+ncol+'" class="mut">no vendor data for this client</td></tr>';
+  // ---- Layout B: grouped by metric (rows = vendors) — head-to-head vendor comparison ----
+  var metricHtml=METS.map(function(m){
+    return '<tr class="grouphdr"><td colspan="'+ncol+'">'+m.lab+'</td></tr>'+
+      bpos.map(function(b){ return m.sent? bpoSentRow(b,'🏢 '+b) : mrow('🏢 '+b, m.src(b), m.key, m.kind); }).join('');
   }).join('') || '<tr><td colspan="'+ncol+'" class="mut">no vendor data for this client</td></tr>';
   // ---- By Client tab → client bands (one row per client, per metric) ----
   var clientHtml=abHtml+senHtml+otHtml+rrHtml;
   var who=(cl==='all'?'all built clients':(CLIENT_NAMES[cl]||cl));
+  var byMetric=(trend.bpoLayout==='metric');
   var bt=document.getElementById('bpoTrendTable');
-  if(bt){ document.getElementById('bpoTrendHead').innerHTML='<th>Vendor · metric</th>'+wkHead; bt.querySelector('tbody').innerHTML=vendorHtml;
-    document.getElementById('bpoTrendNote').innerHTML='Each BPO vendor\'s voice + email, week over week · '+who+'. The small figure under a value is the change vs the prior week. * = current partial week; per-BPO history begins Jun 22 (Connect tagging). <span class="info" data-pop="wow" onclick="showPop(this)">i</span>'; }
+  if(bt){ document.getElementById('bpoTrendHead').innerHTML='<th>'+(byMetric?'Metric ▸ vendor':'Vendor ▸ metric')+'</th>'+wkHead; bt.querySelector('tbody').innerHTML=(byMetric?metricHtml:vendorHtml);
+    document.getElementById('bpoTrendNote').innerHTML=(byMetric?'One section per <b>metric</b>, one row per <b>vendor</b> — compare BPOs head-to-head':'One section per <b>vendor</b>, one row per <b>metric</b>')+', week over week · '+who+'. The small figure under a value is the change vs the prior week. * = current partial week; per-BPO history begins Jun 22 (Connect tagging). <span class="info" data-pop="wow" onclick="showPop(this)">i</span>'; }
   var ct=document.getElementById('cliTrendTable');
   if(ct){ document.getElementById('cliTrendHead').innerHTML='<th>Client · metric</th>'+wkHead; ct.querySelector('tbody').innerHTML=clientHtml;
     document.getElementById('cliTrendNote').innerHTML='Client-level metrics (abandon · sentiment · one-touch · replies/ticket), week over week · '+who+'. The small figure is the WoW change. * = current partial week. <span class="info" data-pop="wow" onclick="showPop(this)">i</span>'; }
+}
+function setBpoLayout(v){   // By-BPO WoW: group by vendor (rows=metrics) ↔ by metric (rows=vendors)
+  trend.bpoLayout=v;
+  document.getElementById('bpoLayoutVendor').classList.toggle('active',v==='vendor');
+  document.getElementById('bpoLayoutMetric').classList.toggle('active',v==='metric');
+  renderTrend();
 }
 function setTrend(g,val){   // shared client filter across both By-BPO and By-Client week-over-week views
   trend[g]=val;
