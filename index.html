@@ -54,6 +54,26 @@
   .hint2{font-size:11px;color:var(--mut);}
   #freshBanner{display:none;background:#fdecea;border:1px solid #f5c6c2;border-left:4px solid var(--red);border-radius:9px;padding:11px 15px;margin:10px 0 0;font-size:13px;color:#7a1a12;}
   #freshBanner b{color:#7a1a12;}
+  /* Live Ops redesign */
+  .frib{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 8px;padding:8px 10px;background:#f6f7f9;border:1px solid var(--brd);border-radius:10px;}
+  .fpill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;display:inline-flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--brd);color:var(--sec);}
+  .fpill .fdot{width:8px;height:8px;border-radius:50%;background:var(--mut);flex:0 0 auto;}
+  .fpill.ok .fdot{background:var(--grn);} .fpill.warn .fdot{background:var(--amb);} .fpill.bad .fdot{background:var(--red);}
+  .fpill.bad{color:#7a1a12;border-color:#f5c6c2;background:#fdecea;} .fpill.warn{color:#7a5200;border-color:#f0e0b0;background:#fdf7e6;}
+  .fpill .fwhen{font-weight:400;color:var(--mut);}
+  .exr{display:flex;align-items:flex-start;gap:9px;padding:8px 11px;border:1px solid var(--brd);border-radius:9px;margin-bottom:6px;font-size:13.5px;background:#fff;}
+  .exr.pin{background:#fdecea;border-color:#f5c6c2;}
+  .exr .exdot{width:9px;height:9px;border-radius:50%;margin-top:5px;flex:0 0 auto;background:var(--mut);}
+  .exr .exdot.bad{background:var(--red);} .exr .exdot.warn{background:var(--amb);}
+  .exr .exmain{flex:1;min-width:0;} .exr .exvol{color:var(--mut);font-size:12px;white-space:nowrap;}
+  .exmoverhdr{font-size:11.5px;font-weight:700;color:var(--sec);letter-spacing:.02em;margin:8px 0 5px;}
+  .exmover{font-size:12.5px;color:var(--sec);padding:5px 10px;border-left:3px solid var(--amb);background:#fdf7e6;border-radius:5px;margin-bottom:5px;}
+  .exhealthy{color:var(--grn);font-weight:600;font-size:13px;padding:7px 2px;}
+  .stale{opacity:.45;} .stflag{color:var(--red);font-weight:700;font-size:10px;letter-spacing:.03em;}
+  tr.exworst td{background:#fdecea;}
+  .exsum{cursor:pointer;font-weight:600;font-size:13px;color:var(--sec);padding:4px 0;}
+  .sprow{display:flex;align-items:center;gap:10px;margin-bottom:4px;font-size:13px;} .splab{width:150px;color:var(--sec);}
+  .spk{font-family:ui-monospace,Menlo,monospace;letter-spacing:2px;font-size:15px;color:var(--fg);}
   .note{font-size:12px;color:var(--mut);margin-top:10px;}
   iframe{width:100%;height:1400px;border:1px solid var(--bd);border-radius:10px;margin-top:8px;}
   .foot{font-size:11px;color:var(--mut);margin-top:26px;border-top:1px solid var(--bd);padding-top:10px;}
@@ -178,35 +198,29 @@
 
   <!-- ===== LIVE OPS ===== -->
     <div class="panel active" id="p0">
-    <div class="lbl" style="margin-top:0;">Executive summary — Patient Support <span class="info" data-pop="legend" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· de-identified aggregates · C-suite &amp; BPO review</span></div>
-    <div class="winbig">📅 Latest complete week <span class="w">Jul 6–12</span> <span style="font-weight:400;font-size:12px;color:var(--mut);">· voice SL / abandon = trailing 7d</span></div>
-    <div class="grid kpis">
-      <div class="card"><div class="k">Patient contacts (wk) <span class="info" data-pop="contacts" onclick="showPop(this)">i</span></div><div class="v" id="exTotal">—</div><div class="n"><span class="sd live"></span><span id="exTotalN">voice + email</span></div></div>
-      <div class="card"><div class="k">Voice service level <span class="info" data-pop="vsl" onclick="showPop(this)">i</span></div><div class="v" id="exSL">—</div><div class="n"><span class="sd live"></span>target 80% · 7d</div></div>
-      <div class="card"><div class="k">Voice abandon <span class="info" data-pop="vab" onclick="showPop(this)">i</span></div><div class="v" id="exAb">—</div><div class="n"><span class="sd live"></span>target &lt;5% · 7d</div></div>
-      <div class="card"><div class="k">Email first response <span class="info" data-pop="efr" onclick="showPop(this)">i</span></div><div class="v" id="exFRT">—</div><div class="n"><span class="sd live"></span>≤4hr · target 70%</div></div>
-      <div class="card"><div class="k">Email one-touch <span class="info" data-pop="e1t" onclick="showPop(this)">i</span></div><div class="v" id="exOneTouch">—</div><div class="n"><span class="sd live"></span>resolved ≤1 reply</div></div>
-      <div class="card"><div class="k">Call sentiment (neg) <span class="info" data-pop="sent" onclick="showPop(this)">i</span></div><div class="v" id="exNeg">—</div><div class="n"><span class="sd live"></span>calls ending negative</div></div>
-      <div class="card"><div class="k">Clients below SLA <span class="info" data-pop="below" onclick="showPop(this)">i</span></div><div class="v" id="exBelow">—</div><div class="n"><span class="sd live"></span>voice SL &lt;80% · 7d</div></div>
-    </div>
+    <div class="lbl" style="margin-top:0;">Patient Support — Live Ops <span class="info" data-pop="legend" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· internal · de-identified aggregates</span></div>
+    <div id="exRibbon" class="frib"></div>
+    <div id="exContacts" class="note" style="margin:0 0 8px;"></div>
+    <div class="grid kpis" id="exGlance"></div>
 
-    <div class="lbl">Clients below SLA target — voice (worst first) <span class="info" data-pop="breach" onclick="showPop(this)">i</span></div>
+    <div class="lbl">⚠️ Exceptions — worst first <span class="info" data-pop="exc" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· ranked by patient impact = miss × volume × trend</span></div>
+    <div id="exList"></div>
+
+    <div class="lbl">Clients — worst first <span class="info" data-pop="breach" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· voice + email, only off-target shown</span></div>
     <table id="exBreachTable">
-      <thead><tr><th>Client</th><th>Offered</th><th>SL ≤30s</th><th>Abandon</th><th>Status</th></tr></thead>
+      <thead><tr><th>Client</th><th>Offered</th><th>Voice SL ≤30s</th><th>Abandon</th><th>Email ≤4hr</th><th>Sentiment</th></tr></thead>
       <tbody></tbody>
     </table>
+    <div id="exClientHealthy" class="note" style="margin:6px 0 0;"></div>
 
-    <div class="lbl">BPO performance <span class="info" data-pop="exbpo" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· latest complete week</span></div>
+    <div class="lbl">BPO scorecard — worst first <span class="info" data-pop="exbpo" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· latest complete week</span></div>
     <table id="exBpoTable">
-      <thead><tr><th>BPO</th><th>Voice answered</th><th>ASA</th><th>AHT</th><th>Email replies</th><th>≤4hr</th></tr></thead>
+      <thead><tr><th>BPO</th><th>Answered</th><th>ASA</th><th>AHT</th><th>Email replies</th><th>≤4hr</th><th>Sentiment</th></tr></thead>
       <tbody></tbody>
     </table>
 
-    <div class="lbl">Load &amp; drivers <span style="font-weight:400;color:var(--mut);font-size:12px;">· previous complete week</span></div>
-    <div class="fresh">
-      <div class="fbox"><div class="h">Busiest hour (voice)</div><span id="exPeak">—</span></div>
-      <div class="fbox"><div class="h">Top phone reasons <span class="info" data-pop="reasons" onclick="showPop(this)">i</span></div><span id="exReasons">—</span></div>
-    </div>
+    <details id="exTrends" style="margin-top:14px;"><summary class="exsum">▸ 7-week trends</summary><div id="exSpark" style="margin-top:8px;"></div></details>
+    <details id="exMore"><summary class="exsum">▸ Load &amp; demand drivers</summary><div id="exDrivers" style="margin-top:8px;"></div></details>
   </div>
 
   <!-- ===== BY BPO ===== -->
@@ -596,8 +610,9 @@ var POP={
   e1t:'<div class="h">Email one-touch</div>Tickets resolved in a single reply ÷ tickets resolved. Higher = more resolved first-contact. <span class="hint2"><span class="sd live"></span>Live · Zoho Desk · latest complete week.</span>',
   sent:'<div class="h">Call sentiment (negative)</div>Share of scored calls whose AWS Contact Lens call-end sentiment was Negative/Very-Negative. <span class="hint2"><span class="sd live"></span>Live · Contact Lens AI · latest complete week. Colors: green &lt;25% · amber &lt;40% · red ≥40%.</span>',
   below:'<div class="h">Clients below SLA</div>Count of Connect voice queues under the 80% answered-≤30s target. <span class="hint2"><span class="sd live"></span>Live · trailing 7 days. See the SLAs tab for the list.</span>',
-  breach:'<div class="h">Clients below SLA target</div>Every Connect voice queue under target, worst first. Offered = inbound calls presented · SL ≤30s = answered within 30s ÷ offered · Abandon = unanswered ÷ offered. Status: Meeting ≥80% · Near 65–79% · Breaching &lt;65%. <span class="hint2">Trailing 7 days · Amazon Connect.</span>',
-  exbpo:'<div class="h">BPO performance</div>Per-vendor voice &amp; email, latest complete week. ASA = avg seconds to answer (green ≤30s / amber ≤2m / red &gt;2m); AHT = avg handle minutes (uncolored — context); ≤4hr = email first-response (green ≥70% / amber ≥50% / red &lt;50%). <span class="hint2">Voice = Amazon Connect · Email = Zoho Desk (≤1-day lag).</span>',
+  exc:'<div class="h">Exceptions — worst first</div>Only what\'s off-target, most urgent at the top, so you can read down and stop at the first ✓. <b>Ranking = miss-size × affected volume × trend direction</b>, so the biggest <i>patient impact</i> floats up — e.g. Embody SL 48% at 9,760 calls outranks a tiny queue at 42% / 182 calls. A stale/broken feed pins to the very top. Below the hard breaches, an <b>EARLY WARNING</b> band lists metrics moving adversely (e.g. abandon +2.6pp in a week) that are <i>not yet</i> breaching — smoke before fire. Healthy clients collapse to one green line. <span class="hint2">Voice/sentiment = Amazon Connect (frozen while the voice feed is stale) · email = Zoho Desk. Trend arrows = vs the prior complete week.</span>',
+  breach:'<div class="h">Clients — worst first (voice + email)</div>Only clients off-target on any channel, worst first. Offered = inbound calls · Voice SL ≤30s = answered within 30s ÷ offered (target 80%) · Abandon = unanswered ÷ offered (target &lt;5%) · Email ≤4hr = first-response within 4h (target 70%) · Sentiment = % of scored calls ending negative. Arrows = change vs the prior complete week. Voice columns are stamped ❄ &amp; greyed while the voice feed is frozen. On-target clients are collapsed. <span class="hint2">Voice/sentiment = Amazon Connect · Email = Zoho Desk (≤1-day lag).</span>',
+  exbpo:'<div class="h">BPO scorecard — worst first</div>Per-vendor voice &amp; email, latest complete week, worst email-≤4hr first (worst row accented red). ASA = avg seconds to answer (green ≤30s / amber ≤2m / red &gt;2m); AHT = avg handle minutes (uncolored — context); ≤4hr = email first-response (green ≥70% / amber ≥50% / red &lt;50%); Sentiment = % of scored calls ending negative. Voice columns stamped ❄ &amp; greyed while the voice feed is frozen. <span class="hint2">Voice/sentiment = Amazon Connect · Email = Zoho Desk (≤1-day lag).</span>',
   slatab:'<div class="h">Voice service level by client</div><b>Source:</b> Amazon Connect — measured actuals, not modeled. <b>Definitions:</b> Offered = inbound calls presented · SL ≤30s = answered within 30s ÷ offered · Abandon = unanswered ÷ offered. <b>RAG:</b> Meeting ≥80% · Near 65–79% · Breaching &lt;65%; abandon red &gt;5%. <b>Scope:</b> every Connect voice queue, including OpenLoop internal lines (CMA Triage, Pharmacy, OLH) — a superset of the 5 built clients. Connect org-name variants are merged. Email/chat by client not yet built. <span class="hint2"><span class="sd live"></span>Live · trailing 7 days · rebuilt daily ~5:15am MT.</span>',
   bybpo:'<div class="h">By BPO — vendor scorecard</div>One row per vendor, aggregated across the 5 built clients, latest complete week. 1-touch &amp; Repl/tix are <b>est</b> (attributed to the first responder\'s vendor). HC = static reference headcount. <b>Colors:</b> ASA green ≤30s/amber ≤2m/red &gt;2m · ≤4hr green ≥70%/amber ≥50%/red &lt;50%; AHT uncolored. <span class="hint2">Voice = Amazon Connect · Email = Zoho Desk (≤1-day lag) · rebuilt daily.</span>',
   byclient:'<div class="h">By Client → vendor split</div>Each client, then one row per BPO vendor, latest complete week (same window as the scorecard). ASA = avg secs to answer; AHT = avg handle mins. 1-touch &amp; Repl/tix are <b>est</b>. <span class="hint2">Voice = Amazon Connect · Email = Zoho Desk (≤1-day lag) · rebuilt daily.</span>',
@@ -1144,40 +1159,105 @@ function showCliTab(v){   // By Client tab: Week-over-week (default) ↔ Day-ove
   if(v==='dod') renderDod();
 }
 function renderExec(){
-  var CL=HM_CLIENTS;
-  function gtot(g){return g.reduce(function(s,x){return s+x.reduce(function(a,b){return a+b;},0);},0);}
-  var vi=0,ei=0; CL.forEach(function(c){vi+=gtot(HM_CUBE.cube.voice.inbound[c]);ei+=gtot(HM_CUBE.cube.email.inbound[c])*emailRate(c);});
-  ei=Math.round(ei);
-  document.getElementById('exTotal').textContent=(vi+ei).toLocaleString();
-  document.getElementById('exTotalN').textContent='voice '+vi.toLocaleString()+' · patient email '+ei.toLocaleString();
+  function ageH(iso){ if(!iso) return null; var t=new Date(String(iso).replace(' ','T')); return isNaN(t)?null:(Date.now()-t)/36e5; }
+  function fmtWhen(iso){ if(!iso) return '—'; var t=new Date(String(iso).replace(' ','T')); if(isNaN(t)) return '—'; var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],h=t.getHours(),ap=h<12?'a':'p',h12=(h%12)||12; return dn[t.getDay()]+' '+mo[t.getMonth()]+' '+t.getDate()+', '+h12+(t.getMinutes()<10?':0':':')+t.getMinutes()+ap; }
+  var vAge=ageH(DATA_ASOF.voice), eAge=ageH(DATA_ASOF.email), vstale=(vAge!=null&&vAge>40);
+  var sflag=vstale?' <span class="stflag">❄STALE</span>':'', vcl=vstale?' stale':'';
+  var vShort=(function(){var t=new Date(String(DATA_ASOF.voice||'').replace(' ','T'));if(isNaN(t))return 'the last complete voice day';var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];return dn[t.getDay()]+' '+(t.getMonth()+1)+'/'+t.getDate();})();
+  // ---- freshness ribbon ----
+  function pill(lab,iso,h){ var st=h==null?'bad':(h<=26?'ok':(h<=40?'warn':'bad')); var age=h==null?'no data':(h<26?'current':(Math.round(h/24*10)/10)+'d behind'); return '<span class="fpill '+st+'"><span class="fdot"></span>'+lab+' · '+age+' <span class="fwhen">('+fmtWhen(iso)+')</span></span>'; }
+  document.getElementById('exRibbon').innerHTML=pill('📞 Voice',DATA_ASOF.voice,vAge)+pill('✉️ Email',DATA_ASOF.email,eAge)+'<span class="fpill '+(vstale?'bad':'ok')+'"><span class="fdot"></span>😊 Sentiment · rides voice feed</span>';
+  // ---- indices + trend/lookup helpers ----
+  var vwk=wowLastComplete(), ewk=(function(){var w=EMAIL_WOW.weeks||[];for(var i=w.length-1;i>=0;i--)if(w[i].complete)return i;return w.length-1;})(), swk=phIdx();
+  function arrPP(cur,prev,hw){ if(cur==null||prev==null) return ''; var d=Math.round((cur-prev)*10)/10; if(d===0) return ''; var bad=hw?(d>0):(d<0); return ' <span class="wdelta '+(bad?'red':'grn')+'">'+(d>0?'▲':'▼')+Math.abs(d)+'pp</span>'; }
+  function emailFRwk(slug,wk){ var m=EMAIL_WOW.email[slug]; if(!m) return null; var r=0,fw=0; Object.keys(m).forEach(function(b){var s=m[b];if(s&&s[wk]&&s[wk].frp!=null){r+=s[wk].rep;fw+=s[wk].rep*s[wk].frp;}}); return r?Math.round(fw/r):null; }
+  function emailRepCli(slug){ var m=BPOS_EMAIL_BY_CLIENT[slug]; return m?m.reduce(function(s,x){return s+x.rep;},0):0; }
+  function emailFRcli(slug){ var m=BPOS_EMAIL_BY_CLIENT[slug]; if(!m) return null; var r=0,fw=0; m.forEach(function(x){if(x.frp!=null){r+=x.rep;fw+=x.rep*x.frp;}}); return r?Math.round(fw/r):null; }
+  function abWk(slug,wk){ var a=(BPO_WOW.abandon||{})[slug]; return (a&&a[wk])?a[wk].ab:null; }
+  function sentWk(slug,wk){ var a=(PHONE_RFC.client||{})[slug]; if(!a||!a.sentiment) return null; var sc=a.sentiment.scored[wk]||0; return sc?Math.round((a.sentiment.neg[wk]||0)/sc*100):null; }
+  var mc=mergedClients();
+  function slugOf(name){ var s=name.toLowerCase(); return BPOS_EMAIL_BY_CLIENT[s]?s:null; }
+  // ---- patient contacts sub-line ----
+  var CL=HM_CLIENTS; function gtot(g){return g.reduce(function(s,x){return s+x.reduce(function(a,b){return a+b;},0);},0);}
+  var vi=0,ei=0; CL.forEach(function(c){vi+=gtot(HM_CUBE.cube.voice.inbound[c]);ei+=gtot(HM_CUBE.cube.email.inbound[c])*emailRate(c);}); ei=Math.round(ei);
+  document.getElementById('exContacts').innerHTML='<b>'+(vi+ei).toLocaleString()+'</b> patient contacts (prev complete wk) · voice '+vi.toLocaleString()+(vstale?' ❄':'')+' · patient email '+ei.toLocaleString();
+  // ---- glance strip ----
   var o=0,slw=0,abw=0; CLIENTS.forEach(function(c){o+=c.o;slw+=c.o*c.sl;abw+=c.o*c.ab;});
-  var slv=Math.round(slw/o), abv=Math.round(abw/o);
-  var e;
-  e=document.getElementById('exSL'); e.textContent=slv+'%'; e.className='v '+(slv>=80?'grn':slv>=65?'amb':'red');
-  e=document.getElementById('exAb'); e.textContent=abv+'%'; e.className='v '+(abv<5?'grn':abv<10?'amb':'red');
-  var r=0,fw=0; BPOS_EMAIL_BY_CLIENT.all.forEach(function(x){r+=x.rep;fw+=x.rep*x.frp;});
-  var frt=Math.round(fw/r);
-  e=document.getElementById('exFRT'); e.textContent=frt+'%'; e.className='v '+(frt>=70?'grn':frt>=50?'amb':'red');
-  var ot1=((RESOLUTION.client&&RESOLUTION.client.all)||[])[wowLastComplete()];
-  e=document.getElementById('exOneTouch'); if(e&&ot1){ e.textContent=(ot1.ot!=null?ot1.ot+'%':'—'); e.className='v '+(ot1.ot>=70?'grn':ot1.ot>=50?'amb':'red'); }
-  var neg=phNegPct('all'); e=document.getElementById('exNeg'); if(e){ e.textContent=(neg!=null?neg+'%':'—'); e.className='v '+negCls(neg); }
-  // top phone reasons — computed live from PHONE_RFC (latest complete week, all built) so the teaser can't drift from the Reasons tab
-  var pr=(PHONE_RFC.client||{}).all, er=document.getElementById('exReasons');
-  if(er){ if(pr&&pr.topics){ var pi=phIdx(); var ts=Object.keys(pr.topics).map(function(t){return {n:t,c:(pr.topics[t]||[])[pi]||0};}).sort(function(a,b){return b.c-a.c;}).slice(0,3); er.textContent=ts.map(function(x){return x.n;}).join(' · '); } else er.textContent='—'; }
-  var below=mergedClients().filter(function(c){return c.sl<80;});
-  document.getElementById('exBelow').textContent=below.length;
-  document.querySelector('#exBreachTable tbody').innerHTML=below.slice().sort(function(a,b){return a.sl-b.sl;}).map(function(c){
-    return '<tr><td>'+c.c+'</td><td>'+c.o.toLocaleString()+'</td><td class="'+cls(c.sl)+'">'+c.sl+'%</td><td class="'+(c.ab>5?'red':'grn')+'">'+c.ab+'%</td><td>'+slPill(c.sl)+'</td></tr>';
-  }).join('');
-  var _ev=voiceBuiltAt(wowLastComplete()), bpo={};
-  WOW_B.forEach(function(b){ if(_ev[b]){(bpo[b]=bpo[b]||{}).an=_ev[b].an;bpo[b].asa=_ev[b].asa;bpo[b].aht=_ev[b].aht;} });
+  var slv=o?Math.round(slw/o):0, abv=o?Math.round(abw/o):0;
+  var frtAll=emailFRcli('all'), negAll=phNegPct('all');
+  var vBreach=mc.filter(function(c){return c.sl<80||c.ab>5;}).length;
+  var eBreach=mc.filter(function(c){var s=slugOf(c.c);var fr=s?emailFRcli(s):null;return fr!=null&&fr<70;}).length;
+  function rag(v,g,a){ return v==null?'':(v>=g?'grn':(v>=a?'amb':'red')); }
+  function tile(k,v,cl,sub){ return '<div class="card"><div class="k">'+k+'</div><div class="v '+cl+'">'+v+'</div><div class="n">'+sub+'</div></div>'; }
+  document.getElementById('exGlance').innerHTML=
+    tile('🔥 On fire', vBreach+' + '+eBreach, (vBreach+eBreach>0?'red':'grn'), 'voice'+(vstale?' ❄':'')+' + email client breaches')+
+    tile('Voice service level', slv+'%'+sflag, rag(slv,80,65), 'target 80% · '+(vstale?'through '+vShort:'trailing 7d'))+
+    tile('Voice abandon', abv+'%'+sflag, (abv<5?'grn':abv<10?'amb':'red'), 'target &lt;5%'+arrPP(abWk('all',vwk),abWk('all',vwk-1),true))+
+    tile('Email first response', (frtAll!=null?frtAll+'%':'—'), rag(frtAll,70,50), '≤4hr · tgt 70%'+arrPP(emailFRwk('all',ewk),emailFRwk('all',ewk-1),false))+
+    tile('Call sentiment', (negAll!=null?negAll+'%':'—')+sflag, negCls(negAll), '% ending negative'+arrPP(negAll,sentWk('all',swk-1),true));
+  // ---- exceptions (volume-weighted) ----
+  var exc=[];
+  if(vstale){ exc.push({sev:9e15,html:'<div class="exr pin"><span class="exdot bad"></span><div class="exmain"><b>📞 Voice feed frozen</b> — last call '+fmtWhen(DATA_ASOF.voice)+' ('+(Math.round(vAge/24*10)/10)+'d ago). Voice &amp; sentiment numbers below are as-of then, not current.</div></div>'}); }
+  mc.forEach(function(c){
+    var slug=slugOf(c.c), vol=c.o||0;
+    if(c.sl<80||c.ab>5){
+      var slMiss=c.sl<80?(80-c.sl):0, abMiss=c.ab>5?(c.ab-5):0;
+      var tr=slug?arrPP(abWk(slug,vwk),abWk(slug,vwk-1),true):''; var tm=/red/.test(tr)?1.3:(/grn/.test(tr)?0.8:1);
+      var sev=(slMiss+abMiss*3)*Math.max(vol,1)*tm;
+      var parts=[]; if(c.sl<80)parts.push('voice SL <b>'+c.sl+'%</b> (tgt 80)'); if(c.ab>5)parts.push('abandon <b>'+c.ab+'%</b> (tgt &lt;5)'+tr);
+      exc.push({sev:sev,html:'<div class="exr"><span class="exdot '+(c.sl<65||c.ab>=10?'bad':'warn')+'"></span><div class="exmain"><b>'+c.c+'</b> — '+parts.join(' · ')+(vstale?' <span class="stflag">❄as-of '+vShort+'</span>':'')+'</div><div class="exvol">'+vol.toLocaleString()+' calls</div></div>'});
+    }
+    if(slug){ var fr=emailFRcli(slug); if(fr!=null&&fr<70){ var rep=emailRepCli(slug); var etr=arrPP(emailFRwk(slug,ewk),emailFRwk(slug,ewk-1),false); var etm=/red/.test(etr)?1.3:(/grn/.test(etr)?0.8:1); exc.push({sev:(70-fr)*Math.max(rep,1)*etm,html:'<div class="exr"><span class="exdot '+(fr<50?'bad':'warn')+'"></span><div class="exmain"><b>'+c.c+'</b> — email ≤4hr <b>'+fr+'%</b> (tgt 70)'+etr+'</div><div class="exvol">'+rep.toLocaleString()+' replies</div></div>'}); } }
+  });
+  exc.sort(function(a,b){return b.sev-a.sev;});
+  var movers=[];
+  mc.forEach(function(c){ var slug=slugOf(c.c); if(!slug) return; var cur=abWk(slug,vwk),prev=abWk(slug,vwk-1);
+    if(cur!=null&&prev!=null&&c.ab<=5&&(cur-prev)>=2){ movers.push({d:cur-prev,html:'<div class="exmover"><b>'+c.c+'</b> abandon '+cur+'% — <span class="wdelta red">▲'+(Math.round((cur-prev)*10)/10)+'pp</span> WoW, still under 5% (watch)</div>'}); }
+  });
+  movers.sort(function(a,b){return b.d-a.d;});
+  var okC=mc.filter(function(c){var s=slugOf(c.c);var fr=s?emailFRcli(s):null; return c.sl>=80&&c.ab<=5&&(fr==null||fr>=70);}).length;
+  var listHtml=exc.map(function(x){return x.html;}).join('');
+  if(movers.length) listHtml+='<div class="exmoverhdr">EARLY WARNING · moving adversely, not yet breaching</div>'+movers.slice(0,4).map(function(m){return m.html;}).join('');
+  listHtml+='<div class="exhealthy">✓ '+okC+' of '+mc.length+' clients on target</div>';
+  document.getElementById('exList').innerHTML=listHtml;
+  // ---- clients — worst first (off-target only) ----
+  function inTrouble(c){ var s=slugOf(c.c),fr=s?emailFRcli(s):null; return c.sl<80||c.ab>5||(fr!=null&&fr<70); }
+  var showC=mc.filter(inTrouble).sort(function(a,b){return a.sl-b.sl;});
+  document.querySelector('#exBreachTable tbody').innerHTML=showC.map(function(c){
+    var s=slugOf(c.c), fr=s?emailFRcli(s):null, neg=s?phNegPct(s):null;
+    return '<tr><td>'+c.c+'</td><td>'+c.o.toLocaleString()+'</td>'+
+      '<td class="'+(vstale?'stale':cls(c.sl))+'">'+c.sl+'%'+(vstale?' ❄':'')+'</td>'+
+      '<td class="'+(vstale?'stale':(c.ab<5?'grn':c.ab<10?'amb':'red'))+'">'+c.ab+'%'+arrPP(s?abWk(s,vwk):null,s?abWk(s,vwk-1):null,true)+'</td>'+
+      '<td class="'+(fr==null?'':frpCls(fr))+'">'+(fr==null?'—':fr+'%'+arrPP(s?emailFRwk(s,ewk):null,s?emailFRwk(s,ewk-1):null,false))+'</td>'+
+      '<td class="'+(neg==null?'':negCls(neg))+(vstale?' stale':'')+'">'+(neg==null?'—':neg+'%')+'</td></tr>';
+  }).join('')||'<tr><td colspan="6" class="mut">All clients on target.</td></tr>';
+  document.getElementById('exClientHealthy').innerHTML=(mc.length-showC.length)+' other client(s) on target (collapsed).';
+  // ---- BPO scorecard — worst first ----
+  var _ev=voiceBuiltAt(vwk), bpo={};
+  WOW_B.forEach(function(b){ if(_ev[b]){bpo[b]={an:_ev[b].an,asa:_ev[b].asa,aht:_ev[b].aht};} });
   BPOS_EMAIL_BY_CLIENT.all.forEach(function(x){(bpo[x.b]=bpo[x.b]||{}).rep=x.rep;bpo[x.b].frp=x.frp;});
-  document.querySelector('#exBpoTable tbody').innerHTML=['RESPONSE','TTEC','NARITH','NEXTVAS'].filter(function(b){return bpo[b];}).map(function(b){
-    var x=bpo[b];
-    return '<tr><td>'+b+'</td><td>'+(x.an!=null?x.an.toLocaleString():'—')+'</td><td class="'+(x.asa==null?'':asaCls(x.asa))+'">'+(x.asa==null?'—':asaFmt(x.asa))+'</td><td>'+(x.aht==null?'—':x.aht+'m')+'</td><td>'+(x.rep!=null?x.rep.toLocaleString():'—')+'</td><td class="'+(x.frp==null?'':frpCls(x.frp))+'">'+(x.frp==null?'—':x.frp+'%')+'</td></tr>';
+  function bpoNeg(b){ var s=((PHONE_RFC.bpo||{}).all||{})[b]; if(!s) return null; var sc=s.scored[swk]||0; return sc?Math.round((s.neg[swk]||0)/sc*100):null; }
+  var bpoRows=['RESPONSE','TTEC','NARITH','NEXTVAS'].filter(function(b){return bpo[b];});
+  bpoRows.sort(function(a,b){ var fa=bpo[a].frp==null?101:bpo[a].frp, fb=bpo[b].frp==null?101:bpo[b].frp; return fa-fb; });
+  document.querySelector('#exBpoTable tbody').innerHTML=bpoRows.map(function(b){ var x=bpo[b], neg=bpoNeg(b), worst=(x.frp!=null&&x.frp<50)||(neg!=null&&neg>=40);
+    return '<tr'+(worst?' class="exworst"':'')+'><td>'+b+'</td><td class="'+(vstale?'stale':'')+'">'+(x.an!=null?x.an.toLocaleString()+(vstale?' ❄':''):'—')+'</td><td class="'+(x.asa==null?'':asaCls(x.asa))+(vstale?' stale':'')+'">'+(x.asa==null?'—':asaFmt(x.asa))+'</td><td class="'+(vstale?'stale':'')+'">'+(x.aht==null?'—':x.aht+'m')+'</td><td>'+(x.rep!=null?x.rep.toLocaleString():'—')+'</td><td class="'+(x.frp==null?'':frpCls(x.frp))+'">'+(x.frp==null?'—':x.frp+'%')+'</td><td class="'+(neg==null?'':negCls(neg))+(vstale?' stale':'')+'">'+(neg==null?'—':neg+'%')+'</td></tr>';
   }).join('');
+  // ---- 7-week trends (sparklines) ----
+  function spark(vals){ var b='▁▂▃▄▅▆▇█'.split(''); var v=vals.filter(function(x){return x!=null;}); if(!v.length) return '—'; var mn=Math.min.apply(null,v),mx=Math.max.apply(null,v),rng=(mx-mn)||1; return vals.map(function(x){return x==null?'·':b[Math.min(7,Math.floor((x-mn)/rng*7.999))];}).join(''); }
+  var wks=BPO_WOW.weeks||[];
+  var abS=(BPO_WOW.weeks||[]).map(function(w,i){return w.complete?((BPO_WOW.abandon.all||[])[i]||{}).ab:null;});
+  var frS=(EMAIL_WOW.weeks||[]).map(function(w,i){return w.complete?emailFRwk('all',i):null;});
+  var ngS=(PHONE_RFC.weeks||[]).map(function(w,i){return w.complete?sentWk('all',i):null;});
+  var cwks=wks.filter(function(w){return w.complete;});
+  document.getElementById('exSpark').innerHTML=
+    '<div class="sprow"><span class="splab">Voice abandon</span><span class="spk">'+spark(abS)+'</span> <span class="mut">'+abv+'% now'+(vstale?' ❄':'')+'</span></div>'+
+    '<div class="sprow"><span class="splab">Email ≤4hr</span><span class="spk">'+spark(frS)+'</span> <span class="mut">'+(frtAll!=null?frtAll+'% now':'')+'</span></div>'+
+    '<div class="sprow"><span class="splab">Call sentiment %neg</span><span class="spk">'+spark(ngS)+'</span> <span class="mut">'+(negAll!=null?negAll+'% now'+(vstale?' ❄':''):'')+'</span></div>'+
+    '<div class="mut" style="margin-top:5px;font-size:11.5px;">'+(cwks.length?cwks[0].label+' → '+cwks[cwks.length-1].label:'')+' · left→right = oldest→newest · complete weeks only'+(vstale?' · voice series frozen at '+vShort:'')+'</div>';
+  // ---- load & drivers (collapsed) ----
   var best={v:0}; for(var d=0;d<7;d++)for(var hr=0;hr<24;hr++){var s=0;CL.forEach(function(c){s+=HM_CUBE.cube.voice.inbound[c][d][hr];});if(s>best.v)best={v:s,d:d,hr:hr};}
-  document.getElementById('exPeak').textContent=HM_CUBE.days[best.d]+', '+((best.hr%12)||12)+(best.hr<12?'a':'p')+' — '+best.v.toLocaleString()+' calls';
+  var pr=(PHONE_RFC.client||{}).all, reasons='—'; if(pr&&pr.topics){var pi=phIdx();var ts=Object.keys(pr.topics).map(function(t){return {n:t,c:(pr.topics[t]||[])[pi]||0};}).sort(function(a,b){return b.c-a.c;}).slice(0,5);reasons=ts.map(function(x){return x.n;}).join(' · ');}
+  document.getElementById('exDrivers').innerHTML='<div><b>Busiest voice hour:</b> '+HM_CUBE.days[best.d]+' '+((best.hr%12)||12)+(best.hr<12?'a':'p')+' — '+best.v.toLocaleString()+' calls'+sflag+'</div><div style="margin-top:5px;"><b>Top phone reasons:</b> '+reasons+'</div><div class="mut" style="margin-top:7px;font-size:11.5px;">Full staffing coverage-gap → <b>Intraday</b> tab · full reason breakdown → <b>Reasons for Contact</b> tab.</div>';
 }
 var BUILD_STAMP=" \u00b7 last build Jul 20, 2026 (each tab shows its own data window)";   // injected by cc_refresh.py at rebuild time, e.g. " · data as of Jul 19 2026"
 renderExec(); renderClients(); renderByBpo(); renderByClient(); renderTrend(); renderDod(); renderPlanner(); applyFilter();
