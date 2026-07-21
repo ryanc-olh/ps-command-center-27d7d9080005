@@ -935,14 +935,18 @@ function wowWeeksWithData(){ return BPO_WOW.weeks.map(function(w,i){ return WOW_
 function wowLastComplete(){ var idxs=wowWeeksWithData(); for(var j=idxs.length-1;j>=0;j--){ if(BPO_WOW.weeks[idxs[j]].complete) return idxs[j]; } return idxs[idxs.length-1]; }
 function voiceAt(cl, wk){ var o={}; WOW_B.forEach(function(b){ var v=(BPO_WOW.voice[cl]||{})[b]; if(v&&v[wk]&&v[wk].an>0){o[b]={an:v[wk].an,asa:v[wk].asa,aht:v[wk].aht};} }); return o; }
 var BUILT_CL=["embody","medvi","elixa","altrx","trinity"];
+// 5-built-client voice aggregate (per BPO, per period) — sum over BUILT_CL so voice matches email/contacts scope (not voice.all = all Connect queues)
+function sum5Voice(V){ var o={}; WOW_B.forEach(function(b){ var n=0; BUILT_CL.forEach(function(cl){ n=Math.max(n,(((V||{})[cl]||{})[b]||[]).length); }); var arr=[]; for(var i=0;i<n;i++){ var an=0,asw=0,htw=0; BUILT_CL.forEach(function(cl){ var x=(((V||{})[cl]||{})[b]||[])[i]; if(x){ an+=x.an||0; if(x.asa!=null)asw+=x.asa*(x.an||0); if(x.aht!=null)htw+=x.aht*(x.an||0); } }); arr.push({an:an,asa:(an?Math.round(asw/an):null),aht:(an?Math.round(htw/an*10)/10:null)}); } o[b]=arr; }); return o; }
+// 5-built-client phone sentiment + reasons aggregate for the latest complete phone week
+function phAgg5(){ var i=phIdx(), C=PHONE_RFC.client||{}, ans=0,neg=0,sc=0,top={}; BUILT_CL.forEach(function(cl){ var a=C[cl]; if(!a)return; ans+=(a.answered&&a.answered[i])||0; if(a.sentiment){ neg+=(a.sentiment.neg[i])||0; sc+=(a.sentiment.scored[i])||0; } var tt=a.topics||{}; for(var t in tt){ top[t]=(top[t]||0)+((tt[t]||[])[i]||0); } }); return {answered:ans, negPct:(sc?Math.round(neg/sc*100):null), topics:top}; }
 function voiceBuiltAt(wk){ var o={}; WOW_B.forEach(function(b){ var an=0,dur=0,htw=0,has=false; BUILT_CL.forEach(function(cl){ var v=(BPO_WOW.voice[cl]||{})[b]; if(v&&v[wk]&&v[wk].an>0){ an+=v[wk].an; if(v[wk].asa!=null) dur+=v[wk].asa*v[wk].an; if(v[wk].aht!=null) htw+=v[wk].aht*v[wk].an; has=true; } }); if(has) o[b]={an:an, asa:(an?Math.round(dur/an):null), aht:(an?Math.round(htw/an*10)/10:null)}; }); return o; }
 function renderByBpo(){
   var wk=wowLastComplete();
   document.getElementById('bpoVoiceWin').textContent=BPO_WOW.weeks[wk].label;
-  var ab=((BPO_WOW.abandon&&BPO_WOW.abandon.all)||[])[wk];
+  var ab=(function(){var o=0,a=0;BUILT_CL.forEach(function(cl){var x=((BPO_WOW.abandon[cl]||[])[wk])||null;if(x){o+=x.off||0;a+=x.ans||0;}});return o?{ab:Math.round((o-a)/o*100)}:null;})();
   var abEl=document.getElementById('bpoAbandon'); if(abEl&&ab){ abEl.textContent=(ab.ab!=null?ab.ab+'%':'—'); abEl.className=(ab.ab==null?'':(ab.ab<5?'grn':ab.ab<10?'amb':'red')); }
   var ot=((RESOLUTION.client&&RESOLUTION.client.all)||[])[wk]; var otEl=document.getElementById('bpoOneTouch'); if(otEl&&ot){ otEl.textContent=(ot.ot!=null?ot.ot+'%':'—'); }
-  var ng=phNegPct('all'); var ngEl=document.getElementById('bpoNeg'); if(ngEl){ ngEl.textContent=(ng!=null?ng+'%':'—'); ngEl.className=negCls(ng); }
+  var ng=phAgg5().negPct; var ngEl=document.getElementById('bpoNeg'); if(ngEl){ ngEl.textContent=(ng!=null?ng+'%':'—'); ngEl.className=negCls(ng); }
   var v=voiceBuiltAt(wk), m={};
   WOW_B.forEach(function(b){ if(v[b]){(m[b]=m[b]||{}).an=v[b].an;m[b].asa=v[b].asa;m[b].aht=v[b].aht;} });
   BPOS_EMAIL_BY_CLIENT.all.forEach(function(x){(m[x.b]=m[x.b]||{}).rep=x.rep;m[x.b].frp=x.frp;});
@@ -972,7 +976,7 @@ var trend={client:'all', bpoLayout:'vendor', cliLayout:'client'};
 function renderTrend(){
   var cl=trend.client;
   var WKS=EMAIL_WOW.weeks;                                       // 7 wks (same boundaries as voice)
-  var voice=BPO_WOW.voice[cl]||BPO_WOW.voice.all;
+  var voice=(cl==='all')?sum5Voice(BPO_WOW.voice):(BPO_WOW.voice[cl]||{});
   var email=EMAIL_WOW.email[cl]||EMAIL_WOW.email.all;
   var wkHead=WKS.map(function(w){return '<th>'+w.label+(w.complete?'':'*')+'</th>';}).join('');
   var ncol=WKS.length+1;
@@ -1103,7 +1107,7 @@ function renderDod(){
   }
   var empty='<tr><td colspan="'+ncol+'" class="mut">no data for this client</td></tr>';
   // ---- By BPO (vendor) ----
-  var vSrc=DV.voice[cl]||DV.voice.all, eSrc=DE.email[cl]||DE.email.all;
+  var vSrc=(cl==='all')?sum5Voice(DV.voice):(DV.voice[cl]||{}), eSrc=DE.email[cl]||DE.email.all;
   var bpoMets=[
     {lab:'📞 Answered', ch:'voice', cfg:cAns, get:function(b,i){var v=vSrc[b];return v&&v[i]?v[i].an:null;}},
     {lab:'📞 ASA',      ch:'voice', cfg:cAsa, get:function(b,i){var v=vSrc[b];return v&&v[i]?v[i].asa:null;}},
@@ -1260,12 +1264,12 @@ function renderExec(){
     return {an:an,ab:(off?Math.round((off-ans)/off*100):null),rep:rep,tix:tix,frp:(frr?Math.round(frw/frr):null),vol:an+tix}; }
   var CLI=BUILT_CL.map(function(c){return {c:c,n:CLIENT_NAMES[c]||c,d:cli3(c)};}).sort(function(a,b){return b.d.vol-a.d.vol;});
   function sumL3(arr,k){ var t=0; L3.forEach(function(i){t+=((arr[i]||{})[k]||0);}); return t; }
-  var abAll=dv.abandon.all||[], off3=sumL3(abAll,'off'), ans3=sumL3(abAll,'ans'), ab3=(off3?Math.round((off3-ans3)/off3*100):null);
+  var off3=0,ans3=0; BUILT_CL.forEach(function(cl){ var ab=dv.abandon[cl]||[]; L3.forEach(function(i){ off3+=((ab[i]||{}).off||0); ans3+=((ab[i]||{}).ans||0); }); }); var ab3=(off3?Math.round((off3-ans3)/off3*100):null);
   var ecAll=(de.emailCli||{}).all||[]; var frw=0,frr=0; L3.forEach(function(i){var y=ecAll[i]||{}; if(y.frp!=null){frw+=y.frp*(y.rep||0);frr+=(y.rep||0);}}); var fr3=(frr?Math.round(frw/frr):null);
   var contacts=CLI.reduce(function(s,x){return s+x.d.vol;},0);
-  var neg=phNegPct('all');
-  var pr=(PHONE_RFC.client||{}).all, pw=phIdx(), answ=(pr&&pr.answered?(pr.answered[pw]||0):0)||1;
-  var tops=Object.keys((pr&&pr.topics)||{}).map(function(t){return {t:t,c:((pr.topics[t]||[])[pw])||0};}).sort(function(a,b){return b.c-a.c;}).slice(0,6);
+  var pa=phAgg5(), neg=pa.negPct;
+  var answ=pa.answered||1;
+  var tops=Object.keys(pa.topics).map(function(t){return {t:t,c:pa.topics[t]||0};}).sort(function(a,b){return b.c-a.c;}).slice(0,6);
   var topR=tops.length?{t:tops[0].t,p:Math.round(tops[0].c/answ*100)}:{t:'—',p:0};
   function svgH(items,color){ var mx=Math.max.apply(null,items.map(function(x){return x.v;}))||1, y=4, W=250, lx=104, rows='';
     items.forEach(function(it){ var ww=Math.round(it.v/mx*W); rows+='<text x="0" y="'+(y+12)+'" font-size="12" fill="#333">'+it.n+'</text><rect x="'+lx+'" y="'+y+'" width="'+ww+'" height="15" rx="3" fill="'+color+'"></rect><text x="'+(lx+ww+5)+'" y="'+(y+12)+'" font-size="11" font-weight="700" fill="#111">'+it.lab+'</text>'; y+=23; });
