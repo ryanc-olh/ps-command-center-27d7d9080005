@@ -1280,7 +1280,14 @@ function renderExec(){
     return '<svg width="100%" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><path d="'+d+'" fill="none" stroke="#2563eb" stroke-width="2"></path>'+dots+labs+vlabs+'</svg>'; }
   function kpi(k,v,cl,n){ return '<div class="lokpi"><div class="k">'+k+'</div><div class="v '+cl+'">'+v+'</div><div class="n">'+n+'</div></div>'; }
   document.getElementById('loKpi').innerHTML=kpi('Contacts (3d)',contacts.toLocaleString(),'','voice + email')+kpi('Voice abandon',pctF(ab3),cAb(ab3),'target &lt;5%')+kpi('Email ≤4hr',pctF(fr3),cFr(fr3),'target 70%')+kpi('Call sentiment',(neg==null?'—':neg+'%'),cNeg(neg),'ending negative')+kpi('Top reason',topR.t,'',topR.p+'% of calls');
-  var wtA=[]; (BPO_WOW.weeks||[]).forEach(function(w,i){ if(!w.complete) return; var tv=0,te=0; WOW_B.forEach(function(b){tv+=((BPO_WOW.voice.all[b]||[])[i]||{}).an||0;}); Object.keys(EMAIL_WOW.email.all||{}).forEach(function(b){te+=((EMAIL_WOW.email.all[b]||[])[i]||{}).tix||0;}); wtA.push({l:w.label,v:tv+te,vv:tv,ee:te}); });
+  // voice + email over the SAME population (the 5 built clients × BPO vendors) so the mix is apples-to-apples;
+  // voice.all would include non-built queues (in-house CMA/OLH/other brands) that have no email counterpart.
+  var wtA=[]; (BPO_WOW.weeks||[]).forEach(function(w,i){ if(!w.complete) return; var tv=0,te=0;
+    BUILT_CL.forEach(function(cl){ WOW_B.forEach(function(b){
+      tv+=(((((BPO_WOW.voice[cl]||{})[b])||[])[i])||{}).an||0;
+      te+=(((((EMAIL_WOW.email[cl]||{})[b])||[])[i])||{}).tix||0;
+    }); });
+    wtA.push({l:w.label,v:tv+te,vv:tv,ee:te}); });
   wtA=wtA.slice(-4);
   var sV=wtA.reduce(function(s,x){return s+x.vv;},0), sE=wtA.reduce(function(s,x){return s+x.ee;},0), sT=(sV+sE)||1, vP=Math.round(sV/sT*100), eP=100-vP;
   var mix='<div style="display:flex;height:14px;border-radius:4px;overflow:hidden;max-width:680px;margin:10px auto 2px;"><div style="width:'+vP+'%;background:#2563eb;"></div><div style="width:'+eP+'%;background:#0d9488;"></div></div><div style="font-size:11px;text-align:center;"><span style="color:#2563eb;font-weight:700;">Voice '+vP+'%</span> &middot; <span style="color:#0d9488;font-weight:700;">Email '+eP+'%</span> <span class="mut">&middot; share of contact volume · last 4 wks</span></div>';
