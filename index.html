@@ -1374,12 +1374,12 @@ function renderInternal(){
     if(!list.length) return '';
     var mx=Math.max.apply(null,list.map(function(t){return t.count;}).concat([1]));
     return list.map(function(t){
-      var pct=total?Math.round(100*t.count/total):0, w=Math.round(t.count/mx*100);
+      var w=Math.round(t.count/mx*100);
       var mrows=(t.members||[]).slice().sort(function(a,b){return (a.title||'zzz').localeCompare(b.title||'zzz')||(''+a.name).localeCompare(''+b.name);})
         .map(function(m){return '<tr><td>'+esc(m.name)+'</td><td class="mut">'+(esc(m.title)||'—')+'</td></tr>';}).join('');
       return '<details class="introw"><summary><span class="rname">'+esc(t.team)+'</span>'+
         '<span class="rbar"><i style="width:'+w+'%;background:'+color+'"></i></span>'+
-        '<span class="rnum"><b>'+t.count+'</b> · '+pct+'%</span></summary>'+
+        '<span class="rnum"><b>'+t.count+'</b></span></summary>'+
         '<div class="rmembers"><div class="mut" style="font-size:11px;margin:1px 0 4px;">'+t.active+' active last 30d · '+t.logins+' logins · '+t.count+' mapped</div>'+
         '<table class="mtbl"><thead><tr><th>Name</th><th>Title</th></tr></thead><tbody>'+mrows+'</tbody></table></div></details>';
     }).join('');
@@ -1389,7 +1389,7 @@ function renderInternal(){
   var psN=I.ps_total!=null?I.ps_total:ps.reduce(function(s,t){return s+t.count;},0);
   var otherN=other.reduce(function(s,t){return s+t.count;},0);
   host.innerHTML=
-    '<div class="lonote" style="margin:0 0 8px;">'+I.total+' internal (non-BPO) CRM users, by team (Slack job title). <b>Click a row to expand names + titles.</b> % = share of the section. <span class="mut">Everyone listed was active when mapped, so % is composition (no internal headcount roster yet → not a true adoption %).</span></div>'+
+    '<div class="lonote" style="margin:0 0 8px;">'+I.total+' internal (non-BPO) CRM users, by team (Slack job title). <b>Click a row to expand names + titles.</b> Bar = relative size; # = active users mapped. <span class="mut">No % yet — a true adoption rate needs a headcount roster per team (Rippling export pending).</span></div>'+
     '<div class="losec" style="margin:2px 0 6px;">🧑‍⚕️ Patient Support — '+psN+' <span style="font-weight:400;color:var(--mut);font-size:11px;">(incl. CMAs) · click a role to expand</span></div>'+block(ps, psN, '#0d9488')+
     '<div class="losec" style="margin:18px 0 6px;">🏢 Other internal teams — '+otherN+'</div>'+block(other, otherN, '#7c3aed');
 }
