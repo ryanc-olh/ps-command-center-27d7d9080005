@@ -1229,6 +1229,8 @@ function renderExec(){
   function cFr(v){ return v==null?'mut':(v>=70?'grn':(v>=50?'amb':'red')); }
   function cAb(v){ return v==null?'mut':(v<5?'grn':(v<10?'amb':'red')); }
   function cNeg(v){ return v==null?'mut':(v<25?'grn':(v<40?'amb':'red')); }
+  function cSl(v){ return v==null?'mut':(v>=80?'grn':(v>=65?'amb':'red')); }
+  function clientSl(slug){ var o=0,sw=0; (typeof CLIENTS!=='undefined'?CLIENTS:[]).forEach(function(r){ if(r&&r.o&&String(r.c).toLowerCase().indexOf(slug)>=0){ o+=r.o; sw+=(r.sl||0)*r.o; } }); return o?Math.round(sw/o):null; }
   function bg(cl){ return {grn:'gbg',amb:'abg',red:'rbg',mut:'mbg'}[cl]; }
   function asaF(v){ return v==null?'—':(v>=60?(Math.round(v/6)/10)+'m':v+'s'); }
   function pctF(v){ return v==null?'—':v+'%'; }
@@ -1240,7 +1242,7 @@ function renderExec(){
   function cli3(cl){ var vc=dv.voiceCli[cl]||[], ab=dv.abandon[cl]||[], ec=(de.emailCli||{})[cl]||[], an=0,off=0,ans=0,rep=0,frw=0,frr=0;
     L3.forEach(function(i){ an+=((vc[i]||{}).an||0); off+=((ab[i]||{}).off||0); ans+=((ab[i]||{}).ans||0); var y=ec[i]||{}; rep+=(y.rep||0); if(y.frp!=null){frw+=y.frp*(y.rep||0);frr+=(y.rep||0);} });
     return {an:an,ab:(off?Math.round((off-ans)/off*100):null),rep:rep,frp:(frr?Math.round(frw/frr):null),vol:an+rep}; }
-  var CLI=BUILT_CL.map(function(c){return {n:CLIENT_NAMES[c]||c,d:cli3(c)};}).sort(function(a,b){return b.d.vol-a.d.vol;});
+  var CLI=BUILT_CL.map(function(c){return {c:c,n:CLIENT_NAMES[c]||c,d:cli3(c)};}).sort(function(a,b){return b.d.vol-a.d.vol;});
   function sumL3(arr,k){ var t=0; L3.forEach(function(i){t+=((arr[i]||{})[k]||0);}); return t; }
   var abAll=dv.abandon.all||[], off3=sumL3(abAll,'off'), ans3=sumL3(abAll,'ans'), ab3=(off3?Math.round((off3-ans3)/off3*100):null);
   var ecAll=(de.emailCli||{}).all||[]; var frw=0,frr=0; L3.forEach(function(i){var y=ecAll[i]||{}; if(y.frp!=null){frw+=y.frp*(y.rep||0);frr+=(y.rep||0);}}); var fr3=(frr?Math.round(frw/frr):null);
@@ -1258,21 +1260,23 @@ function renderExec(){
     var d='M'+cd.map(function(c){return c[0].toFixed(0)+' '+c[1].toFixed(0);}).join(' L');
     var dots=cd.map(function(c){return '<circle cx="'+c[0].toFixed(0)+'" cy="'+c[1].toFixed(0)+'" r="2.5" fill="#2563eb"></circle>';}).join('');
     var labs=cd.map(function(c,i){var an=(i===0?'start':(i===n-1?'end':'middle'));return '<text x="'+c[0].toFixed(0)+'" y="'+(H-1)+'" font-size="9.5" text-anchor="'+an+'" fill="#8a8d91">'+pts[i].l.split('–')[0]+'</text>';}).join('');
-    var last='<text x="'+cd[n-1][0].toFixed(0)+'" y="'+(cd[n-1][1]-6).toFixed(0)+'" font-size="10.5" font-weight="700" text-anchor="end" fill="#111">'+pts[n-1].v.toLocaleString()+'</text>';
-    return '<svg width="100%" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><path d="'+d+'" fill="none" stroke="#2563eb" stroke-width="2"></path>'+dots+labs+last+'</svg>'; }
+    var vlabs=cd.map(function(c,i){var an=(i===0?'start':(i===n-1?'end':'middle'));return '<text x="'+c[0].toFixed(0)+'" y="'+(c[1]-6).toFixed(0)+'" font-size="10" font-weight="700" text-anchor="'+an+'" fill="#111">'+pts[i].v.toLocaleString()+'</text>';}).join('');
+    return '<svg width="100%" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><path d="'+d+'" fill="none" stroke="#2563eb" stroke-width="2"></path>'+dots+labs+vlabs+'</svg>'; }
   function kpi(k,v,cl,n){ return '<div class="lokpi"><div class="k">'+k+'</div><div class="v '+cl+'">'+v+'</div><div class="n">'+n+'</div></div>'; }
   document.getElementById('loKpi').innerHTML=kpi('Contacts (3d)',contacts.toLocaleString(),'','voice + email')+kpi('Voice abandon',pctF(ab3),cAb(ab3),'target &lt;5%')+kpi('Email ≤4hr',pctF(fr3),cFr(fr3),'target 70%')+kpi('Call sentiment',(neg==null?'—':neg+'%'),cNeg(neg),'ending negative')+kpi('Top reason',topR.t,'',topR.p+'% of calls');
-  var wt=[]; (BPO_WOW.weeks||[]).forEach(function(w,i){ if(!w.complete) return; var tv=0,te=0; WOW_B.forEach(function(b){tv+=((BPO_WOW.voice.all[b]||[])[i]||{}).an||0;}); Object.keys(EMAIL_WOW.email.all||{}).forEach(function(b){te+=((EMAIL_WOW.email.all[b]||[])[i]||{}).rep||0;}); wt.push({l:w.label,v:tv+te}); });
-  wt=wt.slice(-4);
-  document.getElementById('loTrend').innerHTML=svgLine(wt);
+  var wtA=[]; (BPO_WOW.weeks||[]).forEach(function(w,i){ if(!w.complete) return; var tv=0,te=0; WOW_B.forEach(function(b){tv+=((BPO_WOW.voice.all[b]||[])[i]||{}).an||0;}); Object.keys(EMAIL_WOW.email.all||{}).forEach(function(b){te+=((EMAIL_WOW.email.all[b]||[])[i]||{}).rep||0;}); wtA.push({l:w.label,v:tv+te,vv:tv,ee:te}); });
+  wtA=wtA.slice(-4);
+  var sV=wtA.reduce(function(s,x){return s+x.vv;},0), sE=wtA.reduce(function(s,x){return s+x.ee;},0), sT=(sV+sE)||1, vP=Math.round(sV/sT*100), eP=100-vP;
+  var mix='<div style="display:flex;height:14px;border-radius:4px;overflow:hidden;max-width:680px;margin:10px auto 2px;"><div style="width:'+vP+'%;background:#2563eb;"></div><div style="width:'+eP+'%;background:#0d9488;"></div></div><div style="font-size:11px;text-align:center;"><span style="color:#2563eb;font-weight:700;">Voice '+vP+'%</span> &middot; <span style="color:#0d9488;font-weight:700;">Email '+eP+'%</span> <span class="mut">&middot; share of contact volume · last 4 wks</span></div>';
+  document.getElementById('loTrend').innerHTML=svgLine(wtA.map(function(x){return {l:x.l,v:x.v};}))+mix;
   var mxb=Math.max.apply(null,BPO.map(function(x){return x.d.an;}))||1;
   document.getElementById('loBpo').innerHTML='<div class="bparow">'+BPO.map(function(x){ var bh=Math.round(x.d.an/mxb*104);
     return '<div class="bpcol"><div class="bpnum">'+x.d.an.toLocaleString()+'</div><div class="bpbar" style="height:'+bh+'px"></div><div class="bpnm">'+x.n+'</div><div class="bpchip '+bg(cAsa(x.d.asa))+' '+cAsa(x.d.asa)+'"><span class="cl">ASA</span>'+asaF(x.d.asa)+'</div><div class="bpchip '+bg(cFr(x.d.frp))+' '+cFr(x.d.frp)+'"><span class="cl">EMAIL ≤4HR</span>'+pctF(x.d.frp)+'</div></div>';
   }).join('')+'</div>';
   var mxv=Math.max.apply(null,CLI.map(function(x){return x.d.vol;}))||1;
-  document.getElementById('loCli').innerHTML='<table class="lotbl"><thead><tr><th>Client</th><th>Volume</th><th>Abandon</th><th>Email ≤4hr</th></tr></thead><tbody>'+CLI.map(function(x){ var w=Math.round(x.d.vol/mxv*64);
-    return '<tr><td class="v">'+x.n+'</td><td><span class="lomini" style="width:'+w+'px"></span>'+x.d.vol.toLocaleString()+'</td><td class="rag '+bg(cAb(x.d.ab))+' '+cAb(x.d.ab)+'">'+pctF(x.d.ab)+'</td><td class="rag '+bg(cFr(x.d.frp))+' '+cFr(x.d.frp)+'">'+pctF(x.d.frp)+'</td></tr>';
-  }).join('')+'</tbody></table>';
+  document.getElementById('loCli').innerHTML='<table class="lotbl"><thead><tr><th>Client</th><th>Volume</th><th>Voice SL ≤30s</th><th>Abandon</th><th>Email ≤4hr</th></tr></thead><tbody>'+CLI.map(function(x){ var w=Math.round(x.d.vol/mxv*64), sl=clientSl(x.c);
+    return '<tr><td class="v">'+x.n+'</td><td><span class="lomini" style="width:'+w+'px"></span>'+x.d.vol.toLocaleString()+'</td><td class="rag '+bg(cSl(sl))+' '+cSl(sl)+'">'+(sl==null?'—':sl+'%')+'</td><td class="rag '+bg(cAb(x.d.ab))+' '+cAb(x.d.ab)+'">'+pctF(x.d.ab)+'</td><td class="rag '+bg(cFr(x.d.frp))+' '+cFr(x.d.frp)+'">'+pctF(x.d.frp)+'</td></tr>';
+  }).join('')+'</tbody></table><div class="mut" style="font-size:10px;margin-top:4px;">Volume / abandon / email = last 3 days · <b>Voice SL ≤30s = trailing 7 days</b> (Amazon Connect, offered-weighted across brand queues; target 80%)</div>';
   document.getElementById('loRfc').innerHTML=svgH(tops.map(function(x){var p=Math.round(x.c/answ*100);return {n:x.t,v:p,lab:p+'%'};}),'#0d9488');
   var ncol=(neg==null?'#8a8d91':(neg<25?'#1a7f37':(neg<40?'#9a6a00':'#b3261e')));
   document.getElementById('loSent').innerHTML=svgDonut(neg==null?0:neg,ncol);
