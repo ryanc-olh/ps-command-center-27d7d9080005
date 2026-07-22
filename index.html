@@ -463,9 +463,7 @@
     <div class="hmctl" style="margin-top:14px;"><span class="hclab">Show</span>
       <button id="plNeed" class="hbtn active" onclick="setPl('mode','needed')">🧮 Agents needed</button>
       <button id="plAdd" class="hbtn" onclick="setPl('mode','add')">➕ Additional to hire</button>
-      <span style="display:inline-block;width:16px;"></span>
-      <button id="plVoice" class="hbtn active" onclick="setPl('ch','voice')">📞 Phone</button>
-      <button id="plEmail" class="hbtn" onclick="setPl('ch','email')">✉️ Email</button>
+      <span class="hint2" style="margin-left:8px;">· 📞 phone &amp; ✉️ email shown together</span>
     </div>
     <div id="plHeat" style="overflow-x:auto;"></div>
     <div class="note" id="plNote"></div>
@@ -1187,8 +1185,6 @@ function plGet(){
 function setPl(g,v){ plState[g]=v;
   document.getElementById('plNeed').classList.toggle('active',plState.mode==='needed');
   document.getElementById('plAdd').classList.toggle('active',plState.mode==='add');
-  document.getElementById('plVoice').classList.toggle('active',plState.ch==='voice');
-  document.getElementById('plEmail').classList.toggle('active',plState.ch==='email');
   renderPlanner();
 }
 function renderPlanner(){
@@ -1223,17 +1219,22 @@ function renderPlanner(){
   ];
   document.getElementById('plCards').innerHTML=cards.map(function(c){return '<div class="card"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div><div class="n">'+c[2]+'</div></div>';}).join('');
   document.getElementById('plDerive').textContent='= '+contactsDay.toLocaleString()+' contacts/day vs current built-client demand ≈ '+baseDay.toLocaleString()+'/day ('+(scale>0?scale.toFixed(2)+'×':'—')+') · hour-by-hour shape from wk '+HM_CUBE.window;
-  var mat=plState.ch==='voice'?(plState.mode==='add'?addV:needV):(plState.mode==='add'?addE:needE), isAdd=(plState.mode==='add');
-  var max=0; for(d=0;d<7;d++)for(h=0;h<24;h++){ if(mat[d][h]>max)max=mat[d][h]; } if(max===0)max=1;
+  var isAdd=(plState.mode==='add');
   var hrs=[]; for(h=0;h<24;h++)hrs.push((h%12===0?12:h%12)+(h<12?'a':'p'));
-  var html='<table class="hm"><colgroup><col class="dayc">'; for(h=0;h<24;h++)html+='<col class="hrc">'; html+='<col class="totc"></colgroup><thead><tr><th class="day"></th>';
-  for(h=0;h<24;h++)html+='<th>'+(h%2===0?hrs[h]:'')+'</th>'; html+='<th class="tot">Peak</th></tr></thead><tbody>';
-  for(d=0;d<7;d++){ html+='<tr><th class="day">'+days[d]+'</th>'; var pk=0;
-    for(h=0;h<24;h++){ var v=mat[d][h]; if(v>pk)pk=v; html+='<td style="background:'+hmColor(v,max,isAdd)+'">'+(v===0?'':v)+'</td>'; }
-    html+='<td class="rowtot">'+pk+'</td></tr>'; }
-  html+='</tbody></table>';
-  document.getElementById('plHeat').innerHTML=html;
-  document.getElementById('plNote').innerHTML=(isAdd?'<b>Additional agents to hire</b> = agents needed − current deployed (0 where already covered; rough — "deployed" = headcount who took a contact that hour, so read as directional)':'<b>Agents needed</b> = staff to schedule, incl. shrinkage')+' for <b>'+(plState.ch==='voice'?'phone (Erlang C)':'email (throughput)')+'</b> at '+contactsDay.toLocaleString()+' contacts/day. Demand = last complete week\'s hour-by-hour shape scaled '+scale.toFixed(2)+'× · 📞 AHT '+Math.round(ah/60*10)/10+'m (Erlang C, '+CAP.shrink+'% shrink) · ✉️ '+CAP.emailSpeed+' replies/hr × '+CAP.occ+'% occupancy × (1−'+CAP.shrink+'% shrink) = '+CAP.coeff.toFixed(1)+' repl/scheduled-hr. <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
+  function heatTable(mat){   // build one day×hour heatmap for a channel's matrix (own color scale)
+    var mx=0,dd,hh; for(dd=0;dd<7;dd++)for(hh=0;hh<24;hh++){ if(mat[dd][hh]>mx)mx=mat[dd][hh]; } if(mx===0)mx=1;
+    var t='<table class="hm"><colgroup><col class="dayc">'; for(hh=0;hh<24;hh++)t+='<col class="hrc">'; t+='<col class="totc"></colgroup><thead><tr><th class="day"></th>';
+    for(hh=0;hh<24;hh++)t+='<th>'+(hh%2===0?hrs[hh]:'')+'</th>'; t+='<th class="tot">Peak</th></tr></thead><tbody>';
+    for(dd=0;dd<7;dd++){ t+='<tr><th class="day">'+days[dd]+'</th>'; var pk=0;
+      for(hh=0;hh<24;hh++){ var v=mat[dd][hh]; if(v>pk)pk=v; t+='<td style="background:'+hmColor(v,mx,isAdd)+'">'+(v===0?'':v)+'</td>'; }
+      t+='<td class="rowtot">'+pk+'</td></tr>'; }
+    return t+'</tbody></table>';
+  }
+  var lbl=isAdd?'Additional to hire':'Agents needed';
+  document.getElementById('plHeat').innerHTML=
+    '<div class="losec" style="margin:2px 0 6px;">📞 Phone — '+lbl+' <span class="mut" style="font-weight:400;">(Erlang C)</span></div>'+heatTable(isAdd?addV:needV)+
+    '<div class="losec" style="margin:18px 0 6px;">✉️ Email — '+lbl+' <span class="mut" style="font-weight:400;">(throughput)</span></div>'+heatTable(isAdd?addE:needE);
+  document.getElementById('plNote').innerHTML=(isAdd?'<b>Additional agents to hire</b> = agents needed − current deployed (0 where already covered; rough — "deployed" = headcount who took a contact that hour, so read as directional)':'<b>Agents needed</b> = staff to schedule, incl. shrinkage')+' — <b>📞 phone &amp; ✉️ email</b> — at '+contactsDay.toLocaleString()+' contacts/day. Demand = last complete week\'s hour-by-hour shape scaled '+scale.toFixed(2)+'× · 📞 AHT '+Math.round(ah/60*10)/10+'m (Erlang C, '+CAP.shrink+'% shrink) · ✉️ '+CAP.emailSpeed+' replies/hr × '+CAP.occ+'% occupancy × (1−'+CAP.shrink+'% shrink) = '+CAP.coeff.toFixed(1)+' repl/scheduled-hr. <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
 }
 function showCliTab(v){   // By Client tab: Week-over-week (default) ↔ Day-over-day ↔ This week
   document.getElementById('cliWow').style.display=v==='wow'?'block':'none';
