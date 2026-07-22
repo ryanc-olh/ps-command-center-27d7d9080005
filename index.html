@@ -1225,7 +1225,7 @@ function renderPlanner(){
     var mx=0,dd,hh; for(dd=0;dd<7;dd++)for(hh=0;hh<24;hh++){ if(mat[dd][hh]>mx)mx=mat[dd][hh]; } if(mx===0)mx=1;
     var t='<table class="hm"><colgroup><col class="dayc">'; for(hh=0;hh<24;hh++)t+='<col class="hrc">'; t+='<col class="totc"></colgroup><thead><tr><th class="day"></th>';
     for(hh=0;hh<24;hh++)t+='<th>'+(hh%2===0?hrs[hh]:'')+'</th>'; t+='<th class="tot">Peak</th></tr></thead><tbody>';
-    for(dd=0;dd<7;dd++){ t+='<tr><th class="day">'+days[dd]+'</th>'; var pk=0;
+    for(dd=0;dd<7;dd++){ t+='<tr><th class="day">'+String(days[dd]).split(' ')[0]+'</th>'; var pk=0;
       for(hh=0;hh<24;hh++){ var v=mat[dd][hh]; if(v>pk)pk=v; t+='<td style="background:'+hmColor(v,mx,isAdd)+'">'+(v===0?'':v)+'</td>'; }
       t+='<td class="rowtot">'+pk+'</td></tr>'; }
     return t+'</tbody></table>';
