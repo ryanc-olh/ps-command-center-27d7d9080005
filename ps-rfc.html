@@ -109,7 +109,7 @@
   </div><!-- /phoneView -->
 
   <div id="emailView" style="display:none">
-    <div class="sub" style="margin-top:10px;">Email sample from <b>Zoho Desk</b>: <b>previous complete week (Jul 6–12, 2026)</b> · 100 random tickets/client, reason classified by reading each ticket body · de-identified · refreshes <b>weekly (Mon ~6:30am MT)</b>. "All built" = the 5 clients with dashboards (n=500).</div>
+    <div class="sub" style="margin-top:10px;">Email sample from <b>Zoho Desk</b>: <b>previous complete week (Jul 20–26, 2026)</b> · 100 random tickets/client, reason classified by reading each ticket body · de-identified · refreshes <b>weekly (Mon ~6:30am MT)</b>. "All built" = the 5 clients with dashboards (n=500).</div>
     <div class="lbl" style="margin-top:16px;">Client</div>
     <div id="emBtns" style="display:flex;gap:6px;flex-wrap:wrap;">
       <button class="cdbtn2 active" onclick="renderEmail('all')">All built</button>
@@ -123,7 +123,7 @@
     <div class="sec">Headline — <span id="emTitleH">All built clients</span></div>
     <div class="note" id="emNoise" style="margin:0 0 8px;"></div>
     <div class="grid kpis">
-      <div class="card"><div class="k">Tickets classified</div><div class="v" id="emKpiN">—</div><div class="n">random sample · Jul 6–12</div></div>
+      <div class="card"><div class="k">Tickets classified</div><div class="v" id="emKpiN">—</div><div class="n">random sample · Jul 20–26</div></div>
       <div class="card"><div class="k">Top driver</div><div class="v blue" id="emKpiTopPct">—</div><div class="n" id="emKpiTopName">—</div></div>
       <div class="card"><div class="k">Top 3 = share</div><div class="v amb" id="emKpiTop3">—</div><div class="n" id="emKpiTop3Names">—</div></div>
     </div>
@@ -192,7 +192,7 @@ function htmlBars(elId, items, maxv, labelFn, valFn, dispFn, colorFn){
   }).join('');
 }
 renderPhone('all');
-// ===== EMAIL RFC — sampled 100 tickets/client, previous complete week (Jul 6-12 2026), classified from ticket bodies; refreshed weekly by rfc_run.py =====
+// ===== EMAIL RFC — sampled 100 tickets/client, previous complete week (Jul 20-26 2026), classified from ticket bodies; refreshed weekly by rfc_run.py =====
 // canonical per-client email real-patient rate (measured; used across the app to strip noise from email volume) — injected
 var EMAIL_NOISE={"window":"Jun 22\u2013Jul 12, 2026","asof":"2026-07-19","method":"subject+sender \u00b7 2 AI passes + tiebreak","clients":{"embody":{"rate":0.988,"pct":98.8,"ci":[96.5,99.6],"n":249,"noise":3,"kinds":{"patient":246,"system":3}},"medvi":{"rate":0.8514,"pct":85.1,"ci":[80.2,89.0],"n":249,"noise":37,"kinds":{"patient":212,"system":27,"marketing":5,"autoreply":5}},"elixa":{"rate":0.976,"pct":97.6,"ci":[94.9,98.9],"n":250,"noise":6,"kinds":{"patient":244,"autoreply":2,"marketing":1,"vendor":1,"system":1,"spam":1}},"altrx":{"rate":0.9679,"pct":96.8,"ci":[93.8,98.4],"n":249,"noise":8,"kinds":{"patient":241,"system":6,"autoreply":1,"marketing":1}},"trinity":{"rate":0.9213,"pct":92.1,"ci":[87.8,95.0],"n":216,"noise":17,"kinds":{"patient":199,"internal":8,"marketing":6,"system":1,"autoreply":1,"vendor":1}},"other":{"rate":0.452,"pct":45.2,"ci":[39.1,51.4],"n":250,"noise":137,"kinds":{"patient":113,"system":85,"vendor":29,"spam":9,"marketing":8,"autoreply":4,"internal":1,"other":1}}}};
 var EMAIL={"embody":{"Scheduling":16,"Billing complaint":6,"Medication":33,"Order & shipping":20,"Account/access":2,"Non-patient/noise":1,"Onboarding/admin":10,"Pricing question":2,"Cancellation":6,"Labs":1,"Product quality":1,"Other":1},"medvi":{"Medication":12,"Non-patient/noise":15,"Cancellation":14,"Billing complaint":23,"Other":7,"Order & shipping":13,"Pricing question":4,"Scheduling":3,"Account/access":6,"Onboarding/admin":2,"Labs":1},"elixa":{"Scheduling":9,"Care coaching":3,"Order & shipping":22,"Medication":25,"Pricing question":3,"Billing complaint":13,"Account/access":7,"Labs":3,"Cancellation":8,"Other":3,"Onboarding/admin":3},"altrx":{"Onboarding/admin":8,"Order & shipping":22,"Account/access":12,"Scheduling":9,"Medication":26,"Billing complaint":8,"Product quality":1,"Pricing question":4,"Cancellation":5,"Non-patient/noise":2,"Other":2,"Labs":1},"trinity":{"Scheduling":9,"Care coaching":1,"Medication":26,"Cancellation":5,"Account/access":16,"Billing complaint":9,"Order & shipping":23,"Other":1,"Onboarding/admin":6,"Product quality":1,"Non-patient/noise":2,"Pricing question":1},"snagrx":{"Non-patient/noise":1,"Account/access":2,"Billing complaint":1,"Other":1,"Onboarding/admin":3,"Order & shipping":1,"Medication":2,"Care coaching":1},"other":{"Cancellation":6,"Non-patient/noise":38,"Medication":15,"Onboarding/admin":15,"Care coaching":2,"Order & shipping":5,"Other":3,"Labs":7,"Billing complaint":1,"Scheduling":7,"Pricing question":1}};
