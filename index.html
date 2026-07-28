@@ -1003,7 +1003,9 @@ function renderByClient(){
     (BPOS_EMAIL_BY_CLIENT[cl]||[]).forEach(function(x){(m[x.b]=m[x.b]||{}).rep=x.rep;m[x.b].frp=x.frp;});
     WOW_B.forEach(function(b){ var r=(((RESOLUTION.bpoest||{})[cl]||{})[b]||[])[wk]; if(r){(m[b]=m[b]||{}).ot1=r.ot;m[b].rr=r.avgrep;} });
     var rows=BPO_ORDER2.filter(function(b){return m[b];});
-    var hdr='<tr class="grouphdr"><td colspan="8">🏥 '+CLIENT_NAMES[cl]+'</td></tr>';
+    var ab=(BPO_WOW.abandon[cl]||[])[wk]||null;
+    var tot=ab?(' &nbsp;·&nbsp; <span style="font-weight:400;color:var(--sec);">📞 '+(ab.off||0).toLocaleString()+' total calls &rarr; '+(ab.ans||0).toLocaleString()+' answered'+(ab.ab!=null?' &middot; '+ab.ab+'% abandon':'')+'</span>'):'';
+    var hdr='<tr class="grouphdr"><td colspan="8">🏥 '+CLIENT_NAMES[cl]+tot+'</td></tr>';
     var body=rows.length?rows.map(function(b){return '<tr><td class="metlab">🏢 '+b+'</td>'+bpoCells(m[b])+'</tr>';}).join(''):'<tr><td colspan="8" class="mut">no data this week</td></tr>';
     return hdr+body;
   }).join('');
