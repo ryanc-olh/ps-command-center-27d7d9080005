@@ -464,7 +464,13 @@
     <div class="hmctl" style="margin-top:14px;"><span class="hclab">Show</span>
       <button id="plNeed" class="hbtn active" onclick="setPl('mode','needed')">🧮 Agents needed</button>
       <button id="plAdd" class="hbtn" onclick="setPl('mode','add')">➕ Additional to hire</button>
-      <span class="hint2" style="margin-left:8px;">· 📞 phone &amp; ✉️ email shown together</span>
+      <button id="plStaff" class="hbtn" onclick="setPl('mode','staff')">📋 Place my agents</button>
+    </div>
+    <div class="hmctl" id="plStaffCtl" style="display:none;"><span class="hclab">Place</span>
+      <label class="capl">I have <input id="pl_fte" class="capn" type="number" min="0" value="20" oninput="renderPlanner()"> FTEs</label>
+      <label class="capl">Client <select id="pl_cli" class="capn" style="width:auto" onchange="renderPlanner()"><option value="all">All built</option><option value="embody">Embody</option><option value="medvi">Medvi</option><option value="elixa">Elixa</option><option value="altrx">AltRx</option><option value="trinity">Trinity</option><option value="snagrx">SnagRX</option></select></label>
+      <label class="capl">Channel <select id="pl_ch2" class="capn" style="width:auto" onchange="renderPlanner()"><option value="both">📞+✉️ Both</option><option value="voice">📞 Phone</option><option value="email">✉️ Email</option></select></label>
+      <span class="hint2" style="margin-left:8px;">· where to staff them across the week to hit SLA, at actual demand</span>
     </div>
     <div id="plHeat" style="overflow-x:auto;"></div>
     <div class="note" id="plNote"></div>
@@ -1201,10 +1207,57 @@ function plGet(){
 function setPl(g,v){ plState[g]=v;
   document.getElementById('plNeed').classList.toggle('active',plState.mode==='needed');
   document.getElementById('plAdd').classList.toggle('active',plState.mode==='add');
+  var st=document.getElementById('plStaff'); if(st) st.classList.toggle('active',plState.mode==='staff');
+  var ctl=document.getElementById('plStaffCtl'); if(ctl) ctl.style.display=(plState.mode==='staff')?'':'none';
   renderPlanner();
+}
+function renderStaffPlan(){
+  // "I have N FTEs — where do I staff them?" Reuses the same demand cube + Erlang/coefficient model,
+  // scoped to one client + channel at ACTUAL demand; peak-first allocation of N×40 hrs, flag SLA gaps.
+  var C=HM_CUBE.cube, days=HM_CUBE.days, d,h,k;
+  plGet();   // refresh CAP (SL/AHT/coeff/occ/shrink/SLAh) from the assumptions inputs
+  var cli=(document.getElementById('pl_cli')||{}).value||'all';
+  var chan=(document.getElementById('pl_ch2')||{}).value||'both';
+  var fte=Math.max(0,Math.min(parseFloat((document.getElementById('pl_fte')||{}).value)||0,100000));
+  var clients=(cli==='all')?HM_BUILT:[cli];
+  var ah=voiceAHTsec('all'), rpt=repliesPerTicket('all'), win=Math.max(1,Math.round(CAP.slaHrs));
+  function vDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
+  function eDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }
+  var need=[]; for(d=0;d<7;d++){ need[d]=[]; for(h=0;h<24;h++){
+    var nv=(chan!=='email')?reqAgentsVoice(vDem(d,h),ah):0, ne=0;
+    if(chan!=='voice'){ var work=0; for(k=h-win+1;k<=h;k++){ if(k>=0) work+=eDem(d,k)*rpt; } ne=reqAgentsEmail(work); }
+    need[d][h]=nv+ne;
+  }}
+  var slots=[]; for(d=0;d<7;d++)for(h=0;h<24;h++) if(need[d][h]>0) slots.push([d,h,need[d][h]]);
+  slots.sort(function(a,b){return b[2]-a[2];});   // peak-first
+  var pool=fte*40, rec=[]; for(d=0;d<7;d++){ rec[d]=[]; for(h=0;h<24;h++)rec[d][h]=0; }
+  var totNeed=0,covered=0; slots.forEach(function(s){ totNeed+=s[2]; if(pool>=s[2]){ rec[s[0]][s[1]]=s[2]; pool-=s[2]; covered+=s[2]; } });
+  var neededFTE=Math.ceil(totNeed/40), gapHrs=totNeed-covered, surplus=Math.max(0,Math.floor(pool/40));
+  var chLbl=chan==='voice'?'📞 Phone':(chan==='email'?'✉️ Email':'📞+✉️ Both'), who=(cli==='all'?'all built clients':(CLIENT_NAMES[cli]||cli));
+  var cards=[
+    ['You have', fte+' FTEs', (fte*40).toLocaleString()+' scheduled hrs/wk'],
+    ['Need to hit SLA', neededFTE+' FTEs', chLbl+' · '+who],
+    [ (fte>=neededFTE?'Surplus':'Short by'), (fte>=neededFTE?('+'+surplus):('−'+(neededFTE-fte)))+' FTEs', (fte>=neededFTE?'covers every hour':Math.round(gapHrs)+' agent-hrs/wk uncovered')],
+    ['Coverage', (totNeed?Math.round(covered/totNeed*100):100)+'%', 'of demand-hours funded (peak-first)']
+  ];
+  document.getElementById('plCards').innerHTML=cards.map(function(c){return '<div class="card"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div><div class="n">'+c[2]+'</div></div>';}).join('');
+  var hrs=[]; for(h=0;h<24;h++)hrs.push((h%12===0?12:h%12)+(h<12?'a':'p'));
+  var mx=1; for(d=0;d<7;d++)for(h=0;h<24;h++) if(rec[d][h]>mx)mx=rec[d][h];
+  var t='<table class="hm"><colgroup><col class="dayc">'; for(h=0;h<24;h++)t+='<col class="hrc">'; t+='<col class="totc"></colgroup><thead><tr><th class="day"></th>';
+  for(h=0;h<24;h++)t+='<th>'+(h%2===0?hrs[h]:'')+'</th>'; t+='<th class="tot">Peak</th></tr></thead><tbody>';
+  for(d=0;d<7;d++){ t+='<tr><th class="day">'+String(days[d]).split(' ')[0]+'</th>'; var pk=0;
+    for(h=0;h<24;h++){ var rv=rec[d][h], nd=need[d][h], gap=(nd>rv); if(rv>pk)pk=rv;
+      var bg=gap?'#f7dcd8':hmColor(rv,mx,false), ring=gap?';box-shadow:inset 0 0 0 2px var(--red)':'';
+      var cell=gap?('<span style="color:var(--red);font-weight:600">'+nd+'</span>'):(rv||'');
+      t+='<td style="background:'+bg+ring+'" title="'+(gap?('needs '+nd+', short '+(nd-rv)):('staff '+rv))+'">'+cell+'</td>'; }
+    t+='<td class="rowtot">'+pk+'</td></tr>'; }
+  t+='</tbody></table>';
+  document.getElementById('plHeat').innerHTML='<div class="losec" style="margin:2px 0 6px;">'+chLbl+' — where to staff your '+fte+' FTEs <span class="mut" style="font-weight:400;">· peak hours funded first · red = SLA gap (shows the # you\'d need)</span></div>'+t;
+  document.getElementById('plNote').innerHTML='<b>Staffing plan for '+fte+' FTEs</b> — '+chLbl+', '+who+'. Each cell = agents to schedule that hour to hit SLA; your FTEs (40h each) are placed peak-first. <b class="red">Red</b> = demand you can\'t cover with '+fte+' FTEs ('+Math.round(gapHrs)+' agent-hrs/wk short ≈ '+Math.max(0,neededFTE-fte)+' more FTEs). Demand = actual last-complete-week shape (wk '+HM_CUBE.window+'). 📞 Erlang C (AHT '+Math.round(ah/60*10)/10+'m) · ✉️ '+CAP.coeff.toFixed(1)+' repl/scheduled-hr · '+CAP.shrink+'% shrinkage. <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
 }
 function renderPlanner(){
   if(!HM_CUBE||!document.getElementById('plHeat')) return;
+  if(plState.mode==='staff'){ renderStaffPlan(); return; }
   var g=plGet(), C=HM_CUBE.cube, days=HM_CUBE.days, d,h,k;
   function bV(d,h){ var s=0; HM_BUILT.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
   function bE(d,h){ var s=0; HM_BUILT.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }   // mirror hmInbound so planner == Intraday model at scale=1
