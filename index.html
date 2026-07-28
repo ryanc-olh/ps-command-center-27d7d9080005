@@ -1046,6 +1046,7 @@ function renderTrend(){
     return {an:an, asa:(an?Math.round(asw/an):null), rep:rep, tix:tix, le4hr:(frw?Math.round(le4w/frw):null)}; }
   var numF2=function(v){return v.toLocaleString();};
   var CMETS=[
+    {lab:'📞 Total calls', val:function(c,i){var a=BPO_WOW.abandon[c]; return (a&&a[i])?a[i].off:null;}, rag:null, dir:0, fmt:numF2, pctd:true},
     {lab:'📞 Answered', val:function(c,i){return cliAggWk(c,i).an||null;}, rag:null, dir:0, fmt:numF2, pctd:true},
     {lab:'📞 ASA', val:function(c,i){return cliAggWk(c,i).asa;}, rag:asaCls, dir:+1, fmt:asaFmt, pctd:true},
     {lab:'📞 Voice abandonment %', val:function(c,i){var a=BPO_WOW.abandon[c]; return (a&&a[i])?a[i].ab:null;}, rag:abRag, dir:+1, fmt:pctF, unit:'pp'},
@@ -1158,6 +1159,7 @@ function renderDod(){
   var bpoByMetric=bpoMets.map(function(m){ return '<tr class="grouphdr"><td colspan="'+ncol+'">'+m.lab+'</td></tr>'+vendors.map(function(b){return mRow(m,b,'🏢 '+b);}).join(''); }).join('')||empty;
   // ---- By Client ----
   var cliMets=[
+    {lab:'📞 Total calls', ch:'voice', cfg:cAns, get:function(c,i){var v=DV.abandon[c];return v&&v[i]?v[i].off:null;}},
     {lab:'📞 Answered',   ch:'voice', cfg:cAns, get:function(c,i){var v=DV.voiceCli[c];return v&&v[i]?v[i].an:null;}},
     {lab:'📞 ASA',        ch:'voice', cfg:cAsa, get:function(c,i){var v=DV.voiceCli[c];return v&&v[i]?v[i].asa:null;}},
     {lab:'📞 Abandon %',  ch:'voice', cfg:cAb,  get:function(c,i){var v=DV.abandon[c];return v&&v[i]?v[i].ab:null;}},
