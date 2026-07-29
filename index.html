@@ -484,7 +484,7 @@
       <span class="hint2" id="plDerive"></span>
     </div>
     <div class="hmctl"><span class="hclab">Assumes</span>
-      <label class="capl">📞 SL <input id="pl_sl" class="capn" type="number" min="1" max="99" value="80" oninput="renderPlanner()">% in <input id="pl_asa" class="capn" type="number" min="1" value="30" oninput="renderPlanner()">s</label>
+      <label class="capl">📞 SL <input id="pl_sl" class="capn" type="number" min="1" max="99" value="80" oninput="renderPlanner()">% in <input id="pl_asa" class="capn" type="number" min="1" value="30" oninput="renderPlanner()">s · AHT <input id="pl_aht" class="capn" type="number" min="0.5" step="0.1" oninput="setAhtManual()" title="phone avg handle time (minutes) — Erlang C input; blank = auto (measured average)">m <span class="hint2" id="ahtHint"></span></label>
       <label class="capl">✉️ SLA <input id="pl_sla" class="capn" type="number" min="1" value="4" oninput="renderPlanner()">h · <input id="pl_coeff" class="capn" type="number" min="0.1" step="0.1" value="6.5" oninput="renderPlanner()"> replies/hr · occupancy <input id="pl_occ" class="capn" type="number" min="1" max="100" value="90" oninput="renderPlanner()">%</label>
       <label class="capl">shrinkage <input id="pl_shr" class="capn" type="number" min="0" max="80" value="20" oninput="renderPlanner()">%</label>
     </div>
@@ -796,7 +796,7 @@ var POP={
   hrdetail:'<div class="h">Hourly detail — one client, one day</div>The same by-hour view as each client dashboard, for any built client and any of the last 8 days. <b>📞 Phone</b> (Amazon Connect, prior day): Inbound = calls offered · Answered · %≤30s = answered within 30s ÷ offered (<span class="grn">green ≥80</span>/<span class="amb">amber ≥50</span>/<span class="red">red</span>) · ASA = avg seconds to answer · Abandon = unanswered ÷ offered (<span class="red">red &gt;15</span>/<span class="amb">amber ≥5</span>). <b>✉️ Email</b> (Zoho Desk, ≤1-day lag): Received · Resolved · <b>Net</b> = received − resolved (<span class="grn">green</span> = burning down) · %≤4hr = first reply within 4h (<span class="grn">green ≥70</span>/<span class="amb">amber ≥50</span>/<span class="red">red</span>). Hours with no activity are hidden; "—" = no denominator that hour. <span class="hint2">Phone hours Central; email stored tz. Rebuilt daily ~5:15am MT.</span>',
   hm:'<div class="h">Intraday heatmap</div>Previous complete week, day × hour; darker = higher. Metrics come in two families — 📊 <b>Volume</b> (calls/emails) and 👥 <b>Staffing</b> (agents); tap the <b>ⓘ</b> next to "Two lenses" for the difference. 📊 <b>Net gap</b> (inbound − handled): <span class="red">red</span> = demand outran handling that hour, <span class="grn">green</span> = kept up/ahead. Inbound = calls offered / emails received (whole client, not per-BPO). <b>Email inbound is patient-only</b> — each client\'s email is scaled by its measured real-patient rate (noise stripped); pick 👥 <b>Agents needed</b> or <b>Staffing gap</b> for the per-client rates + capacity method. Phone is not adjusted. <span class="hint2">Voice = Amazon Connect (prior day); email = Zoho Desk (≤1-day lag); rebuilt daily ~5:15am MT. Phone hours Central; email stored tz.</span>',
   gaps:'<div class="h">📊 Net gap vs. 👥 Staffing gap — two different things</div>These sound alike but are in <b>different units</b> and answer <b>different questions</b>:<br><br><b>📊 Net gap = Inbound − Handled</b>, in <b>calls / emails</b>. Did work pile up this hour? <span class="red">Red/positive</span> = demand outran handling (calls abandoned or spilled). This is a <b>real outcome</b> measured from actual contacts.<br><br><b>👥 Staffing gap = Agents needed − Agents deployed</b>, in <b>agents</b> (per cell) / <b>agent-hours</b> (day total). Did you have enough people? <span class="red">Red</span> = short, <span class="grn">green</span> = surplus.<br><br><b>Why they can disagree:</b> "deployed" counts anyone who took ≥1 contact that hour as a whole agent — so 50 people each answering 2 calls then doing email counts as 50 deployed, even though far fewer were <i>on the phone at once</i>. So you can drop calls (📊 red) while headcount looks like a surplus (👥 green). <b>Trust the volume gap &amp; abandonment as the truth; read a phone staffing "surplus" as <i>scheduling/adherence</i>, not spare capacity.</b> Email staffing gap is genuinely short (matches sub-target first-response).',
-  planner:'<div class="h">Capacity planner (what-if)</div>Enter <b>patients/day</b> and the <b>% who contact PS</b> → projected daily contacts. That total is split voice/email and spread across the week by the <b>measured day×hour shape</b> from the last complete week, then run through the same models as the Intraday tab: 📞 phone = Erlang C (AHT + target SL), ✉️ email = throughput sized on an <b>effective</b> rate = <b>replies/hr × occupancy × (1−shrinkage)</b> (replies/hr = focused handle speed, ~6.5 measured; occupancy = share of the shift actually on email; both editable). <b>Agents needed</b> = staff to schedule (incl. shrinkage). <span style="color:#9a6a00;">Defaults model a <b>dedicated</b> email team (80% occupancy) — validate occupancy empirically before hiring to it; the current cross-utilized floor is ~2.4.</span> <b>Additional to hire</b> = needed − current deployed. FTEs = weekly agent-hours ÷ 40. <span class="hint2">Assumes the future channel mix, hourly shape &amp; AHT match recent history; edit the assumptions to stress-test. Additional-hires uses the same "deployed = headcount who took a contact that hour" proxy as the Staffing gap.</span>'
+  planner:'<div class="h">Capacity planner (what-if)</div>Enter <b>patients/day</b> and the <b>% who contact PS</b> → projected daily contacts. That total is split voice/email and spread across the week by the <b>measured day×hour shape</b> from the last complete week, then run through the same models as the Intraday tab: 📞 phone = Erlang C (<b>editable AHT</b> — auto-set to the measured average, override to stress-test — + target SL), ✉️ email = throughput sized on an <b>effective</b> rate = <b>replies/hr × occupancy × (1−shrinkage)</b> (replies/hr = focused handle speed, ~6.5 measured; occupancy = share of the shift actually on email; both editable). <b>Agents needed</b> = staff to schedule (incl. shrinkage). <span style="color:#9a6a00;">Defaults model a <b>dedicated</b> email team (80% occupancy) — validate occupancy empirically before hiring to it; the current cross-utilized floor is ~2.4.</span> <b>Additional to hire</b> = needed − current deployed. FTEs = weekly agent-hours ÷ 40. <span class="hint2">Assumes the future channel mix, hourly shape &amp; AHT match recent history; edit the assumptions to stress-test. Additional-hires uses the same "deployed = headcount who took a contact that hour" proxy as the Staffing gap.</span>'
 };
 function showPop(el){
   var key=el.getAttribute('data-pop'), p=document.getElementById('pop');
@@ -1370,11 +1370,20 @@ function showBpoTab(v){   // By BPO tab: Week-over-week (default) ↔ Day-over-d
 }
 // ---- Capacity planner (what-if): scale the measured demand shape to a hypothetical patient volume ----
 var plState={mode:'needed', ch:'voice'};
+var ahtAuto=true;   // 📞 AHT field tracks the measured average until the user overrides it
+function plClient(){ return (plState.mode==='staff'||plState.mode==='capacity'||plState.mode==='gap') ? ((document.getElementById('pl_cli')||{}).value||'all') : 'all'; }
+function setAhtManual(){ var e=document.getElementById('pl_aht'); ahtAuto=(!e||e.value===''); renderPlanner(); }   // typing overrides; clearing reverts to auto
+function resetAht(){ ahtAuto=true; renderPlanner(); }
 function plGet(){
   function n(id,def){ var e=document.getElementById(id), v=e?parseFloat(e.value):NaN; return isNaN(v)?def:v; }
   CAP.sl=n('pl_sl',80); CAP.asa=n('pl_asa',30); CAP.shrink=n('pl_shr',20); CAP.slaHrs=n('pl_sla',4);
   CAP.emailSpeed=n('pl_coeff',6.5); CAP.occ=Math.max(1,Math.min(n('pl_occ',80),100));
   CAP.coeff=CAP.emailSpeed*(CAP.occ/100)*(1-CAP.shrink/100);   // effective repl/SCHEDULED-hr = speed × occupancy × (1−shrinkage); reqAgentsEmail = ⌈work ÷ coeff ÷ SLAh⌉ → scheduled bodies
+  // 📞 AHT (Erlang C input) — editable; in AUTO it tracks the measured avg handle time for the current planner scope
+  var measMin=Math.round(voiceAHTsec(plClient())/60*10)/10, ae=document.getElementById('pl_aht');
+  if(ahtAuto && ae) ae.value=measMin;
+  CAP.aht=Math.max(30, n('pl_aht',measMin)*60);   // seconds
+  var hint=document.getElementById('ahtHint'); if(hint) hint.innerHTML=ahtAuto?('auto · measured '+measMin+'m'):('<span style="cursor:pointer;text-decoration:underline" onclick="resetAht()" title="reset to measured">↺ measured '+measMin+'m</span>');
   return { pat:Math.max(0,Math.min(n('pl_pat',0),1000000)), rate:Math.max(0,Math.min(n('pl_rate',0),100)) };  // clamp to sane range
 }
 function setPl(g,v){ plState[g]=v;
@@ -1395,7 +1404,7 @@ function renderStaffPlan(){
   var chan=(document.getElementById('pl_ch2')||{}).value||'both';
   var fte=Math.max(0,Math.min(parseFloat((document.getElementById('pl_fte')||{}).value)||0,100000));
   var clients=(cli==='all')?HM_BUILT:[cli];
-  var ah=voiceAHTsec(cli), rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));   // client-specific cost factors (fixed 2026-07-28: was hardcoded 'all')
+  var ah=CAP.aht, rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));   // ah = editable AHT field (auto=measured)   // client-specific cost factors (fixed 2026-07-28: was hardcoded 'all')
   function vDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
   function eDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }
   var need=[]; for(d=0;d<7;d++){ need[d]=[]; for(h=0;h<24;h++){
@@ -1440,7 +1449,7 @@ function renderCapacity(){
   var chan=(document.getElementById('pl_ch2')||{}).value||'both';
   var fte=Math.max(0,Math.min(parseFloat((document.getElementById('pl_fte')||{}).value)||0,100000));
   var clients=(cli==='all')?HM_BUILT:[cli];
-  var ah=voiceAHTsec(cli), rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));   // client-specific
+  var ah=CAP.aht, rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));   // ah = editable AHT field (auto=measured)   // client-specific
   function vDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
   function eDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }
   // per-channel agent-need = the surge weights (where the work is)
@@ -1490,7 +1499,7 @@ function renderGap(){
   var chan=(document.getElementById('pl_ch2')||{}).value||'both';
   var fte=Math.max(0,Math.min(parseFloat((document.getElementById('pl_fte')||{}).value)||0,100000));
   var clients=(cli==='all')?HM_BUILT:[cli];
-  var ah=voiceAHTsec(cli), rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));
+  var ah=CAP.aht, rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));   // ah = editable AHT field (auto=measured)
   function vDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
   function eDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }
   // demand projection: scale the client's surge shape up/down to the entered patients/day × %contact
@@ -1551,7 +1560,7 @@ function renderPlanner(){
   function bE(d,h){ var s=0; HM_BUILT.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }   // mirror hmInbound so planner == Intraday model at scale=1
   var vWk=0,eWk=0; for(d=0;d<7;d++)for(h=0;h<24;h++){ vWk+=bV(d,h); eWk+=bE(d,h); }
   var baseTot=vWk+eWk, targetWk=g.pat*(g.rate/100)*7, scale=baseTot>0?targetWk/baseTot:0;
-  var ah=voiceAHTsec('all'), rpt=repliesPerTicket('all'), win=Math.max(1,Math.round(CAP.slaHrs));
+  var ah=CAP.aht, rpt=repliesPerTicket('all'), win=Math.max(1,Math.round(CAP.slaHrs));   // ah = editable AHT field (auto=measured)
   var needV=[],needE=[],addV=[],addE=[], pkV=0,pkE=0,sNV=0,sNE=0,sAV=0,sAE=0;
   for(d=0;d<7;d++){ needV[d]=[];needE[d]=[];addV[d]=[];addE[d]=[];
     for(h=0;h<24;h++){
