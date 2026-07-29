@@ -495,7 +495,7 @@
     </div>
     <div class="hmctl" id="plStaffCtl" style="display:none;"><span class="hclab" id="plTeamLab">Team</span>
       <label class="capl" id="plF_cli">Client <select id="pl_cli" class="capn" style="width:auto" onchange="renderPlanner()"><option value="all">All built</option><option value="embody">Embody</option><option value="medvi">Medvi</option><option value="elixa">Elixa</option><option value="altrx">AltRx</option><option value="trinity">Trinity</option><option value="snagrx">SnagRX</option><option value="thrive">Thrive Le-Vel</option></select></label>
-      <label class="capl" id="plF_fte">I have <input id="pl_fte" class="capn" type="number" min="0" value="20" oninput="renderPlanner()"> FTEs</label>
+      <label class="capl" id="plF_fte">I have <input id="pl_fte" class="capn" type="number" min="0" step="1" value="20" oninput="renderPlanner()"> FTEs</label>
       <label class="capl" id="plF_ch2">Channel <select id="pl_ch2" class="capn" style="width:auto" onchange="renderPlanner()"><option value="both">📞+✉️ Both</option><option value="voice">📞 Phone</option><option value="email">✉️ Email</option></select></label>
       <label class="capl" id="plF_alloc">Deploy <select id="pl_alloc" class="capn" style="width:auto" onchange="renderPlanner()"><option value="auto">Auto (by demand)</option><option value="voice">📞 All on phone</option><option value="email">✉️ All on email</option></select></label>
     </div>
@@ -1436,22 +1436,23 @@ function plDeploy(clients,fte,ah,rpt,win,alloc){
     var work=0; for(k=h-win+1;k<=h;k++){ if(k>=0) work+=eDem(d,k)*rpt; } var ne=reqAgentsEmail(work);
     vN[d][h]=nv; eN[d][h]=ne; sVN+=nv; sEN+=ne;
   }}
-  var pool=fte*40, sN=sVN+sEN, vPool, ePool;
-  if(alloc==='voice'){ vPool=pool; ePool=0; }         // all agents on phone
-  else if(alloc==='email'){ vPool=0; ePool=pool; }    // all agents on email
-  else { vPool=sN?pool*sVN/sN:0; ePool=sN?pool*sEN/sN:0; }   // auto: by demand-need share
-  var va=[],ea=[];   // fractional agents-on per hour, per channel (capped at headcount)
+  var sN=sVN+sEN, vFTE, eFTE;   // FTEs are whole people — split into integers that sum to N
+  if(alloc==='voice'){ vFTE=fte; eFTE=0; }              // all agents on phone
+  else if(alloc==='email'){ vFTE=0; eFTE=fte; }         // all agents on email
+  else { vFTE=sN?Math.round(fte*sVN/sN):0; eFTE=fte-vFTE; }   // auto: by demand-need share, whole FTEs summing to N
+  var vPool=vFTE*40, ePool=eFTE*40;
+  var va=[],ea=[];   // fractional agents-on per hour, per channel (capped at THAT channel's headcount)
   for(d=0;d<7;d++){ va[d]=[]; ea[d]=[]; for(h=0;h<24;h++){
-    va[d][h]=sVN?Math.min(fte, vPool*vN[d][h]/sVN):0; ea[d][h]=sEN?Math.min(fte, ePool*eN[d][h]/sEN):0;
+    va[d][h]=(sVN&&vFTE)?Math.min(vFTE, vPool*vN[d][h]/sVN):0; ea[d][h]=(sEN&&eFTE)?Math.min(eFTE, ePool*eN[d][h]/sEN):0;
   }}
-  return {va:va, ea:ea, vFTE:Math.round(vPool/40*10)/10, eFTE:Math.round(ePool/40*10)/10};
+  return {va:va, ea:ea, vFTE:vFTE, eFTE:eFTE};
 }
 function renderStaffPlan(){
   // "I have N FTEs — where do I staff them?" ALWAYS shows both a phone and an email matrix.
   var days=HM_CUBE.days, d,h;
   plGet();
   var cli=(document.getElementById('pl_cli')||{}).value||'all';
-  var fte=Math.max(0,Math.min(parseFloat((document.getElementById('pl_fte')||{}).value)||0,100000));
+  var fte=Math.max(0,Math.min(Math.round(parseFloat((document.getElementById('pl_fte')||{}).value)||0),100000));   // FTEs are whole people
   var clients=(cli==='all')?HM_BUILT:[cli], who=(cli==='all'?'all built clients':(CLIENT_NAMES[cli]||cli));
   var ah=CAP.aht, rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));
   var alloc=(document.getElementById('pl_alloc')||{}).value||'auto', D=plDeploy(clients,fte,ah,rpt,win,alloc), hrs=[]; for(h=0;h<24;h++)hrs.push((h%12===0?12:h%12)+(h<12?'a':'p'));
@@ -1475,7 +1476,7 @@ function renderCapacity(){
   var days=HM_CUBE.days, d,h;
   plGet();
   var cli=(document.getElementById('pl_cli')||{}).value||'all';
-  var fte=Math.max(0,Math.min(parseFloat((document.getElementById('pl_fte')||{}).value)||0,100000));
+  var fte=Math.max(0,Math.min(Math.round(parseFloat((document.getElementById('pl_fte')||{}).value)||0),100000));   // FTEs are whole people
   var clients=(cli==='all')?HM_BUILT:[cli], who=(cli==='all'?'all built clients':(CLIENT_NAMES[cli]||cli));
   var ah=CAP.aht, rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));
   var alloc=(document.getElementById('pl_alloc')||{}).value||'auto', D=plDeploy(clients,fte,ah,rpt,win,alloc), hrs=[]; for(h=0;h<24;h++)hrs.push((h%12===0?12:h%12)+(h<12?'a':'p'));
@@ -1501,7 +1502,7 @@ function renderGap(){
   var g=plGet();
   var cli=(document.getElementById('pl_cli')||{}).value||'all';
   var chan=(document.getElementById('pl_ch2')||{}).value||'both';
-  var fte=Math.max(0,Math.min(parseFloat((document.getElementById('pl_fte')||{}).value)||0,100000));
+  var fte=Math.max(0,Math.min(Math.round(parseFloat((document.getElementById('pl_fte')||{}).value)||0),100000));   // FTEs are whole people
   var clients=(cli==='all')?HM_BUILT:[cli];
   var ah=CAP.aht, rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));   // ah = editable AHT field (auto=measured)
   function vDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
