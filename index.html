@@ -229,6 +229,7 @@
     <button class="tab" onclick="showTab(9)">Patient Journey</button>
     <button class="tab" onclick="showTab(10)">🚨 Signal</button>
     <button class="tab" onclick="showTab(11)">😊 CSAT</button>
+    <button class="tab" onclick="showTab(12)">👥 Staffing</button>
   </div>
   <div id="tabSource" class="srcbar"></div>
 
@@ -594,6 +595,27 @@
     <div class="note" id="csatNote" style="margin-top:12px;"></div>
   </div>
 
+  <div class="panel" id="p12">
+    <div class="lbl" style="margin-top:0;">Staffing by client &mdash; recommended headcount vs actual <span class="info" data-pop="staffing" onclick="showPop(this)">i</span></div>
+    <div class="winbig">📅 sized from the latest complete week&rsquo;s demand: <span class="w" id="stfWin">—</span></div>
+    <div class="grid kpis" id="stfCards" style="margin-top:12px;"></div>
+    <div style="overflow-x:auto;margin-top:18px;"><table class="mx" id="stfTbl">
+      <thead><tr>
+        <th style="text-align:left">Client</th>
+        <th>📞 Phone<br><span class="estlbl">FTE</span></th>
+        <th>✉️ Email<br><span class="estlbl">FTE</span></th>
+        <th>Total<br><span class="estlbl">recommended</span></th>
+        <th>Actual<br><span class="estlbl">staffed now</span></th>
+        <th>Gap<br><span class="estlbl">rec − actual</span></th>
+        <th>Calls/wk</th>
+        <th>Emails/wk</th>
+      </tr></thead>
+      <tbody id="stfTbody"></tbody>
+    </table></div>
+    <div class="note" id="stfAssume" style="margin-top:12px;"></div>
+    <div class="note" id="stfNote" style="margin-top:8px;"></div>
+  </div>
+
   <div class="foot" id="foot"></div>
 </div>
 
@@ -760,7 +782,8 @@ var TAB_SOURCES={
   8:'📊 <b>Source:</b> '+_S.posthog+' (HeyRevia Patient CRM logins/features) · BPO roster + Slack titles &middot; <span class="mut">manual/last-measured</span>',
   9:'📊 <b>Source:</b> Contact rate &mdash; '+_S.conn+' + '+_S.desk+', deduped on the Healthie patient id (omnichannel). Signups &rarr; email &mdash; '+_S.desk+' Contacts (created-date), <b>not the HeyRevia CRM</b> &middot; <span class="mut">manual snapshot</span>',
   10:'📊 <b>Source:</b> '+_S.desk+' tickets (subject/keyword census + body sample for context) &middot; <span class="mut">daily anomaly scan</span>',
-  11:'📊 <b>Source:</b> '+_S.conn+' post-contact surveys (voice; chat pending) &middot; <span class="mut">latest complete week; by client + BPO via contact join</span>'
+  11:'📊 <b>Source:</b> '+_S.conn+' post-contact surveys (voice; chat pending) &middot; <span class="mut">latest complete week; by client + BPO via contact join</span>',
+  12:'📊 <b>Source:</b> '+_S.model+' from the demand cube ('+_S.conn+' + '+_S.desk+') via Erlang C (phone) &amp; throughput (email); actual staffing = distinct active agents ('+_S.conn+' + '+_S.desk+') &middot; <span class="mut">latest complete week; dedicated per-client teams</span>'
 };
 function showTab(i){
   document.querySelectorAll('.tabs .tab').forEach(function(t,j){t.classList.toggle('active',j===i);});
@@ -772,6 +795,7 @@ function showTab(i){
   if(i===8){ renderCrm(); renderFeat(); renderInternal(); }
   if(i===9){ renderContactsPP(); renderCohortRamp(); renderJourney(); }
   if(i===11){ renderCsat(); }
+  if(i===12){ renderStaffing(); }
 }
 // ---- progressive-disclosure info popovers: glanceable by default, detail on click ----
 var POP={
@@ -802,7 +826,8 @@ var POP={
   hrdetail:'<div class="h">Hourly detail — one client, one day</div>The same by-hour view as each client dashboard, for any built client and any of the last 8 days. <b>📞 Phone</b> (Amazon Connect, prior day): Inbound = calls offered · Answered · %≤30s = answered within 30s ÷ offered (<span class="grn">green ≥80</span>/<span class="amb">amber ≥50</span>/<span class="red">red</span>) · ASA = avg seconds to answer · Abandon = unanswered ÷ offered (<span class="red">red &gt;15</span>/<span class="amb">amber ≥5</span>). <b>✉️ Email</b> (Zoho Desk, ≤1-day lag): Received · Resolved · <b>Net</b> = received − resolved (<span class="grn">green</span> = burning down) · %≤4hr = first reply within 4h (<span class="grn">green ≥70</span>/<span class="amb">amber ≥50</span>/<span class="red">red</span>). Hours with no activity are hidden; "—" = no denominator that hour. <span class="hint2">Phone hours Central; email stored tz. Rebuilt daily ~5:15am MT.</span>',
   hm:'<div class="h">Intraday heatmap</div>Previous complete week, day × hour; darker = higher. Metrics come in two families — 📊 <b>Volume</b> (calls/emails) and 👥 <b>Staffing</b> (agents); tap the <b>ⓘ</b> next to "Two lenses" for the difference. 📊 <b>Net gap</b> (inbound − handled): <span class="red">red</span> = demand outran handling that hour, <span class="grn">green</span> = kept up/ahead. Inbound = calls offered / emails received (whole client, not per-BPO). <b>Email inbound is patient-only</b> — each client\'s email is scaled by its measured real-patient rate (noise stripped); pick 👥 <b>Agents needed</b> or <b>Staffing gap</b> for the per-client rates + capacity method. Phone is not adjusted. <span class="hint2">Voice = Amazon Connect (prior day); email = Zoho Desk (≤1-day lag); rebuilt daily ~5:15am MT. Phone hours Central; email stored tz.</span>',
   gaps:'<div class="h">📊 Net gap vs. 👥 Staffing gap — two different things</div>These sound alike but are in <b>different units</b> and answer <b>different questions</b>:<br><br><b>📊 Net gap = Inbound − Handled</b>, in <b>calls / emails</b>. Did work pile up this hour? <span class="red">Red/positive</span> = demand outran handling (calls abandoned or spilled). This is a <b>real outcome</b> measured from actual contacts.<br><br><b>👥 Staffing gap = Agents needed − Agents deployed</b>, in <b>agents</b> (per cell) / <b>agent-hours</b> (day total). Did you have enough people? <span class="red">Red</span> = short, <span class="grn">green</span> = surplus.<br><br><b>Why they can disagree:</b> "deployed" counts anyone who took ≥1 contact that hour as a whole agent — so 50 people each answering 2 calls then doing email counts as 50 deployed, even though far fewer were <i>on the phone at once</i>. So you can drop calls (📊 red) while headcount looks like a surplus (👥 green). <b>Trust the volume gap &amp; abandonment as the truth; read a phone staffing "surplus" as <i>scheduling/adherence</i>, not spare capacity.</b> Email staffing gap is genuinely short (matches sub-target first-response).',
-  planner:'<div class="h">Capacity planner (what-if)</div>Enter <b>patients/day</b> and the <b>% who contact PS</b> → projected daily contacts. That total is split voice/email and spread across the week by the <b>measured day×hour shape</b> from the last complete week, then run through the same models as the Intraday tab: 📞 phone = Erlang C (<b>editable AHT</b> — auto-set to the measured average, override to stress-test — + target SL), ✉️ email = throughput sized on an <b>effective</b> rate = <b>replies/hr × occupancy × (1−shrinkage)</b> (replies/hr = focused handle speed, ~6.5 measured; occupancy = share of the shift actually on email; both editable). <b>Agents needed</b> = staff to schedule (incl. shrinkage). <span style="color:#9a6a00;">Defaults model a <b>dedicated</b> email team (80% occupancy) — validate occupancy empirically before hiring to it; the current cross-utilized floor is ~2.4.</span> <b>Additional to hire</b> = needed − current deployed. FTEs = weekly agent-hours ÷ 40. <span class="hint2">Assumes the future channel mix, hourly shape &amp; AHT match recent history; edit the assumptions to stress-test. Additional-hires uses the same "deployed = headcount who took a contact that hour" proxy as the Staffing gap.</span>'
+  planner:'<div class="h">Capacity planner (what-if)</div>Enter <b>patients/day</b> and the <b>% who contact PS</b> → projected daily contacts. That total is split voice/email and spread across the week by the <b>measured day×hour shape</b> from the last complete week, then run through the same models as the Intraday tab: 📞 phone = Erlang C (<b>editable AHT</b> — auto-set to the measured average, override to stress-test — + target SL), ✉️ email = throughput sized on an <b>effective</b> rate = <b>replies/hr × occupancy × (1−shrinkage)</b> (replies/hr = focused handle speed, ~6.5 measured; occupancy = share of the shift actually on email; both editable). <b>Agents needed</b> = staff to schedule (incl. shrinkage). <span style="color:#9a6a00;">Defaults model a <b>dedicated</b> email team (80% occupancy) — validate occupancy empirically before hiring to it; the current cross-utilized floor is ~2.4.</span> <b>Additional to hire</b> = needed − current deployed. FTEs = weekly agent-hours ÷ 40. <span class="hint2">Assumes the future channel mix, hourly shape &amp; AHT match recent history; edit the assumptions to stress-test. Additional-hires uses the same "deployed = headcount who took a contact that hour" proxy as the Staffing gap.</span>',
+  staffing:'<div class="h">Staffing by client</div><b>Recommended FTE</b> = the headcount to schedule so each client\'s <b>own</b> demand is served at SLA, assuming <b>dedicated</b> phone &amp; email teams (no sharing across clients). Built from the last complete week\'s hour-by-hour demand: 📞 phone via <b>Erlang C</b> (each client\'s measured AHT + the target service level), ✉️ email via a <b>throughput</b> rate (replies/hr × occupancy × (1−shrinkage)); weekly agent-hours ÷ 40 = FTEs, incl. shrinkage. Demand = <b>BPO-addressable inbound</b> — in-house / clinical volume is removed. <b>Actual</b> = distinct agents who handled ≥1 contact for that client last week (📞 Amazon Connect · ✉️ Zoho Desk). <b>Gap</b> = recommended − actual (<span class="red">red = short</span>, <span class="grn">green = over</span>). <span class="hint2">Caveat: an agent who works several clients is counted under each, so per-client actuals (and the total) can exceed unique headcount — read the gap as directional, not a precise roster. Assumptions are shared with the Capacity Planner tab. Source: Amazon Connect + Zoho Desk via Zoho Analytics; rebuilt daily.</span>'
 };
 function showPop(el){
   var key=el.getAttribute('data-pop'), p=document.getElementById('pop');
@@ -1606,6 +1631,57 @@ function renderPlanner(){
     '<div class="losec" style="margin:2px 0 6px;">📞 Phone — '+lbl+' <span class="mut" style="font-weight:400;">(Erlang C)</span></div>'+heatTable(isAdd?addV:needV)+
     '<div class="losec" style="margin:18px 0 6px;">✉️ Email — '+lbl+' <span class="mut" style="font-weight:400;">(throughput)</span></div>'+heatTable(isAdd?addE:needE);
   document.getElementById('plNote').innerHTML=(isAdd?'<b>Additional agents to hire</b> = agents needed − current deployed (0 where already covered; rough — "deployed" = headcount who took a contact that hour, so read as directional)':'<b>Agents needed</b> = staff to schedule, incl. shrinkage')+' — <b>📞 phone &amp; ✉️ email</b> — for <b>'+who+'</b> at '+contactsDay.toLocaleString()+' contacts/day (split '+vPct+'% voice / '+(100-vPct)+'% email by that client\'s measured mix). Demand = last complete week\'s hour-by-hour shape scaled '+scale.toFixed(2)+'× · 📞 AHT '+Math.round(ah/60*10)/10+'m (Erlang C, '+CAP.shrink+'% shrink) · ✉️ '+CAP.emailSpeed+' replies/hr × '+CAP.occ+'% occupancy × (1−'+CAP.shrink+'% shrink) = '+CAP.coeff.toFixed(1)+' repl/scheduled-hr. <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
+}
+// ===== STAFFING BY CLIENT (tab 12) — recommended dedicated-team FTE vs actual active agents =====
+var STAFFING_ACTUAL={};   // {client:{voice:N,email:M}} distinct active agents, latest complete wk — injected by pull_staffing_actual.py; {} until measured
+function renderStaffing(){
+  if(!HM_CUBE||!document.getElementById('stfTbody')) return;
+  plGet();   // reuse the Capacity Planner's assumptions (target SL / shrink / email SLA / throughput) — one source of truth
+  var C=HM_CUBE.cube, win=Math.max(1,Math.round(CAP.slaHrs)), d,h,k;
+  var sw=document.getElementById('stfWin'); if(sw) sw.textContent=HM_CUBE.window||'—';
+  function vDem(cl,d,h){ var s=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); return s<0?0:s; }   // BPO-addressable voice (in-house removed)
+  function eDem(cl,d,h){ var s=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); return s<0?0:s; }   // patient-only email
+  function fte(x){ return Math.ceil(x/40); }   // weekly agent-hours → FTEs (round up; shrinkage already in reqAgents*)
+  var rows=[], T={vf:0,ef:0,cw:0,ew:0,av:0,ae:0,hasA:false}, ahtNum=0,ahtDen=0;
+  HM_BUILT.forEach(function(cl){
+    var ah=voiceAHTsec(cl), rpt=repliesPerTicket(cl), sNV=0,sNE=0,cw=0,ew=0;   // per-client cost factors (measured)
+    for(d=0;d<7;d++)for(h=0;h<24;h++){
+      var vd=vDem(cl,d,h); cw+=vd; sNV+=reqAgentsVoice(vd,ah);
+      ew+=eDem(cl,d,h);
+      var work=0; for(k=h-win+1;k<=h;k++){ if(k>=0) work+=eDem(cl,d,k)*rpt; } sNE+=reqAgentsEmail(work);
+    }
+    ahtNum+=ah*cw; ahtDen+=cw;
+    var vf=fte(sNV), ef=fte(sNE);
+    var a=STAFFING_ACTUAL[cl]||null, av=a?(a.voice||0):null, ae=a?(a.email||0):null;
+    rows.push({name:CLIENT_NAMES[cl]||cl, vf:vf,ef:ef,tot:vf+ef, av:av,ae:ae, cw:Math.round(cw),ew:Math.round(ew)});
+    T.vf+=vf; T.ef+=ef; T.cw+=cw; T.ew+=ew;
+    if(a){ T.hasA=true; T.av+=(av||0); T.ae+=(ae||0); }
+  });
+  rows.sort(function(a,b){ return b.tot-a.tot; });
+  var recTot=T.vf+T.ef, actTot=T.av+T.ae, gapTot=recTot-actTot;
+  function gapTxt(g){ return g>0?('<span class="red">+'+g+' short</span>'):(g<0?('<span class="grn">'+(-g)+' over</span>'):'<span class="grn">balanced</span>'); }
+  var cards=[
+    ['Recommended FTE', recTot.toLocaleString(), '📞 '+T.vf+' phone · ✉️ '+T.ef+' email'],
+    ['Actual staffed', T.hasA?actTot.toLocaleString():'—', T.hasA?('📞 '+T.av+' · ✉️ '+T.ae+' distinct agents'):'measuring…'],
+    ['Net gap', T.hasA?gapTxt(gapTot):'—', T.hasA?'recommended − actual':'actual pending'],
+    ['Clients', String(rows.length), 'built PS clients']
+  ];
+  document.getElementById('stfCards').innerHTML=cards.map(function(c){return '<div class="card"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div><div class="n">'+c[2]+'</div></div>';}).join('');
+  var body=rows.map(function(r){
+    var act=(r.av!=null||r.ae!=null)?((r.av||0)+(r.ae||0)):null, gap=(act!=null)?(r.tot-act):null;
+    return '<tr><td style="text-align:left">'+r.name+'</td>'+
+      '<td>'+r.vf+'</td><td>'+r.ef+'</td><td><b>'+r.tot+'</b></td>'+
+      '<td'+(act!=null?' title="📞 '+(r.av||0)+' · ✉️ '+(r.ae||0)+'"':'')+'>'+(act!=null?act:'—')+'</td>'+
+      '<td>'+(gap!=null?gapTxt(gap):'—')+'</td>'+
+      '<td>'+r.cw.toLocaleString()+'</td><td>'+r.ew.toLocaleString()+'</td></tr>';
+  }).join('');
+  body+='<tr style="border-top:2px solid var(--line,#d5dbe3);font-weight:700"><td style="text-align:left">TOTAL</td><td>'+T.vf+'</td><td>'+T.ef+'</td><td>'+recTot+'</td>'+
+    '<td>'+(T.hasA?actTot:'—')+'</td><td>'+(T.hasA?gapTxt(gapTot):'—')+'</td>'+
+    '<td>'+Math.round(T.cw).toLocaleString()+'</td><td>'+Math.round(T.ew).toLocaleString()+'</td></tr>';
+  document.getElementById('stfTbody').innerHTML=body;
+  var blendAht=ahtDen?Math.round(ahtNum/ahtDen/60*10)/10:null;
+  document.getElementById('stfAssume').innerHTML='<b>Assumes:</b> '+CAP.sl+'% answered ≤'+CAP.asa+'s (Erlang C) · 📞 AHT per-client measured (blended ~'+(blendAht!=null?blendAht+'m':'—')+') · ✉️ '+CAP.coeff.toFixed(1)+' replies/scheduled-hr ('+CAP.emailSpeed+'/hr × '+CAP.occ+'% occ) within '+CAP.slaHrs+'h · '+CAP.shrink+'% shrinkage · <span class="mut">dedicated per-client teams · change these in the Capacity Planner tab</span>';
+  document.getElementById('stfNote').innerHTML='<b>Recommended</b> = FTEs to schedule for each client\'s <b>own</b> last-complete-week demand (📞 Erlang C · ✉️ throughput; weekly agent-hours ÷ 40, incl. shrinkage), as <b>dedicated</b> phone &amp; email teams that don\'t share across clients. Demand = BPO-addressable inbound (in-house / clinical volume removed). '+(T.hasA?'<b>Actual</b> = distinct agents who handled ≥1 contact for that client last week. <span class="mut">An agent working several clients is counted under each, so per-client actuals — and the total — can exceed unique headcount; read the gap as directional.</span>':'<b>Actual staffing</b> is being measured and will fill the Actual/Gap columns on the next rebuild.')+' <span class="info" data-pop="staffing" onclick="showPop(this)">i</span>';
 }
 function showCliTab(v){   // By Client tab: Week-over-week (default) ↔ Day-over-day ↔ This week
   document.getElementById('cliWow').style.display=v==='wow'?'block':'none';
