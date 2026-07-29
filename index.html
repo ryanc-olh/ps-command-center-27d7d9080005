@@ -1331,38 +1331,33 @@ function renderStaffPlan(){
     if(chan!=='voice'){ var work=0; for(k=h-win+1;k<=h;k++){ if(k>=0) work+=eDem(d,k)*rpt; } ne=reqAgentsEmail(work); }
     need[d][h]=nv+ne;
   }}
-  // demand totals (uncapped) — how many agent-hours the week needs, and the single busiest hour
-  var totNeed=0,maxNeed=0; for(d=0;d<7;d++)for(h=0;h<24;h++){ var nd=need[d][h]; totNeed+=nd; if(nd>maxNeed)maxNeed=nd; }
-  // ---- place YOUR people: cap each hour at headcount (fte — you can't have more agents on than you employ),
-  //      fund the busiest hours first, and never exceed your weekly agent-hours (fte×40) ----
-  var slots=[]; for(d=0;d<7;d++)for(h=0;h<24;h++) if(need[d][h]>0) slots.push([d,h,need[d][h]]);
-  slots.sort(function(a,b){return b[2]-a[2];});   // busiest hours first
-  var pool=fte*40, rec=[]; for(d=0;d<7;d++){ rec[d]=[]; for(h=0;h<24;h++)rec[d][h]=0; }
-  var covered=0; slots.forEach(function(s){ if(pool<=0)return; var give=Math.min(s[2], fte, pool); rec[s[0]][s[1]]=give; pool-=give; covered+=give; });
-  var neededFTE=Math.max(Math.ceil(totNeed/40), maxNeed);   // enough total hours AND enough bodies to cover the peak hour
-  var gapHrs=totNeed-covered, surplus=Math.max(0,Math.floor(pool/40));
+  // ---- spread YOUR people across the week to match demand: each hour gets a share of your agent-hours
+  //      (fte×40) proportional to that hour's demand, capped at headcount. No gap/coverage/SLA math. ----
+  var totNeed=0; for(d=0;d<7;d++)for(h=0;h<24;h++) totNeed+=need[d][h];
+  var pool=fte*40, rec=[], placed=0, peak=0, peakDH=[0,0];
+  for(d=0;d<7;d++){ rec[d]=[]; for(h=0;h<24;h++){
+    var r=totNeed?Math.round(pool*need[d][h]/totNeed):0; if(r>fte)r=fte;   // never more agents on than you employ
+    rec[d][h]=r; placed+=r; if(r>peak){peak=r;peakDH=[d,h];}
+  }}
   var chLbl=chan==='voice'?'📞 Phone':(chan==='email'?'✉️ Email':'📞+✉️ Both'), who=(cli==='all'?'all built clients':(CLIENT_NAMES[cli]||cli));
+  var hrs=[]; for(h=0;h<24;h++)hrs.push((h%12===0?12:h%12)+(h<12?'a':'p'));
+  var pkLbl=peak?(String(days[peakDH[0]]).split(' ')[0]+' '+hrs[peakDH[1]]):'—';
   var cards=[
-    ['You have', fte+' FTEs', (fte*40).toLocaleString()+' agent-hrs/wk'],
-    ['Need for full SLA', neededFTE+' FTEs', 'busiest hour needs '+maxNeed+' on at once'],
-    [ (fte>=neededFTE?'Surplus':'Short by'), (fte>=neededFTE?('+'+surplus):('−'+(neededFTE-fte)))+' FTEs', (fte>=neededFTE?'covers every hour':Math.round(gapHrs).toLocaleString()+' agent-hrs/wk uncovered')],
-    ['Coverage', (totNeed?Math.round(covered/totNeed*100):100)+'%', 'of demand your '+fte+' can cover']
+    ['Your team', fte+' FTEs', (fte*40).toLocaleString()+' agent-hrs/wk'],
+    ['Busiest hour', pkLbl, 'put '+peak+' agents on'],
+    ['Scope', chLbl.replace(/📞 |✉️ |📞\+✉️ /,''), who]
   ];
   document.getElementById('plCards').innerHTML=cards.map(function(c){return '<div class="card"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div><div class="n">'+c[2]+'</div></div>';}).join('');
-  var hrs=[]; for(h=0;h<24;h++)hrs.push((h%12===0?12:h%12)+(h<12?'a':'p'));
-  var mx=Math.max(1,fte);   // colour intensity relative to your headcount
+  var mx=Math.max(1,peak);
   var t='<table class="hm"><colgroup><col class="dayc">'; for(h=0;h<24;h++)t+='<col class="hrc">'; t+='<col class="totc"></colgroup><thead><tr><th class="day"></th>';
   for(h=0;h<24;h++)t+='<th>'+(h%2===0?hrs[h]:'')+'</th>'; t+='<th class="tot">Peak</th></tr></thead><tbody>';
   for(d=0;d<7;d++){ t+='<tr><th class="day">'+String(days[d]).split(' ')[0]+'</th>'; var pk=0;
-    for(h=0;h<24;h++){ var rv=rec[d][h], nd=need[d][h], gap=(nd>rv); if(rv>pk)pk=rv;
-      var bg=gap?'#f7dcd8':hmColor(rv,mx,false), ring=gap?';box-shadow:inset 0 0 0 2px var(--red)':'';
-      var cell=(rv>0)?(gap?('<span style="color:var(--red);font-weight:600">'+rv+'</span>'):rv):'';   // ALWAYS your placed count (≤ your FTEs), never the raw need
-      var tip=gap?('place '+rv+' (all you can) · needs '+nd+' · short '+(nd-rv)):('place '+rv);
-      t+='<td style="background:'+bg+ring+'" title="'+tip+'">'+cell+'</td>'; }
+    for(h=0;h<24;h++){ var rv=rec[d][h]; if(rv>pk)pk=rv;
+      t+='<td style="background:'+hmColor(rv,mx,false)+'" title="'+String(days[d]).split(' ')[0]+' '+hrs[h]+': put '+rv+' on">'+(rv||'')+'</td>'; }
     t+='<td class="rowtot">'+pk+'</td></tr>'; }
   t+='</tbody></table>';
-  document.getElementById('plHeat').innerHTML='<div class="losec" style="margin:2px 0 6px;">'+chLbl+' — how to place your '+fte+' agents <span class="mut" style="font-weight:400;">· each cell ≤ '+fte+' (your headcount) · busiest hours staffed first · <span class="red">red</span> = '+fte+' can\'t cover that hour</span></div>'+t;
-  document.getElementById('plNote').innerHTML='<b>How to staff '+fte+' FTEs</b> — '+chLbl+', '+who+'. Each cell = how many of your '+fte+' to have on that hour — <b>never more than you employ</b>, busiest hours first, within your '+(fte*40).toLocaleString()+' agent-hrs/wk. <b class="red">Red</b> = even all '+fte+' can\'t hit SLA that hour (you\'d need '+Math.max(0,neededFTE-fte)+' more FTEs — '+Math.round(gapHrs).toLocaleString()+' agent-hrs/wk still short). Demand = actual last-complete-week shape (wk '+HM_CUBE.window+'). 📞 Erlang C (AHT '+Math.round(ah/60*10)/10+'m) · ✉️ '+CAP.coeff.toFixed(1)+' repl/scheduled-hr · '+CAP.shrink+'% shrinkage. <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
+  document.getElementById('plHeat').innerHTML='<div class="losec" style="margin:2px 0 6px;">'+chLbl+' — where to place your '+fte+' agents <span class="mut" style="font-weight:400;">· each cell = how many to have on that hour · darker = more · shaped to last week\'s demand</span></div>'+t;
+  document.getElementById('plNote').innerHTML='<b>Shift plan for '+fte+' FTEs</b> — '+chLbl+', '+who+'. Each cell = how many of your '+fte+' agents to schedule that hour, spread across the week to match last week\'s actual demand (busier hours get more of your team; capped at your '+fte+'). Set <b>Client</b> + <b>Channel</b> above to plan a specific team. Demand shape = wk '+HM_CUBE.window+' (📞 by call volume &amp; handle time, ✉️ by inbound email). <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
 }
 function renderPlanner(){
   if(!HM_CUBE||!document.getElementById('plHeat')) return;
