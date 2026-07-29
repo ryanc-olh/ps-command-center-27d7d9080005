@@ -105,6 +105,7 @@
   .note{font-size:12px;color:var(--mut);margin-top:10px;}
   .srcbar{font-size:11.5px;color:var(--sec);margin:8px 0 2px;padding:6px 10px;background:#f4f3ee;border:1px solid var(--bd);border-radius:6px;line-height:1.5;}
   .srcbar b{color:var(--ink);font-weight:600;} .srcbar .sysb{display:inline-block;background:#e7e5dc;border-radius:4px;padding:0 5px;margin:0 1px;font-weight:600;color:#3a3a38;}
+  .plexplain{font-size:12.5px;color:var(--ink);background:#eef4fb;border:1px solid #cfe0f2;border-radius:7px;padding:9px 12px;margin:8px 0 12px;line-height:1.5;}
   iframe{width:100%;height:1400px;border:1px solid var(--bd);border-radius:10px;margin-top:8px;}
   .foot{font-size:11px;color:var(--mut);margin-top:26px;border-top:1px solid var(--bd);padding-top:10px;}
   /* insight callout */
@@ -477,31 +478,33 @@
 
   <!-- ===== CAPACITY PLANNER (what-if) ===== -->
   <div class="panel" id="pcap">
-    <div class="lbl" style="margin-top:0;">Capacity planner — what-if <span class="info" data-pop="planner" onclick="showPop(this)">i</span> <span style="font-weight:400;color:var(--mut);font-size:12px;">· enter demand → agents needed &amp; hires to add, by hour</span></div>
-    <div class="hmctl"><span class="hclab">Scenario</span>
-      <label class="capl">Patients / day <input id="pl_pat" class="capn" style="width:66px" type="number" min="0" value="5000" oninput="renderPlanner()"></label>
-      <label class="capl">% contacting PS <input id="pl_rate" class="capn" type="number" min="0" max="100" step="0.5" value="30" oninput="renderPlanner()">%</label>
-      <span class="hint2" id="plDerive"></span>
-    </div>
-    <div class="hmctl"><span class="hclab">Assumes</span>
-      <label class="capl">📞 SL <input id="pl_sl" class="capn" type="number" min="1" max="99" value="80" oninput="renderPlanner()">% in <input id="pl_asa" class="capn" type="number" min="1" value="30" oninput="renderPlanner()">s · AHT <input id="pl_aht" class="capn" type="number" min="0.5" step="0.1" oninput="setAhtManual()" title="phone avg handle time (minutes) — Erlang C input; blank = auto (measured average)">m <span class="hint2" id="ahtHint"></span></label>
-      <label class="capl">✉️ SLA <input id="pl_sla" class="capn" type="number" min="1" value="4" oninput="renderPlanner()">h · <input id="pl_coeff" class="capn" type="number" min="0.1" step="0.1" value="6.5" oninput="renderPlanner()"> replies/hr · occupancy <input id="pl_occ" class="capn" type="number" min="1" max="100" value="90" oninput="renderPlanner()">%</label>
-      <label class="capl">shrinkage <input id="pl_shr" class="capn" type="number" min="0" max="80" value="20" oninput="renderPlanner()">%</label>
-    </div>
-    <div class="grid kpis" id="plCards" style="margin-top:14px;"></div>
-    <div class="hmctl" style="margin-top:14px;"><span class="hclab">Show</span>
+    <div class="lbl" style="margin-top:0;">Capacity planner <span class="info" data-pop="planner" onclick="showPop(this)">i</span></div>
+    <div class="hmctl" style="margin-top:2px;"><span class="hclab">I want to</span>
       <button id="plNeed" class="hbtn active" onclick="setPl('mode','needed')">🧮 Agents needed</button>
       <button id="plAdd" class="hbtn" onclick="setPl('mode','add')">➕ Additional to hire</button>
       <button id="plStaff" class="hbtn" onclick="setPl('mode','staff')">📋 Place my agents</button>
       <button id="plCap" class="hbtn" onclick="setPl('mode','capacity')">📊 What they'll handle</button>
       <button id="plGap" class="hbtn" onclick="setPl('mode','gap')">⚖️ Demand vs capacity</button>
     </div>
+    <div class="plexplain" id="plExplain"></div>
+    <div class="hmctl" id="plScenario"><span class="hclab">Demand</span>
+      <label class="capl">Patients / day <input id="pl_pat" class="capn" style="width:66px" type="number" min="0" value="5000" oninput="renderPlanner()"></label>
+      <label class="capl">% contacting PS <input id="pl_rate" class="capn" type="number" min="0" max="100" step="0.5" value="30" oninput="renderPlanner()">%</label>
+      <span class="hint2" id="plDerive"></span>
+    </div>
     <div class="hmctl" id="plStaffCtl" style="display:none;"><span class="hclab">Team</span>
       <label class="capl">I have <input id="pl_fte" class="capn" type="number" min="0" value="20" oninput="renderPlanner()"> FTEs</label>
       <label class="capl">Client <select id="pl_cli" class="capn" style="width:auto" onchange="renderPlanner()"><option value="all">All built</option><option value="embody">Embody</option><option value="medvi">Medvi</option><option value="elixa">Elixa</option><option value="altrx">AltRx</option><option value="trinity">Trinity</option><option value="snagrx">SnagRX</option><option value="thrive">Thrive Le-Vel</option></select></label>
       <label class="capl">Channel <select id="pl_ch2" class="capn" style="width:auto" onchange="renderPlanner()"><option value="both">📞+✉️ Both</option><option value="voice">📞 Phone</option><option value="email">✉️ Email</option></select></label>
-      <span class="hint2" style="margin-left:8px;">· where to staff them across the week to hit SLA, at actual demand</span>
     </div>
+    <div class="hmctl" id="plAssumes"><span class="hclab">Assumes</span>
+      <label class="capl" id="plF_sl">📞 SL <input id="pl_sl" class="capn" type="number" min="1" max="99" value="80" oninput="renderPlanner()">% in <input id="pl_asa" class="capn" type="number" min="1" value="30" oninput="renderPlanner()">s</label>
+      <label class="capl" id="plF_aht">📞 AHT <input id="pl_aht" class="capn" type="number" min="0.5" step="0.1" oninput="setAhtManual()" title="phone avg handle time (minutes) — Erlang C input; blank = auto (measured average)">m <span class="hint2" id="ahtHint"></span></label>
+      <label class="capl" id="plF_sla">✉️ SLA <input id="pl_sla" class="capn" type="number" min="1" value="4" oninput="renderPlanner()">h</label>
+      <label class="capl" id="plF_coeff"><input id="pl_coeff" class="capn" type="number" min="0.1" step="0.1" value="6.5" oninput="renderPlanner()"> repl/hr · occ <input id="pl_occ" class="capn" type="number" min="1" max="100" value="90" oninput="renderPlanner()">%</label>
+      <label class="capl" id="plF_shrink">shrinkage <input id="pl_shr" class="capn" type="number" min="0" max="80" value="20" oninput="renderPlanner()">%</label>
+    </div>
+    <div class="grid kpis" id="plCards" style="margin-top:14px;"></div>
     <div id="plHeat" style="overflow-x:auto;"></div>
     <div class="note" id="plNote"></div>
   </div>
@@ -1386,13 +1389,21 @@ function plGet(){
   var hint=document.getElementById('ahtHint'); if(hint) hint.innerHTML=ahtAuto?('auto · measured '+measMin+'m'):('<span style="cursor:pointer;text-decoration:underline" onclick="resetAht()" title="reset to measured">↺ measured '+measMin+'m</span>');
   return { pat:Math.max(0,Math.min(n('pl_pat',0),1000000)), rate:Math.max(0,Math.min(n('pl_rate',0),100)) };  // clamp to sane range
 }
+// per-mode: which input groups are relevant + a one-line "what it's good for"
+var PL_MODES={
+  needed:  {btn:'plNeed', F:['scenario','sl','aht','sla','coeff','shrink'], good:'🧮 <b>Agents needed</b> — size a team from projected demand. Enter <b>patients/day</b> &amp; <b>% who contact PS</b> → the agents you need each hour to hit your service level, split phone/email. <i>Best for hiring plans &amp; headcount asks.</i>'},
+  add:     {btn:'plAdd',  F:['scenario','sl','aht','sla','coeff','shrink'], good:'➕ <b>Additional to hire</b> — same demand projection as Agents-needed, minus who you already have deployed → how many <b>more</b> to hire. <i>Best for "what\'s the gap to my target?"</i>'},
+  staff:   {btn:'plStaff',F:['team','sl','aht','sla','coeff','shrink'],     good:'📋 <b>Place my agents</b> — you have a fixed headcount; get the shift shape: how many of your <b>N agents</b> to put on each hour, matched to last week\'s real demand. <i>Best for building a weekly schedule.</i> (No patients/day — it uses actual demand.)'},
+  capacity:{btn:'plCap',  F:['team','aht','coeff','shrink'],               good:'📊 <b>What they\'ll handle</b> — the reverse of Agents-needed: enter <b>N agents</b> → how many calls &amp; emails they can process, laid on the demand shape. <i>Best for "if I have N people, what throughput do I get?"</i> (Raw capacity — no SLA target.)'},
+  gap:     {btn:'plGap',  F:['scenario','team','sl','aht','sla','coeff','shrink'], good:'⚖️ <b>Demand vs capacity</b> — combine a <b>demand scenario</b> with a <b>headcount</b> → the per-hour gap by channel: are your N agents enough for that volume? <i>Best for stress-testing a team against a growth scenario.</i>'}
+};
+var PL_FGRP={scenario:'plScenario', team:'plStaffCtl', sl:'plF_sl', aht:'plF_aht', sla:'plF_sla', coeff:'plF_coeff', shrink:'plF_shrink'};
 function setPl(g,v){ plState[g]=v;
-  document.getElementById('plNeed').classList.toggle('active',plState.mode==='needed');
-  document.getElementById('plAdd').classList.toggle('active',plState.mode==='add');
-  var st=document.getElementById('plStaff'); if(st) st.classList.toggle('active',plState.mode==='staff');
-  var cp=document.getElementById('plCap'); if(cp) cp.classList.toggle('active',plState.mode==='capacity');
-  var gp=document.getElementById('plGap'); if(gp) gp.classList.toggle('active',plState.mode==='gap');
-  var ctl=document.getElementById('plStaffCtl'); if(ctl) ctl.style.display=(plState.mode==='staff'||plState.mode==='capacity'||plState.mode==='gap')?'':'none';
+  var m=PL_MODES[plState.mode]||PL_MODES.needed, show={}; (m.F||[]).forEach(function(k){show[k]=1;});
+  for(var mm in PL_MODES){ var b=document.getElementById(PL_MODES[mm].btn); if(b) b.classList.toggle('active',plState.mode===mm); }
+  for(var k in PL_FGRP){ var e=document.getElementById(PL_FGRP[k]); if(e) e.style.display=show[k]?'':'none'; }
+  var aw=document.getElementById('plAssumes'); if(aw) aw.style.display=(show.sl||show.aht||show.sla||show.coeff||show.shrink)?'':'none';
+  var ex=document.getElementById('plExplain'); if(ex) ex.innerHTML=m.good||'';
   renderPlanner();
 }
 function renderStaffPlan(){
@@ -2017,7 +2028,7 @@ function renderSignal(){
     hist.innerHTML='<table style="font-size:11px;"><thead><tr>'+hdr+'</tr></thead><tbody>'+rows+'</tbody></table>';
   }
 }
-renderExec(); renderClients(); renderByBpo(); renderByClient(); renderTrend(); renderDod(); renderPlanner(); renderCrm(); renderFeat(); renderInternal(); renderContactsPP(); renderCohortRamp(); renderJourney(); renderSignal(); renderCsat(); applyFilter();
+renderExec(); renderClients(); renderByBpo(); renderByClient(); renderTrend(); renderDod(); renderPlanner(); renderCrm(); renderFeat(); renderInternal(); renderContactsPP(); renderCohortRamp(); renderJourney(); renderSignal(); renderCsat(); setPl('mode',plState.mode); applyFilter();
 (function(){var ts=document.getElementById('tabSource'); if(ts) ts.innerHTML=TAB_SOURCES[0];})();
 (function(){ var b=document.getElementById('buildStamp'); if(b&&BUILD_STAMP) b.textContent=BUILD_STAMP; })();
 // data-delayed banner: shows only when a feed's latest record is >40h old (auto-clears when the pipeline recovers)
