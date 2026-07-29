@@ -492,10 +492,10 @@
       <label class="capl">% contacting PS <input id="pl_rate" class="capn" type="number" min="0" max="100" step="0.5" value="30" oninput="renderPlanner()">%</label>
       <span class="hint2" id="plDerive"></span>
     </div>
-    <div class="hmctl" id="plStaffCtl" style="display:none;"><span class="hclab">Team</span>
-      <label class="capl">I have <input id="pl_fte" class="capn" type="number" min="0" value="20" oninput="renderPlanner()"> FTEs</label>
-      <label class="capl">Client <select id="pl_cli" class="capn" style="width:auto" onchange="renderPlanner()"><option value="all">All built</option><option value="embody">Embody</option><option value="medvi">Medvi</option><option value="elixa">Elixa</option><option value="altrx">AltRx</option><option value="trinity">Trinity</option><option value="snagrx">SnagRX</option><option value="thrive">Thrive Le-Vel</option></select></label>
-      <label class="capl">Channel <select id="pl_ch2" class="capn" style="width:auto" onchange="renderPlanner()"><option value="both">📞+✉️ Both</option><option value="voice">📞 Phone</option><option value="email">✉️ Email</option></select></label>
+    <div class="hmctl" id="plStaffCtl" style="display:none;"><span class="hclab" id="plTeamLab">Team</span>
+      <label class="capl" id="plF_cli">Client <select id="pl_cli" class="capn" style="width:auto" onchange="renderPlanner()"><option value="all">All built</option><option value="embody">Embody</option><option value="medvi">Medvi</option><option value="elixa">Elixa</option><option value="altrx">AltRx</option><option value="trinity">Trinity</option><option value="snagrx">SnagRX</option><option value="thrive">Thrive Le-Vel</option></select></label>
+      <label class="capl" id="plF_fte">I have <input id="pl_fte" class="capn" type="number" min="0" value="20" oninput="renderPlanner()"> FTEs</label>
+      <label class="capl" id="plF_ch2">Channel <select id="pl_ch2" class="capn" style="width:auto" onchange="renderPlanner()"><option value="both">📞+✉️ Both</option><option value="voice">📞 Phone</option><option value="email">✉️ Email</option></select></label>
     </div>
     <div class="hmctl" id="plAssumes"><span class="hclab">Assumes</span>
       <label class="capl" id="plF_sl">📞 SL <input id="pl_sl" class="capn" type="number" min="1" max="99" value="80" oninput="renderPlanner()">% in <input id="pl_asa" class="capn" type="number" min="1" value="30" oninput="renderPlanner()">s</label>
@@ -537,6 +537,7 @@
     <div class="sub" id="cppSub" style="margin-bottom:10px;"></div>
     <div style="overflow-x:auto;"><table class="mx" id="cppTbl"><thead><tr>
       <th style="text-align:left">Client</th>
+      <th>📞/✉️ Channel mix<br><span class="estlbl">voice / email of contacts</span></th>
       <th>📞 Calls / patient<br><span class="estlbl">last wk · 28-day</span></th>
       <th>✉️ Emails / patient<br><span class="estlbl">last wk · 28-day</span></th>
       <th>🔀 All channels / patient<br><span class="estlbl">last week (deduped)</span></th>
@@ -1374,7 +1375,7 @@ function showBpoTab(v){   // By BPO tab: Week-over-week (default) ↔ Day-over-d
 // ---- Capacity planner (what-if): scale the measured demand shape to a hypothetical patient volume ----
 var plState={mode:'needed', ch:'voice'};
 var ahtAuto=true;   // 📞 AHT field tracks the measured average until the user overrides it
-function plClient(){ return (plState.mode==='staff'||plState.mode==='capacity'||plState.mode==='gap') ? ((document.getElementById('pl_cli')||{}).value||'all') : 'all'; }
+function plClient(){ return (document.getElementById('pl_cli')||{}).value||'all'; }   // client selector now shows in every mode → AHT/mix track it
 function setAhtManual(){ var e=document.getElementById('pl_aht'); ahtAuto=(!e||e.value===''); renderPlanner(); }   // typing overrides; clearing reverts to auto
 function resetAht(){ ahtAuto=true; renderPlanner(); }
 function plGet(){
@@ -1391,17 +1392,19 @@ function plGet(){
 }
 // per-mode: which input groups are relevant + a one-line "what it's good for"
 var PL_MODES={
-  needed:  {btn:'plNeed', F:['scenario','sl','aht','sla','coeff','shrink'], good:'🧮 <b>Agents needed</b> — size a team from projected demand. Enter <b>patients/day</b> &amp; <b>% who contact PS</b> → the agents you need each hour to hit your service level, split phone/email. <i>Best for hiring plans &amp; headcount asks.</i>'},
-  add:     {btn:'plAdd',  F:['scenario','sl','aht','sla','coeff','shrink'], good:'➕ <b>Additional to hire</b> — same demand projection as Agents-needed, minus who you already have deployed → how many <b>more</b> to hire. <i>Best for "what\'s the gap to my target?"</i>'},
-  staff:   {btn:'plStaff',F:['team','sl','aht','sla','coeff','shrink'],     good:'📋 <b>Place my agents</b> — you have a fixed headcount; get the shift shape: how many of your <b>N agents</b> to put on each hour, matched to last week\'s real demand. <i>Best for building a weekly schedule.</i> (No patients/day — it uses actual demand.)'},
-  capacity:{btn:'plCap',  F:['team','aht','coeff','shrink'],               good:'📊 <b>What they\'ll handle</b> — the reverse of Agents-needed: enter <b>N agents</b> → how many calls &amp; emails they can process, laid on the demand shape. <i>Best for "if I have N people, what throughput do I get?"</i> (Raw capacity — no SLA target.)'},
-  gap:     {btn:'plGap',  F:['scenario','team','sl','aht','sla','coeff','shrink'], good:'⚖️ <b>Demand vs capacity</b> — combine a <b>demand scenario</b> with a <b>headcount</b> → the per-hour gap by channel: are your N agents enough for that volume? <i>Best for stress-testing a team against a growth scenario.</i>'}
+  needed:  {btn:'plNeed', F:['scenario','cli','sl','aht','sla','coeff','shrink'], good:'🧮 <b>Agents needed</b> — size a team from projected demand. Enter <b>patients/day</b> &amp; <b>% who contact PS</b> (pick a <b>client</b> to use its voice/email mix) → the agents you need each hour to hit SL, split phone/email. <i>Best for hiring plans &amp; headcount asks.</i>'},
+  add:     {btn:'plAdd',  F:['scenario','cli','sl','aht','sla','coeff','shrink'], good:'➕ <b>Additional to hire</b> — same demand projection as Agents-needed, minus who you already have deployed → how many <b>more</b> to hire. <i>Best for "what\'s the gap to my target?"</i>'},
+  staff:   {btn:'plStaff',F:['cli','fte','ch2','sl','aht','sla','coeff','shrink'],     good:'📋 <b>Place my agents</b> — you have a fixed headcount; get the shift shape: how many of your <b>N agents</b> to put on each hour, matched to last week\'s real demand. <i>Best for building a weekly schedule.</i> (No patients/day — it uses actual demand.)'},
+  capacity:{btn:'plCap',  F:['cli','fte','ch2','aht','coeff','shrink'],               good:'📊 <b>What they\'ll handle</b> — the reverse of Agents-needed: enter <b>N agents</b> → how many calls &amp; emails they can process, laid on the demand shape. <i>Best for "if I have N people, what throughput do I get?"</i> (Raw capacity — no SLA target.)'},
+  gap:     {btn:'plGap',  F:['scenario','cli','fte','ch2','sl','aht','sla','coeff','shrink'], good:'⚖️ <b>Demand vs capacity</b> — combine a <b>demand scenario</b> with a <b>headcount</b> → the per-hour gap by channel: are your N agents enough for that volume? <i>Best for stress-testing a team against a growth scenario.</i>'}
 };
-var PL_FGRP={scenario:'plScenario', team:'plStaffCtl', sl:'plF_sl', aht:'plF_aht', sla:'plF_sla', coeff:'plF_coeff', shrink:'plF_shrink'};
+var PL_FGRP={scenario:'plScenario', cli:'plF_cli', fte:'plF_fte', ch2:'plF_ch2', sl:'plF_sl', aht:'plF_aht', sla:'plF_sla', coeff:'plF_coeff', shrink:'plF_shrink'};
 function setPl(g,v){ plState[g]=v;
   var m=PL_MODES[plState.mode]||PL_MODES.needed, show={}; (m.F||[]).forEach(function(k){show[k]=1;});
   for(var mm in PL_MODES){ var b=document.getElementById(PL_MODES[mm].btn); if(b) b.classList.toggle('active',plState.mode===mm); }
   for(var k in PL_FGRP){ var e=document.getElementById(PL_FGRP[k]); if(e) e.style.display=show[k]?'':'none'; }
+  var sc=document.getElementById('plStaffCtl'); if(sc) sc.style.display=(show.cli||show.fte||show.ch2)?'':'none';   // Team container: shown for any of client/FTEs/channel
+  var tl=document.getElementById('plTeamLab'); if(tl) tl.textContent=show.fte?'Team':'Client';                     // demand modes only show Client (scopes the mix)
   var aw=document.getElementById('plAssumes'); if(aw) aw.style.display=(show.sl||show.aht||show.sla||show.coeff||show.shrink)?'':'none';
   var ex=document.getElementById('plExplain'); if(ex) ex.innerHTML=m.good||'';
   renderPlanner();
@@ -1567,11 +1570,12 @@ function renderPlanner(){
   if(plState.mode==='capacity'){ renderCapacity(); return; }
   if(plState.mode==='gap'){ renderGap(); return; }
   var g=plGet(), C=HM_CUBE.cube, days=HM_CUBE.days, d,h,k;
-  function bV(d,h){ var s=0; HM_BUILT.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
-  function bE(d,h){ var s=0; HM_BUILT.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }   // mirror hmInbound so planner == Intraday model at scale=1
+  var pcli=(document.getElementById('pl_cli')||{}).value||'all', clients=(pcli==='all')?HM_BUILT:[pcli], who=(pcli==='all'?'all built clients':(CLIENT_NAMES[pcli]||pcli));   // demand scoped to selected client → its voice/email mix drives the split
+  function bV(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
+  function bE(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }
   var vWk=0,eWk=0; for(d=0;d<7;d++)for(h=0;h<24;h++){ vWk+=bV(d,h); eWk+=bE(d,h); }
   var baseTot=vWk+eWk, targetWk=g.pat*(g.rate/100)*7, scale=baseTot>0?targetWk/baseTot:0;
-  var ah=CAP.aht, rpt=repliesPerTicket('all'), win=Math.max(1,Math.round(CAP.slaHrs));   // ah = editable AHT field (auto=measured)
+  var ah=CAP.aht, rpt=repliesPerTicket(pcli), win=Math.max(1,Math.round(CAP.slaHrs));   // ah = editable AHT field (auto=measured); rpt scoped to selected client
   var needV=[],needE=[],addV=[],addE=[], pkV=0,pkE=0,sNV=0,sNE=0,sAV=0,sAE=0;
   for(d=0;d<7;d++){ needV[d]=[];needE[d]=[];addV[d]=[];addE[d]=[];
     for(h=0;h<24;h++){
@@ -1588,7 +1592,7 @@ function renderPlanner(){
   function fte(x){return Math.ceil(x/40);}   // hiring floor — round UP
   var cards=[
     ['Projected contacts/day', contactsDay.toLocaleString(), (scale>0?scale.toFixed(2)+'× current ('+baseDay.toLocaleString()+'/day built)':'set a baseline')],
-    ['Channel mix', vPct+'% / '+(100-vPct)+'%', '📞 voice / ✉️ email (from data)'],
+    ['📞/✉️ Channel mix', vPct+'% / '+(100-vPct)+'%', 'voice / email · '+who+' (measured)'],
     ['✉️ Email throughput', CAP.coeff.toFixed(1)+' /hr', CAP.emailSpeed+' replies/hr × '+CAP.occ+'% occ × (1−'+CAP.shrink+'% shrink)'],
     ['Peak concurrent', pkV+' / '+pkE, '📞 phone / ✉️ email agents'],
     ['FTEs needed', fte(sNV)+' / '+fte(sNE), '📞 / ✉️ · 40h/wk, incl. shrinkage'],
@@ -1611,7 +1615,7 @@ function renderPlanner(){
   document.getElementById('plHeat').innerHTML=
     '<div class="losec" style="margin:2px 0 6px;">📞 Phone — '+lbl+' <span class="mut" style="font-weight:400;">(Erlang C)</span></div>'+heatTable(isAdd?addV:needV)+
     '<div class="losec" style="margin:18px 0 6px;">✉️ Email — '+lbl+' <span class="mut" style="font-weight:400;">(throughput)</span></div>'+heatTable(isAdd?addE:needE);
-  document.getElementById('plNote').innerHTML=(isAdd?'<b>Additional agents to hire</b> = agents needed − current deployed (0 where already covered; rough — "deployed" = headcount who took a contact that hour, so read as directional)':'<b>Agents needed</b> = staff to schedule, incl. shrinkage')+' — <b>📞 phone &amp; ✉️ email</b> — at '+contactsDay.toLocaleString()+' contacts/day. Demand = last complete week\'s hour-by-hour shape scaled '+scale.toFixed(2)+'× · 📞 AHT '+Math.round(ah/60*10)/10+'m (Erlang C, '+CAP.shrink+'% shrink) · ✉️ '+CAP.emailSpeed+' replies/hr × '+CAP.occ+'% occupancy × (1−'+CAP.shrink+'% shrink) = '+CAP.coeff.toFixed(1)+' repl/scheduled-hr. <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
+  document.getElementById('plNote').innerHTML=(isAdd?'<b>Additional agents to hire</b> = agents needed − current deployed (0 where already covered; rough — "deployed" = headcount who took a contact that hour, so read as directional)':'<b>Agents needed</b> = staff to schedule, incl. shrinkage')+' — <b>📞 phone &amp; ✉️ email</b> — for <b>'+who+'</b> at '+contactsDay.toLocaleString()+' contacts/day (split '+vPct+'% voice / '+(100-vPct)+'% email by that client\'s measured mix). Demand = last complete week\'s hour-by-hour shape scaled '+scale.toFixed(2)+'× · 📞 AHT '+Math.round(ah/60*10)/10+'m (Erlang C, '+CAP.shrink+'% shrink) · ✉️ '+CAP.emailSpeed+' replies/hr × '+CAP.occ+'% occupancy × (1−'+CAP.shrink+'% shrink) = '+CAP.coeff.toFixed(1)+' repl/scheduled-hr. <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
 }
 function showCliTab(v){   // By Client tab: Week-over-week (default) ↔ Day-over-day ↔ This week
   document.getElementById('cliWow').style.display=v==='wow'?'block':'none';
@@ -1833,16 +1837,19 @@ function renderContactsPP(){
   var pw=(D.phone||{}).wk||{}, p28=(D.phone||{}).d28||{}, ew=(D.email||{}).wk||{}, e28=(D.email||{}).d28||{}, ow=(D.omni||{}).wk||{};
   var sub=document.getElementById('cppSub');
   if(!D.lw || (!Object.keys(pw).length && !Object.keys(ew).length)){
-    tb.innerHTML='<tr><td colspan="5" class="mut">No contacts-per-patient data yet — populates on the next daily refresh.</td></tr>';
+    tb.innerHTML='<tr><td colspan="6" class="mut">No contacts-per-patient data yet — populates on the next daily refresh.</td></tr>';
     if(sub) sub.textContent=''; var nn0=document.getElementById('cppNote'); if(nn0) nn0.innerHTML='Source: Amazon Connect (phone) + Zoho Desk (email).'; return;
   }
   if(sub) sub.innerHTML='All matched on the <b>Healthie patient id</b> (Amazon Connect <code>patient_id</code> = Zoho Desk <code>Contacts.PatientID</code>), so phone + email dedupe into one <b>omnichannel</b> rate · last complete week <b>'+(D.lw.label||'')+'</b> &amp; trailing 28 days.';
   function _pair(a,b){ var x=(a&&a.rate!=null)?a.rate.toFixed(2):'—', y=(b&&b.rate!=null)?b.rate.toFixed(2):'—'; return '<td>'+x+' <span class="mut" style="font-weight:400">· '+y+'</span></td>'; }
+  function _mix(a,c){ var pc=(a&&a.c)||0, ec=(c&&c.c)||0, t=pc+ec; if(!t) return '<td class="mut">—</td>';
+    var vp=Math.round(pc/t*100);
+    return '<td><span style="display:inline-block;width:66px;height:9px;border-radius:3px;overflow:hidden;background:#1baf7a;vertical-align:middle;" title="'+vp+'% voice / '+(100-vp)+'% email"><span style="display:inline-block;height:9px;width:'+vp+'%;background:#2a78d6;"></span></span> <span style="font-size:11px;">📞'+vp+' / ✉️'+(100-vp)+'</span></td>'; }
   tb.innerHTML=BUILT_CL.map(function(cl){
     var a=pw[cl]||{}, b=p28[cl]||{}, c=ew[cl]||{}, d=e28[cl]||{}, o=ow[cl]||{};
     var det=(o.patients?(o.contacts.toLocaleString()+' contacts / '+o.patients.toLocaleString()+' distinct patients · '+(o.both||0).toLocaleString()+' on both channels'):'');
     return '<tr title="'+det+'"><td style="text-align:left">🏥 '+(CLIENT_NAMES[cl]||cl)+'</td>'+
-      _pair(a,b)+_pair(c,d)+
+      _mix(a,c)+_pair(a,b)+_pair(c,d)+
       (o.rate!=null?'<td><b>'+o.rate.toFixed(2)+'</b></td>':'<td class="mut">—</td>')+
       (o.multiPct!=null?'<td>'+o.multiPct+'%</td>':'<td class="mut">—</td>')+'</tr>';
   }).join('');
