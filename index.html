@@ -489,8 +489,9 @@
       <button id="plNeed" class="hbtn active" onclick="setPl('mode','needed')">🧮 Agents needed</button>
       <button id="plAdd" class="hbtn" onclick="setPl('mode','add')">➕ Additional to hire</button>
       <button id="plStaff" class="hbtn" onclick="setPl('mode','staff')">📋 Place my agents</button>
+      <button id="plCap" class="hbtn" onclick="setPl('mode','capacity')">📊 What they'll handle</button>
     </div>
-    <div class="hmctl" id="plStaffCtl" style="display:none;"><span class="hclab">Place</span>
+    <div class="hmctl" id="plStaffCtl" style="display:none;"><span class="hclab">Team</span>
       <label class="capl">I have <input id="pl_fte" class="capn" type="number" min="0" value="20" oninput="renderPlanner()"> FTEs</label>
       <label class="capl">Client <select id="pl_cli" class="capn" style="width:auto" onchange="renderPlanner()"><option value="all">All built</option><option value="embody">Embody</option><option value="medvi">Medvi</option><option value="elixa">Elixa</option><option value="altrx">AltRx</option><option value="trinity">Trinity</option><option value="snagrx">SnagRX</option><option value="thrive">Thrive Le-Vel</option></select></label>
       <label class="capl">Channel <select id="pl_ch2" class="capn" style="width:auto" onchange="renderPlanner()"><option value="both">📞+✉️ Both</option><option value="voice">📞 Phone</option><option value="email">✉️ Email</option></select></label>
@@ -1311,7 +1312,8 @@ function setPl(g,v){ plState[g]=v;
   document.getElementById('plNeed').classList.toggle('active',plState.mode==='needed');
   document.getElementById('plAdd').classList.toggle('active',plState.mode==='add');
   var st=document.getElementById('plStaff'); if(st) st.classList.toggle('active',plState.mode==='staff');
-  var ctl=document.getElementById('plStaffCtl'); if(ctl) ctl.style.display=(plState.mode==='staff')?'':'none';
+  var cp=document.getElementById('plCap'); if(cp) cp.classList.toggle('active',plState.mode==='capacity');
+  var ctl=document.getElementById('plStaffCtl'); if(ctl) ctl.style.display=(plState.mode==='staff'||plState.mode==='capacity')?'':'none';
   renderPlanner();
 }
 function renderStaffPlan(){
@@ -1323,7 +1325,7 @@ function renderStaffPlan(){
   var chan=(document.getElementById('pl_ch2')||{}).value||'both';
   var fte=Math.max(0,Math.min(parseFloat((document.getElementById('pl_fte')||{}).value)||0,100000));
   var clients=(cli==='all')?HM_BUILT:[cli];
-  var ah=voiceAHTsec('all'), rpt=repliesPerTicket('all'), win=Math.max(1,Math.round(CAP.slaHrs));
+  var ah=voiceAHTsec(cli), rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));   // client-specific cost factors (fixed 2026-07-28: was hardcoded 'all')
   function vDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
   function eDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }
   var need=[]; for(d=0;d<7;d++){ need[d]=[]; for(h=0;h<24;h++){
@@ -1359,9 +1361,61 @@ function renderStaffPlan(){
   document.getElementById('plHeat').innerHTML='<div class="losec" style="margin:2px 0 6px;">'+chLbl+' — where to place your '+fte+' agents <span class="mut" style="font-weight:400;">· each cell = how many to have on that hour · darker = more · shaped to last week\'s demand</span></div>'+t;
   document.getElementById('plNote').innerHTML='<b>Shift plan for '+fte+' FTEs</b> — '+chLbl+', '+who+'. Each cell = how many of your '+fte+' agents to schedule that hour, spread across the week to match last week\'s actual demand (busier hours get more of your team; capped at your '+fte+'). Set <b>Client</b> + <b>Channel</b> above to plan a specific team. Demand shape = wk '+HM_CUBE.window+' (📞 by call volume &amp; handle time, ✉️ by inbound email). <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
 }
+function renderCapacity(){
+  // REVERSE of "agents needed": enter N FTEs -> how many calls + emails they can handle, laid out on the
+  // client's demand surge. Deploy N×40 agent-hrs across voice/email by where the work is, convert to throughput.
+  var C=HM_CUBE.cube, days=HM_CUBE.days, d,h,k;
+  plGet();
+  var cli=(document.getElementById('pl_cli')||{}).value||'all';
+  var chan=(document.getElementById('pl_ch2')||{}).value||'both';
+  var fte=Math.max(0,Math.min(parseFloat((document.getElementById('pl_fte')||{}).value)||0,100000));
+  var clients=(cli==='all')?HM_BUILT:[cli];
+  var ah=voiceAHTsec(cli), rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));   // client-specific
+  function vDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
+  function eDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }
+  // per-channel agent-need = the surge weights (where the work is)
+  var vN=[],eN=[], sVN=0,sEN=0;
+  for(d=0;d<7;d++){ vN[d]=[]; eN[d]=[]; for(h=0;h<24;h++){
+    var nv=(chan!=='email')?reqAgentsVoice(vDem(d,h),ah):0;
+    var work=0; for(k=h-win+1;k<=h;k++){ if(k>=0) work+=eDem(d,k)*rpt; }
+    var ne=(chan!=='voice')?reqAgentsEmail(work):0;
+    vN[d][h]=nv; eN[d][h]=ne; sVN+=nv; sEN+=ne;
+  }}
+  // split your agent-hours voice/email by where the work is, then spread each across its surge (cap fte/hr)
+  var pool=fte*40, sN=sVN+sEN, vPool=sN?pool*sVN/sN:0, ePool=sN?pool*sEN/sN:0;
+  var vph=(ah>0?3600/ah:0)*(1-CAP.shrink/100);   // calls one scheduled agent handles per hour (raw throughput)
+  var eph=(rpt>0?CAP.coeff/rpt:0);               // email tickets one scheduled agent handles per hour
+  var calls=[],emails=[], totC=0,totE=0, peak=0,peakDH=[0,0];
+  for(d=0;d<7;d++){ calls[d]=[]; emails[d]=[]; for(h=0;h<24;h++){
+    var va=sVN?Math.min(fte, vPool*vN[d][h]/sVN):0, ea=sEN?Math.min(fte, ePool*eN[d][h]/sEN):0;
+    var c=Math.round(va*vph), e=Math.round(ea*eph);
+    calls[d][h]=c; emails[d][h]=e; totC+=c; totE+=e;
+    var t=c+e; if(t>peak){peak=t;peakDH=[d,h];}
+  }}
+  var chLbl=chan==='voice'?'📞 Phone':(chan==='email'?'✉️ Email':'📞+✉️ Both'), who=(cli==='all'?'all built clients':(CLIENT_NAMES[cli]||cli));
+  var hrs=[]; for(h=0;h<24;h++)hrs.push((h%12===0?12:h%12)+(h<12?'a':'p'));
+  var pkLbl=peak?(String(days[peakDH[0]]).split(' ')[0]+' '+hrs[peakDH[1]]):'—';
+  var cards=[['Your team', fte+' FTEs', (fte*40).toLocaleString()+' agent-hrs/wk']];
+  if(chan!=='email') cards.push(['📞 Calls handled', totC.toLocaleString(), 'per week']);
+  if(chan!=='voice') cards.push(['✉️ Emails handled', totE.toLocaleString(), 'per week']);
+  cards.push(['Busiest hour', pkLbl, 'up to '+peak+' contacts/hr']);
+  document.getElementById('plCards').innerHTML=cards.map(function(c){return '<div class="card"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div><div class="n">'+c[2]+'</div></div>';}).join('');
+  var mx=Math.max(1,peak);
+  var t='<table class="hm"><colgroup><col class="dayc">'; for(h=0;h<24;h++)t+='<col class="hrc">'; t+='<col class="totc"></colgroup><thead><tr><th class="day"></th>';
+  for(h=0;h<24;h++)t+='<th>'+(h%2===0?hrs[h]:'')+'</th>'; t+='<th class="tot">Peak</th></tr></thead><tbody>';
+  for(d=0;d<7;d++){ t+='<tr><th class="day">'+String(days[d]).split(' ')[0]+'</th>'; var pk=0;
+    for(h=0;h<24;h++){ var c=calls[d][h],e=emails[d][h],tot=c+e; if(tot>pk)pk=tot;
+      var tip=String(days[d]).split(' ')[0]+' '+hrs[h]+': '+((chan!=='email')?(c+' calls'):'')+((chan==='both')?' · ':'')+((chan!=='voice')?(e+' emails'):'');
+      t+='<td style="background:'+hmColor(tot,mx,false)+'" title="'+tip+'">'+(tot||'')+'</td>'; }
+    t+='<td class="rowtot">'+pk+'</td></tr>'; }
+  t+='</tbody></table>';
+  document.getElementById('plHeat').innerHTML='<div class="losec" style="margin:2px 0 6px;">'+chLbl+' — what your '+fte+' agents handle <span class="mut" style="font-weight:400;">· contacts processed each hour · darker = more · deployed to match the demand surge</span></div>'+t;
+  document.getElementById('plNote').innerHTML='<b>What '+fte+' FTEs can handle</b> — '+chLbl+', '+who+'. The reverse of "agents needed": each cell = calls + emails your '+fte+' agents process that hour, deployed to match last week\'s surge. Throughput: 📞 ~'+(Math.round(vph*10)/10)+' calls/agent-hr (AHT '+(Math.round(ah/60*10)/10)+'m) · ✉️ ~'+(Math.round(eph*10)/10)+' tickets/agent-hr ('+CAP.coeff.toFixed(1)+' repl/hr ÷ '+(Math.round(rpt*10)/10)+' repl/ticket). Client-specific AHT &amp; replies/ticket. Demand shape = wk '+HM_CUBE.window+'. This is throughput capacity — not capped by SLA or by actual volume that came in. <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
+}
 function renderPlanner(){
   if(!HM_CUBE||!document.getElementById('plHeat')) return;
   if(plState.mode==='staff'){ renderStaffPlan(); return; }
+  if(plState.mode==='capacity'){ renderCapacity(); return; }
   var g=plGet(), C=HM_CUBE.cube, days=HM_CUBE.days, d,h,k;
   function bV(d,h){ var s=0; HM_BUILT.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
   function bE(d,h){ var s=0; HM_BUILT.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }   // mirror hmInbound so planner == Intraday model at scale=1
