@@ -490,6 +490,7 @@
       <button id="plAdd" class="hbtn" onclick="setPl('mode','add')">➕ Additional to hire</button>
       <button id="plStaff" class="hbtn" onclick="setPl('mode','staff')">📋 Place my agents</button>
       <button id="plCap" class="hbtn" onclick="setPl('mode','capacity')">📊 What they'll handle</button>
+      <button id="plGap" class="hbtn" onclick="setPl('mode','gap')">⚖️ Demand vs capacity</button>
     </div>
     <div class="hmctl" id="plStaffCtl" style="display:none;"><span class="hclab">Team</span>
       <label class="capl">I have <input id="pl_fte" class="capn" type="number" min="0" value="20" oninput="renderPlanner()"> FTEs</label>
@@ -1313,7 +1314,8 @@ function setPl(g,v){ plState[g]=v;
   document.getElementById('plAdd').classList.toggle('active',plState.mode==='add');
   var st=document.getElementById('plStaff'); if(st) st.classList.toggle('active',plState.mode==='staff');
   var cp=document.getElementById('plCap'); if(cp) cp.classList.toggle('active',plState.mode==='capacity');
-  var ctl=document.getElementById('plStaffCtl'); if(ctl) ctl.style.display=(plState.mode==='staff'||plState.mode==='capacity')?'':'none';
+  var gp=document.getElementById('plGap'); if(gp) gp.classList.toggle('active',plState.mode==='gap');
+  var ctl=document.getElementById('plStaffCtl'); if(ctl) ctl.style.display=(plState.mode==='staff'||plState.mode==='capacity'||plState.mode==='gap')?'':'none';
   renderPlanner();
 }
 function renderStaffPlan(){
@@ -1412,10 +1414,70 @@ function renderCapacity(){
   document.getElementById('plHeat').innerHTML='<div class="losec" style="margin:2px 0 6px;">'+chLbl+' — what your '+fte+' agents handle <span class="mut" style="font-weight:400;">· contacts processed each hour · darker = more · deployed to match the demand surge</span></div>'+t;
   document.getElementById('plNote').innerHTML='<b>What '+fte+' FTEs can handle</b> — '+chLbl+', '+who+'. The reverse of "agents needed": each cell = calls + emails your '+fte+' agents process that hour, deployed to match last week\'s surge. Throughput: 📞 ~'+(Math.round(vph*10)/10)+' calls/agent-hr (AHT '+(Math.round(ah/60*10)/10)+'m) · ✉️ ~'+(Math.round(eph*10)/10)+' tickets/agent-hr ('+CAP.coeff.toFixed(1)+' repl/hr ÷ '+(Math.round(rpt*10)/10)+' repl/ticket). Client-specific AHT &amp; replies/ticket. Demand shape = wk '+HM_CUBE.window+'. This is throughput capacity — not capped by SLA or by actual volume that came in. <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
 }
+function renderGap(){
+  // Demand (from patients/day) vs capacity (N agents) -> per-hour NET gap by channel. red = behind (demand>capacity), green = ahead.
+  var C=HM_CUBE.cube, days=HM_CUBE.days, d,h,k;
+  var g=plGet();
+  var cli=(document.getElementById('pl_cli')||{}).value||'all';
+  var chan=(document.getElementById('pl_ch2')||{}).value||'both';
+  var fte=Math.max(0,Math.min(parseFloat((document.getElementById('pl_fte')||{}).value)||0,100000));
+  var clients=(cli==='all')?HM_BUILT:[cli];
+  var ah=voiceAHTsec(cli), rpt=repliesPerTicket(cli), win=Math.max(1,Math.round(CAP.slaHrs));
+  function vDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
+  function eDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }
+  // demand projection: scale the client's surge shape up/down to the entered patients/day × %contact
+  var baseV=0,baseE=0; for(d=0;d<7;d++)for(h=0;h<24;h++){ baseV+=vDem(d,h); baseE+=eDem(d,h); }
+  var baseTot=baseV+baseE, targetWk=g.pat*(g.rate/100)*7, scale=baseTot>0?targetWk/baseTot:0;
+  // capacity of N agents (same model as renderCapacity)
+  var vN=[],eN=[], sVN=0,sEN=0;
+  for(d=0;d<7;d++){ vN[d]=[]; eN[d]=[]; for(h=0;h<24;h++){
+    var nv=(chan!=='email')?reqAgentsVoice(vDem(d,h),ah):0;
+    var work=0; for(k=h-win+1;k<=h;k++){ if(k>=0) work+=eDem(d,k)*rpt; }
+    var ne=(chan!=='voice')?reqAgentsEmail(work):0;
+    vN[d][h]=nv; eN[d][h]=ne; sVN+=nv; sEN+=ne;
+  }}
+  var pool=fte*40, sN=sVN+sEN, vPool=sN?pool*sVN/sN:0, ePool=sN?pool*sEN/sN:0;
+  var vph=(ah>0?3600/ah:0)*(1-CAP.shrink/100), eph=(rpt>0?CAP.coeff/rpt:0);
+  // per-hour NET = projected demand − capacity  (>0 = short/behind)
+  var gV=[],gE=[], sumGV=0,sumGE=0, mxV=1,mxE=1, worst={v:0,lab:'',ch:''};
+  var hrs=[]; for(h=0;h<24;h++)hrs.push((h%12===0?12:h%12)+(h<12?'a':'p'));
+  for(d=0;d<7;d++){ gV[d]=[]; gE[d]=[]; for(h=0;h<24;h++){
+    var capV=(sVN?Math.min(fte,vPool*vN[d][h]/sVN):0)*vph, capE=(sEN?Math.min(fte,ePool*eN[d][h]/sEN):0)*eph;
+    var gv=(chan!=='email')?(vDem(d,h)*scale-capV):0, ge=(chan!=='voice')?(eDem(d,h)*scale-capE):0;
+    gV[d][h]=gv; gE[d][h]=ge; sumGV+=gv; sumGE+=ge;
+    if(Math.abs(gv)>mxV)mxV=Math.abs(gv); if(Math.abs(ge)>mxE)mxE=Math.abs(ge);
+    if(gv>worst.v)worst={v:gv,lab:String(days[d]).split(' ')[0]+' '+hrs[h],ch:'📞'};
+    if(ge>worst.v)worst={v:ge,lab:String(days[d]).split(' ')[0]+' '+hrs[h],ch:'✉️'};
+  }}
+  var who=(cli==='all'?'all built clients':(CLIENT_NAMES[cli]||cli)), contactsDay=Math.round(g.pat*g.rate/100);
+  function netTxt(s){ return s>0?('<span class="red">short '+Math.abs(Math.round(s)).toLocaleString()+'</span>'):('<span class="grn">surplus '+Math.abs(Math.round(s)).toLocaleString()+'</span>'); }
+  var cards=[['Projected demand', contactsDay.toLocaleString()+'/day', (scale?scale.toFixed(2)+'× current':'set patients/day')+' · '+who]];
+  if(chan!=='email') cards.push(['📞 Phone net/wk', netTxt(sumGV), sumGV>0?('demand outruns your '+fte):'agents keep up']);
+  if(chan!=='voice') cards.push(['✉️ Email net/wk', netTxt(sumGE), sumGE>0?'backlog builds up':'agents keep up']);
+  cards.push(['Worst hour', worst.v>0?(worst.ch+' '+worst.lab):'—', worst.v>0?('short '+Math.round(worst.v)+'/hr'):'covered every hour']);
+  document.getElementById('plCards').innerHTML=cards.map(function(c){return '<div class="card"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div><div class="n">'+c[2]+'</div></div>';}).join('');
+  function gapBg(v,mx){ if(!v||!mx) return '#fff'; var t=Math.min(1,Math.abs(v)/mx); return v>0?('rgba(214,64,48,'+(0.10+0.62*t).toFixed(2)+')'):('rgba(27,175,122,'+(0.08+0.5*t).toFixed(2)+')'); }
+  function gapGrid(mat,mx){
+    var t='<table class="hm"><colgroup><col class="dayc">'; for(h=0;h<24;h++)t+='<col class="hrc">'; t+='<col class="totc"></colgroup><thead><tr><th class="day"></th>';
+    for(h=0;h<24;h++)t+='<th>'+(h%2===0?hrs[h]:'')+'</th>'; t+='<th class="tot">Net</th></tr></thead><tbody>';
+    for(d=0;d<7;d++){ t+='<tr><th class="day">'+String(days[d]).split(' ')[0]+'</th>'; var rt=0;
+      for(h=0;h<24;h++){ var v=Math.round(mat[d][h]); rt+=v;
+        var tip=String(days[d]).split(' ')[0]+' '+hrs[h]+': '+(v>0?('short '+v):(v<0?((-v)+' spare'):'even'));
+        t+='<td style="background:'+gapBg(v,mx)+'" title="'+tip+'">'+(v===0?'':(v>0?'+'+v:v))+'</td>'; }
+      t+='<td class="rowtot" style="color:'+(rt>0?'var(--red)':'var(--grn)')+'">'+(rt>0?'+'+rt:rt)+'</td></tr>'; }
+    t+='</tbody></table>'; return t;
+  }
+  var html='';
+  if(chan!=='email') html+='<div class="losec" style="margin:2px 0 6px;">📞 Phone — net calls/hr <span class="mut" style="font-weight:400;">· projected demand − your '+fte+' agents · <span class="red">red = behind</span>, <span class="grn">green = ahead</span></span></div>'+gapGrid(gV,mxV);
+  if(chan!=='voice') html+='<div class="losec" style="margin:16px 0 6px;">✉️ Email — net emails/hr <span class="mut" style="font-weight:400;">· <span class="red">red = behind (backlog builds)</span>, <span class="grn">green = ahead</span></span></div>'+gapGrid(gE,mxE);
+  document.getElementById('plHeat').innerHTML=html;
+  document.getElementById('plNote').innerHTML='<b>Demand vs capacity</b> — '+who+', at <b>'+contactsDay.toLocaleString()+' contacts/day</b> ('+g.pat.toLocaleString()+' patients × '+g.rate+'%) against your <b>'+fte+' agents</b>. Each cell = projected demand that hour − what your agents handle. <span class="red">+red</span> = behind (📞 calls blocked/abandoned · ✉️ backlog grows); <span class="grn">−green</span> = spare capacity. Demand = the client\'s '+HM_CUBE.window+' surge scaled to your scenario; capacity = 📞 '+(Math.round(vph*10)/10)+' calls/agent-hr, ✉️ '+(Math.round(eph*10)/10)+' tickets/agent-hr (client-specific). <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
+}
 function renderPlanner(){
   if(!HM_CUBE||!document.getElementById('plHeat')) return;
   if(plState.mode==='staff'){ renderStaffPlan(); return; }
   if(plState.mode==='capacity'){ renderCapacity(); return; }
+  if(plState.mode==='gap'){ renderGap(); return; }
   var g=plGet(), C=HM_CUBE.cube, days=HM_CUBE.days, d,h,k;
   function bV(d,h){ var s=0; HM_BUILT.forEach(function(cl){ s+=_ci(C.voice.inbound,cl,d,h); HM_NONBPO.forEach(function(b){ s-=_ch(C.voice.handled,cl,b,d,h); }); }); return s<0?0:s; }
   function bE(d,h){ var s=0; HM_BUILT.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }   // mirror hmInbound so planner == Intraday model at scale=1
