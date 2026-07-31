@@ -1773,7 +1773,7 @@ function renderExec(){
   function gline(icon,lab,arr){ return '<div class="logap"><span class="gi">'+icon+'</span><b>'+lab+':</b> '+arr.slice(0,2).map(function(g){return cdays[g.d]+' '+hlab(g.h)+' <span class="red">+'+g.g.toLocaleString()+'</span>';}).join(' &nbsp;·&nbsp; ')+'</div>'; }
   document.getElementById('loGap').innerHTML=gline('📞','Voice',vg)+gline('✉️','Email',eg)+'<div class="mut" style="font-size:10.5px;margin-top:3px;">calls/emails that outran handling · prev complete wk</div>';
 }
-var BUILD_STAMP=" \u00b7 last build Jul 30, 2026 (each tab shows its own data window)";   // injected by cc_refresh.py at rebuild time, e.g. " · data as of Jul 19 2026"
+var BUILD_STAMP=" \u00b7 last build Jul 31, 2026 (each tab shows its own data window)";   // injected by cc_refresh.py at rebuild time, e.g. " · data as of Jul 19 2026"
 // ---- CRM adoption tab (weekly / monthly / WoW) ----
 var crmView='weekly';
 function setCrm(v){ crmView=v;
