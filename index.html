@@ -489,6 +489,9 @@
       <button id="plGap" class="hbtn" onclick="setPl('mode','gap')">⚖️ Demand vs capacity</button>
     </div>
     <div class="plexplain" id="plExplain"></div>
+    <div class="hmctl" id="plF_basis"><span class="hclab">Demand basis</span>
+      <label class="capl"><select id="pl_basis" class="capn" style="width:auto" onchange="setBasis()"><option value="scenario">🔮 Scenario — patients/day</option><option value="actual">📊 Actual — last week</option></select></label>
+    </div>
     <div class="hmctl" id="plScenario"><span class="hclab">Demand</span>
       <label class="capl">Patients / day <input id="pl_pat" class="capn" style="width:66px" type="number" min="0" value="5000" oninput="renderPlanner()"></label>
       <label class="capl">% contacting PS <input id="pl_rate" class="capn" type="number" min="0" max="100" step="0.5" value="30" oninput="renderPlanner()">%</label>
@@ -1413,6 +1416,7 @@ function setAhtManual(){ var e=document.getElementById('pl_aht'); ahtAuto=(!e||e
 function resetAht(){ ahtAuto=true; renderPlanner(); }
 function setMixManual(){ var e=document.getElementById('pl_mix'); mixAuto=(!e||e.value===''); renderPlanner(); }
 function resetMix(){ mixAuto=true; renderPlanner(); }
+function setBasis(){ setPl('mode', plState.mode); }   // Scenario↔Actual demand toggle: re-apply input visibility + re-render
 function plGet(){
   function n(id,def){ var e=document.getElementById(id), v=e?parseFloat(e.value):NaN; return isNaN(v)?def:v; }
   CAP.sl=n('pl_sl',80); CAP.asa=n('pl_asa',30); CAP.shrink=n('pl_shr',20); CAP.slaHrs=n('pl_sla',4);
@@ -1427,14 +1431,14 @@ function plGet(){
 }
 // per-mode: which input groups are relevant + a one-line "what it's good for"
 var PL_MODES={
-  needed:  {btn:'plNeed', F:['scenario','mix','cli','sl','aht','sla','coeff','shrink'], good:'🧮 <b>Agents needed</b> — size a team from projected demand. Enter <b>patients/day</b> &amp; <b>% who contact PS</b> (pick a <b>client</b> for its voice/email mix &amp; AHT; the <b>split</b> field is editable) → agents needed each hour to hit SL, phone &amp; email. <i>Best for hiring plans &amp; headcount asks.</i>'},
-  add:     {btn:'plAdd',  F:['scenario','mix','cli','sl','aht','sla','coeff','shrink'], good:'➕ <b>Additional to hire</b> — same demand projection as Agents-needed, minus who you already have deployed → how many <b>more</b> to hire. <i>Best for "what\'s the gap to my target?"</i>'},
+  needed:  {btn:'plNeed', F:['basis','scenario','mix','cli','sl','aht','sla','coeff','shrink'], good:'🧮 <b>Agents needed</b> — size a team from projected demand. Enter <b>patients/day</b> &amp; <b>% who contact PS</b> (pick a <b>client</b> for its voice/email mix &amp; AHT; the <b>split</b> field is editable) → agents needed each hour to hit SL, phone &amp; email. <i>Best for hiring plans &amp; headcount asks.</i>'},
+  add:     {btn:'plAdd',  F:['basis','scenario','mix','cli','sl','aht','sla','coeff','shrink'], good:'➕ <b>Additional to hire</b> — same demand projection as Agents-needed, minus who you already have deployed → how many <b>more</b> to hire. <i>Best for "what\'s the gap to my target?"</i>'},
   staff:   {btn:'plStaff',F:['cli','fte','alloc','sl','aht','sla','coeff','shrink'],     good:'📋 <b>Place my agents</b> — you have a fixed headcount; get the shift shape: how many of your <b>N agents</b> to put on each hour, matched to last week\'s real demand. <i>Best for building a weekly schedule.</i> (No patients/day — it uses actual demand.)'},
   capacity:{btn:'plCap',  F:['cli','fte','alloc','aht','coeff','shrink'],               good:'📊 <b>What they\'ll handle</b> — the reverse of Agents-needed: enter <b>N agents</b> → how many calls &amp; emails they can process, laid on the demand shape. <i>Best for "if I have N people, what throughput do I get?"</i> (Raw capacity — no SLA target.)'},
-  gap:     {btn:'plGap',  F:['scenario','cli','fte','alloc','sl','aht','sla','coeff','shrink'], good:'⚖️ <b>Demand vs capacity</b> — combine a <b>demand scenario</b> with a <b>headcount</b> → the per-hour gap by channel: are your N agents enough for that volume? <i>Best for stress-testing a team against a growth scenario.</i>'},
+  gap:     {btn:'plGap',  F:['basis','scenario','cli','fte','alloc','sl','aht','sla','coeff','shrink'], good:'⚖️ <b>Demand vs capacity</b> — combine a <b>demand scenario</b> with a <b>headcount</b> → the per-hour gap by channel: are your N agents enough for that volume? <i>Best for stress-testing a team against a growth scenario.</i>'},
   volume:  {btn:'plVol',  F:['cli'], good:'📈 <b>Volume</b> — raw call &amp; email volume by day × hour, no staffing/capacity math &mdash; just where the contacts actually land. Pick one client or all built.'}
 };
-var PL_FGRP={scenario:'plScenario', mix:'plF_mix', cli:'plF_cli', fte:'plF_fte', ch2:'plF_ch2', alloc:'plF_alloc', sl:'plF_sl', aht:'plF_aht', sla:'plF_sla', coeff:'plF_coeff', shrink:'plF_shrink'};
+var PL_FGRP={basis:'plF_basis', scenario:'plScenario', mix:'plF_mix', cli:'plF_cli', fte:'plF_fte', ch2:'plF_ch2', alloc:'plF_alloc', sl:'plF_sl', aht:'plF_aht', sla:'plF_sla', coeff:'plF_coeff', shrink:'plF_shrink'};
 function setPl(g,v){ plState[g]=v;
   var m=PL_MODES[plState.mode]||PL_MODES.needed, show={}; (m.F||[]).forEach(function(k){show[k]=1;});
   for(var mm in PL_MODES){ var b=document.getElementById(PL_MODES[mm].btn); if(b) b.classList.toggle('active',plState.mode===mm); }
@@ -1443,6 +1447,12 @@ function setPl(g,v){ plState[g]=v;
   var tl=document.getElementById('plTeamLab'); if(tl) tl.textContent=show.fte?'Team':'Client';                     // demand modes only show Client (scopes the mix)
   var aw=document.getElementById('plAssumes'); if(aw) aw.style.display=(show.sl||show.aht||show.sla||show.coeff||show.shrink)?'':'none';
   var ex=document.getElementById('plExplain'); if(ex) ex.innerHTML=m.good||'';
+  // demand-basis: in Actual mode, hide the patients/day scenario inputs (model uses the client's real measured demand)
+  var _bs=(document.getElementById('pl_basis')||{}).value||'scenario';
+  if((plState.mode==='needed'||plState.mode==='add'||plState.mode==='gap') && _bs==='actual'){
+    var _sc=document.getElementById('plScenario'); if(_sc)_sc.style.display='none';
+    var _mx=document.getElementById('plF_mix'); if(_mx)_mx.style.display='none';
+  }
   renderPlanner();
 }
 // shared day×hour heatmap for the planner (one channel's matrix)
@@ -1540,7 +1550,8 @@ function renderGap(){
   function eDem(d,h){ var s=0; clients.forEach(function(cl){ s+=_ci(C.email.inbound,cl,d,h)*emailRate(cl); HM_NONBPO.forEach(function(b){ s-=_ch(C.email.handled,cl,b,d,h); }); }); return s<0?0:s; }
   // demand projection: scale the client's surge shape up/down to the entered patients/day × %contact
   var baseV=0,baseE=0; for(d=0;d<7;d++)for(h=0;h<24;h++){ baseV+=vDem(d,h); baseE+=eDem(d,h); }
-  var baseTot=baseV+baseE, targetWk=g.pat*(g.rate/100)*7, scale=baseTot>0?targetWk/baseTot:0;
+  var actual=(document.getElementById('pl_basis')||{}).value==='actual';   // Actual = real measured demand (scale=1)
+  var baseTot=baseV+baseE, targetWk=g.pat*(g.rate/100)*7, scale=actual?1:(baseTot>0?targetWk/baseTot:0);
   // capacity of N agents — same integer-FTE deployment as "what they'll handle" (plDeploy honors the Deploy control + whole-FTE split)
   var alloc=(document.getElementById('pl_alloc')||{}).value||'auto', D=plDeploy(clients,fte,ah,rpt,win,alloc);
   var vph=(ah>0?3600/ah:0)*(1-CAP.shrink/100), eph=(rpt>0?CAP.coeff/rpt:0);
@@ -1556,8 +1567,9 @@ function renderGap(){
     if(ge>worst.v)worst={v:ge,lab:String(days[d]).split(' ')[0]+' '+hrs[h],ch:'✉️'};
   }}
   var who=(cli==='all'?'all built clients':(CLIENT_NAMES[cli]||cli)), contactsDay=Math.round(g.pat*g.rate/100);
+  var wdV=0,wdE=0; for(d=0;d<5;d++)for(h=0;h<24;h++){ wdV+=vDem(d,h); wdE+=eDem(d,h); } wdV=Math.round(wdV/5); wdE=Math.round(wdE/5);   // weekday (Mon–Fri) avg demand
   function netTxt(s){ return s>0?('<span class="red">short '+Math.abs(Math.round(s)).toLocaleString()+'</span>'):('<span class="grn">surplus '+Math.abs(Math.round(s)).toLocaleString()+'</span>'); }
-  var cards=[['Projected demand', contactsDay.toLocaleString()+'/day', (scale?scale.toFixed(2)+'× current':'set patients/day')+' · '+who]];
+  var cards=[actual?['Actual weekday demand','📞 '+wdV.toLocaleString()+' / ✉️ '+wdE.toLocaleString(),'calls / emails per weekday ('+HM_CUBE.window+') · '+who]:['Projected demand', contactsDay.toLocaleString()+'/day', (scale?scale.toFixed(2)+'× current':'set patients/day')+' · '+who]];
   if(chan!=='email') cards.push(['📞 Phone net/wk', netTxt(sumGV), netTxt(sumGV/7)+' /day avg']);
   if(chan!=='voice') cards.push(['✉️ Email net/wk', netTxt(sumGE), netTxt(sumGE/7)+' /day avg']);
   cards.push(['Worst hour', worst.v>0?(worst.ch+' '+worst.lab):'—', worst.v>0?('short '+Math.round(worst.v)+'/hr'):'covered every hour']);
@@ -1577,7 +1589,7 @@ function renderGap(){
   if(chan!=='email') html+='<div class="losec" style="margin:2px 0 6px;">📞 Phone — net calls/hr <span class="mut" style="font-weight:400;">· projected demand − your '+fte+' agents · <span class="red">red = behind</span>, <span class="grn">green = ahead</span></span></div>'+gapGrid(gV,mxV);
   if(chan!=='voice') html+='<div class="losec" style="margin:16px 0 6px;">✉️ Email — net emails/hr <span class="mut" style="font-weight:400;">· <span class="red">red = behind (backlog builds)</span>, <span class="grn">green = ahead</span></span></div>'+gapGrid(gE,mxE);
   document.getElementById('plHeat').innerHTML=html;
-  document.getElementById('plNote').innerHTML='<b>Demand vs capacity</b> — '+who+', at <b>'+contactsDay.toLocaleString()+' contacts/day</b> ('+g.pat.toLocaleString()+' patients × '+g.rate+'%) against your <b>'+fte+' agents</b>. Each cell = projected demand that hour − what your agents handle. <span class="red">+red</span> = behind (📞 calls blocked/abandoned · ✉️ backlog grows); <span class="grn">−green</span> = spare capacity. Demand = the client\'s '+HM_CUBE.window+' surge scaled to your scenario; capacity = 📞 '+(Math.round(vph*10)/10)+' calls/agent-hr, ✉️ '+(Math.round(eph*10)/10)+' tickets/agent-hr (client-specific). <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
+  document.getElementById('plNote').innerHTML='<b>Demand vs capacity</b> — '+who+', '+(actual?('on <b>ACTUAL</b> demand (wk '+HM_CUBE.window+', real per-hour)'):('at <b>'+contactsDay.toLocaleString()+' contacts/day</b> ('+g.pat.toLocaleString()+' patients × '+g.rate+'%)'))+' against your <b>'+fte+' agents</b>. Each cell = demand that hour − what your agents handle. <span class="red">+red</span> = behind (📞 calls blocked/abandoned · ✉️ backlog grows); <span class="grn">−green</span> = spare capacity. Demand = the client\'s '+HM_CUBE.window+(actual?' actual volume':' surge scaled to your scenario')+'; capacity = 📞 '+(Math.round(vph*10)/10)+' calls/agent-hr, ✉️ '+(Math.round(eph*10)/10)+' tickets/agent-hr (client-specific). <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
 }
 function renderVolume(){
   // pure demand/volume by day×hour — raw calls offered + emails received, NO staffing/capacity/scenario modeling
@@ -1619,7 +1631,9 @@ function renderPlanner(){
   var measMixV=baseTot?Math.round(vWk/baseTot*100):50, mxe=document.getElementById('pl_mix');
   if(mixAuto && mxe) mxe.value=measMixV;
   var vPct=Math.max(0,Math.min(100,(mxe&&mxe.value!=='')?Math.round(parseFloat(mxe.value)):measMixV));
-  var scaleV=vWk>0?(targetWk*vPct/100)/vWk:0, scaleE=eWk>0?(targetWk*(100-vPct)/100)/eWk:0;
+  var actual=(document.getElementById('pl_basis')||{}).value==='actual';   // Actual = client's real measured demand (scale=1); Scenario = patients/day
+  var scaleV=actual?1:(vWk>0?(targetWk*vPct/100)/vWk:0), scaleE=actual?1:(eWk>0?(targetWk*(100-vPct)/100)/eWk:0);
+  var wdV=0,wdE=0; for(d=0;d<5;d++)for(h=0;h<24;h++){ wdV+=bV(d,h); wdE+=bE(d,h); } wdV=Math.round(wdV/5); wdE=Math.round(wdE/5);   // weekday (Mon–Fri) avg demand
   var ah=CAP.aht, rpt=repliesPerTicket(pcli), win=Math.max(1,Math.round(CAP.slaHrs));   // ah = editable AHT field (auto=measured); rpt scoped to selected client
   var needV=[],needE=[],addV=[],addE=[], pkV=0,pkE=0,sNV=0,sNE=0,sAV=0,sAE=0;
   for(d=0;d<7;d++){ needV[d]=[];needE[d]=[];addV[d]=[];addE[d]=[];
@@ -1637,7 +1651,8 @@ function renderPlanner(){
   var _mh=document.getElementById('plMixHint'); if(_mh) _mh.innerHTML='→ ✉️ '+(100-vPct)+'%'+(mixAuto?(' · <span class="mut">auto (measured '+measMixV+')</span>'):(' · <span style="cursor:pointer;text-decoration:underline" onclick="resetMix()" title="reset to measured">↺ '+measMixV+'</span>'));
   function fte(x){return Math.ceil(x/40);}   // hiring floor — round UP
   var cards=[
-    ['Projected contacts/day', contactsDay.toLocaleString(), (scale>0?scale.toFixed(2)+'× current ('+baseDay.toLocaleString()+'/day built)':'set a baseline')],
+    (actual?['Actual weekday demand','📞 '+wdV.toLocaleString()+' / ✉️ '+wdE.toLocaleString(),'calls / emails per weekday · '+HM_CUBE.window]
+           :['Projected contacts/day', contactsDay.toLocaleString(), (scale>0?scale.toFixed(2)+'× current ('+baseDay.toLocaleString()+'/day built)':'set a baseline')]),
     ['📞/✉️ Channel mix', vPct+'% / '+(100-vPct)+'%', 'voice / email · '+who+(mixAuto?' (measured)':' (custom)')],
     ['✉️ Email throughput', CAP.coeff.toFixed(1)+' /hr', CAP.emailSpeed+' replies/hr × '+CAP.occ+'% occ × (1−'+CAP.shrink+'% shrink)'],
     ['Peak concurrent', pkV+' / '+pkE, '📞 phone / ✉️ email agents'],
@@ -1645,7 +1660,7 @@ function renderPlanner(){
     ['Additional to hire', '+'+fte(sAV)+' / +'+fte(sAE), '📞 / ✉️ · vs current staffing']
   ];
   document.getElementById('plCards').innerHTML=cards.map(function(c){return '<div class="card"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div><div class="n">'+c[2]+'</div></div>';}).join('');
-  document.getElementById('plDerive').textContent='= '+contactsDay.toLocaleString()+' contacts/day vs current built-client demand ≈ '+baseDay.toLocaleString()+'/day ('+(scale>0?scale.toFixed(2)+'×':'—')+') · hour-by-hour shape from wk '+HM_CUBE.window;
+  document.getElementById('plDerive').textContent=actual?('= ACTUAL demand, wk '+HM_CUBE.window+' — real hour-by-hour (weekday avg 📞 '+wdV.toLocaleString()+' / ✉️ '+wdE.toLocaleString()+'/day), not projected'):('= '+contactsDay.toLocaleString()+' contacts/day vs current built-client demand ≈ '+baseDay.toLocaleString()+'/day ('+(scale>0?scale.toFixed(2)+'×':'—')+') · hour-by-hour shape from wk '+HM_CUBE.window);
   var isAdd=(plState.mode==='add');
   var hrs=[]; for(h=0;h<24;h++)hrs.push((h%12===0?12:h%12)+(h<12?'a':'p'));
   function heatTable(mat){   // build one day×hour heatmap for a channel's matrix (own color scale)
@@ -1661,7 +1676,7 @@ function renderPlanner(){
   document.getElementById('plHeat').innerHTML=
     '<div class="losec" style="margin:2px 0 6px;">📞 Phone — '+lbl+' <span class="mut" style="font-weight:400;">(Erlang C)</span></div>'+heatTable(isAdd?addV:needV)+
     '<div class="losec" style="margin:18px 0 6px;">✉️ Email — '+lbl+' <span class="mut" style="font-weight:400;">(throughput)</span></div>'+heatTable(isAdd?addE:needE);
-  document.getElementById('plNote').innerHTML=(isAdd?'<b>Additional agents to hire</b> = agents needed − current deployed (0 where already covered; rough — "deployed" = headcount who took a contact that hour, so read as directional)':'<b>Agents needed</b> = staff to schedule, incl. shrinkage')+' — <b>📞 phone &amp; ✉️ email</b> — for <b>'+who+'</b> at '+contactsDay.toLocaleString()+' contacts/day (split '+vPct+'% voice / '+(100-vPct)+'% email by that client\'s measured mix). Demand = last complete week\'s hour-by-hour shape scaled '+scale.toFixed(2)+'× · 📞 AHT '+Math.round(ah/60*10)/10+'m (Erlang C, '+CAP.shrink+'% shrink) · ✉️ '+CAP.emailSpeed+' replies/hr × '+CAP.occ+'% occupancy × (1−'+CAP.shrink+'% shrink) = '+CAP.coeff.toFixed(1)+' repl/scheduled-hr. <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
+  document.getElementById('plNote').innerHTML=(isAdd?'<b>Additional agents to hire</b> = agents needed − current deployed (0 where already covered; rough — "deployed" = headcount who took a contact that hour, so read as directional)':'<b>Agents needed</b> = staff to schedule, incl. shrinkage')+' — <b>📞 phone &amp; ✉️ email</b> — for <b>'+who+'</b> '+(actual?('on <b>ACTUAL</b> demand from wk '+HM_CUBE.window+' (real per-hour; '+vPct+'% voice / '+(100-vPct)+'% email measured mix) · '):('at '+contactsDay.toLocaleString()+' contacts/day (split '+vPct+'% voice / '+(100-vPct)+'% email by that client\'s measured mix). Demand = last complete week\'s hour-by-hour shape scaled '+scale.toFixed(2)+'× · '))+'📞 AHT '+Math.round(ah/60*10)/10+'m (Erlang C, '+CAP.shrink+'% shrink) · ✉️ '+CAP.emailSpeed+' replies/hr × '+CAP.occ+'% occupancy × (1−'+CAP.shrink+'% shrink) = '+CAP.coeff.toFixed(1)+' repl/scheduled-hr. <span class="info" data-pop="planner" onclick="showPop(this)">i</span>';
 }
 // ===== STAFFING BY CLIENT (tab 12) — recommended dedicated-team FTE from each client's demand =====
 function renderStaffing(){
