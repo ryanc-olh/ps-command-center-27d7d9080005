@@ -1,388 +1,65 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Patient Support — Capacity vs Demand & Surge Model</title>
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PS Capacity Model</title>
 <style>
-  :root{--ink:#0b0b0b;--sec:#52514e;--mut:#898781;--card:#f5f4f1;--bd:#e1e0d9;--bds:#c3c2b7;--red:#b42318;--amb:#9a6a00;--grn:#127a3e;--blue:#2a78d6;--panel:#fbfaf8;}
-  *{box-sizing:border-box;}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.5;padding:20px;}
-  .wrap{max-width:1080px;margin:0 auto;}
-  h1{font-size:22px;font-weight:600;margin:0;}
-  .sub{font-size:13px;color:var(--sec);margin-top:3px;}
-  .sec{font-size:15px;font-weight:600;color:var(--ink);border-bottom:2px solid var(--bds);padding-bottom:6px;margin:28px 0 14px;}
-  .presets{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px;}
-  .btn{font-size:13px;padding:7px 13px;border:1px solid var(--bds);border-radius:7px;background:#fff;color:var(--ink);cursor:pointer;line-height:1.2;}
-  .btn:hover{border-color:var(--blue);}
-  .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
-  .grid{display:grid;gap:12px;}
-  .inputs{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));}
-  .fieldcard{background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:12px 14px;}
-  .fieldcard h4{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--sec);text-transform:uppercase;letter-spacing:.03em;}
-  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0;}
-  .row label{font-size:12.5px;color:var(--sec);flex:1;}
-  .row input,.row select{font-size:13px;padding:5px 7px;border:1px solid var(--bds);border-radius:6px;background:#fff;color:var(--ink);width:92px;text-align:right;}
-  .row select{width:120px;text-align:left;}
-  .hint{font-size:11px;color:var(--mut);margin:2px 0 8px;}
-  .kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
-  .card{background:var(--card);border-radius:10px;padding:14px 16px;}
-  .card .k{font-size:12.5px;color:var(--sec);}
-  .card .v{font-size:26px;font-weight:600;margin-top:2px;}
-  .card .n{font-size:11.5px;color:var(--mut);margin-top:2px;}
-  .red{color:var(--red);} .amb{color:var(--amb);} .grn{color:var(--grn);} .blue{color:var(--blue);}
-  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px;}
-  th{font-weight:600;color:var(--sec);text-align:right;padding:7px 6px;}
-  td{text-align:right;padding:7px 6px;border-top:1px solid var(--bd);}
-  th:first-child,td:first-child{text-align:left;}
-  tr.tot td{border-top:1.5px solid var(--bds);font-weight:600;}
-  .charts{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;}
-  .cbox{position:relative;width:100%;height:250px;}
-  .lbl{font-size:13px;font-weight:600;color:var(--sec);margin:0 0 8px;}
-  .note{font-size:12px;color:var(--mut);margin-top:10px;}
-  .callout{background:var(--panel);border:1px solid var(--bd);border-left:3px solid var(--blue);border-radius:8px;padding:12px 14px;font-size:12.5px;color:var(--sec);margin-top:12px;}
-  .callout b{color:var(--ink);}
-  details{margin-top:10px;} summary{cursor:pointer;font-size:12.5px;color:var(--blue);}
-  .foot{font-size:11px;color:var(--mut);margin-top:28px;border-top:1px solid var(--bd);padding-top:10px;}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <h1>Patient Support — Capacity vs Demand &amp; Surge Model</h1>
-  <div class="sub">Staffing planning &amp; surge model. Enter demand → get required agents &amp; FTEs by channel, sized to the intraday peak. Erlang C for voice/chat, throughput+backlog for email. Works for any client.</div>
-
-  <div class="callout" style="border-left-color:var(--amb);background:#fbf6ec;">
-    <b>⚙️ Planning &amp; scenario tool — not a live dashboard.</b> Every number below is computed from the assumptions <b>you enter</b>; nothing here auto-refreshes (it recalculates as you type) and there is no "as-of" date. Defaults are <b>industry benchmarks, not OpenLoop-measured figures</b> — replace them with your measured AHT / contact-rate / shrinkage before acting. The one calibrated element is the intraday arrival curve (below), measured once on real telehealth launch data (re-derive per client).
-  </div>
-  <details style="margin:-14px 0 20px;">
-    <summary style="cursor:pointer;font-size:12.5px;color:var(--blue);font-weight:600;">ⓘ Why Erlang C is the model behind voice &amp; chat (click)</summary>
-    <div class="callout" style="margin-top:8px;">
-    Erlang C is the telecom/contact-center <b>industry-standard queueing model</b> for inbound staffing. It treats calls as random (Poisson) arrivals into one shared queue and computes the probability a call must wait (P<sub>w</sub>), then projected service level <b>SL = 1 − P<sub>w</sub> · e<sup>−(N−A)·(T/AHT)</sup></b>, where offered load <b>A = calls/hr × AHT(s)/3600</b>, N = agents, T = answer-target seconds. Unlike a flat "volume ÷ AHT" estimate, it accounts for arrival randomness — so it does not undersize at the peak. (Engine reference-verified against the standard 200 calls/hr · 180s AHT · 80%/20s → 14-agent benchmark.)
-    </div>
-  </details>
-
-  <div class="presets">
-    <span style="font-size:12.5px;color:var(--sec);align-self:center;">Presets:</span>
-    <button class="btn primary" onclick="loadPreset('launch')">Launch surge (example)</button>
-    <button class="btn" onclick="loadPreset('benchmark')">Generic benchmark</button>
-  </div>
-
-  <div class="sec">1 · Demand</div>
-  <div class="grid inputs">
-    <div class="fieldcard">
-      <h4>How to enter demand</h4>
-      <div class="row"><label>Mode</label><select id="mode" onchange="recompute()"><option value="patients">From patient panel</option><option value="volume">From volume forecast</option></select></div>
-      <div id="patientInputs">
-        <div class="row"><label>Total patients (panel)</label><input id="patients" type="number" value="100000" oninput="recompute()"></div>
-        <div class="row"><label>Contacts / patient / month</label><input id="contactRate" type="number" step="0.01" value="0.45" oninput="recompute()"></div>
-        <div class="hint">e.g. 45% of patients contact once/mo = 0.45. Bump for repeat contacts. Benchmark ~0.4–0.5 (≈5/yr).</div>
-      </div>
-      <div id="volumeInputs" style="display:none;">
-        <div class="row"><label>Total contacts</label><input id="volDirect" type="number" value="4400" oninput="recompute()"></div>
-        <div class="row"><label>per</label><select id="volPeriod" onchange="recompute()"><option value="day">day</option><option value="week">week</option><option value="month">month</option></select></div>
-      </div>
-      <div class="row"><label>Launch / surge multiplier ×</label><input id="surge" type="number" step="0.1" value="1.0" oninput="recompute()"></div>
-      <div class="hint">Scales all volume. Launches can grow ~1.5×/day. Use for "what Sales says is coming."</div>
-    </div>
-    <div class="fieldcard">
-      <h4>Channel mix (% of contacts)</h4>
-      <div class="row"><label>Voice / phone</label><input id="mixVoice" type="number" value="50" oninput="recompute()"></div>
-      <div class="row"><label>Chat</label><input id="mixChat" type="number" value="20" oninput="recompute()"></div>
-      <div class="row"><label>Email / async</label><input id="mixEmail" type="number" value="30" oninput="recompute()"></div>
-      <div class="hint" id="mixNote">Must total 100. Digital-health benchmark ≈ voice 50 / chat 20 / email 30.</div>
-    </div>
-    <div class="fieldcard">
-      <h4>Operating window &amp; staffing base</h4>
-      <div class="row"><label>Open from (hour, CT 0–23)</label><input id="opStart" type="number" value="6" oninput="recompute()"></div>
-      <div class="row"><label>Open to (hour, CT 0–23)</label><input id="opEnd" type="number" value="19" oninput="recompute()"></div>
-      <div class="row"><label>Operating days / week</label><input id="opDays" type="number" value="7" oninput="recompute()"></div>
-      <div class="row"><label>FTE shift hours</label><input id="shiftHrs" type="number" value="8" oninput="recompute()"></div>
-      <div class="row"><label>FTE work days / week</label><input id="workDays" type="number" value="5" oninput="recompute()"></div>
-    </div>
-    <div class="fieldcard">
-      <h4>Workforce efficiency</h4>
-      <div class="row"><label>Shrinkage %</label><input id="shrink" type="number" value="30" oninput="recompute()"></div>
-      <div class="hint">Breaks, training, PTO, meetings. Benchmark 30–35%.</div>
-      <div class="row"><label>Max occupancy %</label><input id="maxOcc" type="number" value="85" oninput="recompute()"></div>
-      <div class="hint">Ceiling for real-time channels. &gt;85% → burnout/attrition.</div>
-    </div>
-  </div>
-
-  <div class="sec">2 · Channel assumptions</div>
-  <div class="grid inputs">
-    <div class="fieldcard">
-      <h4>Voice</h4>
-      <div class="row"><label>AHT (minutes)</label><input id="vAht" type="number" step="0.1" value="6.0" oninput="recompute()"></div>
-      <div class="row"><label>Service level target %</label><input id="vSL" type="number" value="80" oninput="recompute()"></div>
-      <div class="row"><label>within (seconds)</label><input id="vThr" type="number" value="30" oninput="recompute()"></div>
-      <div class="hint">Healthcare voice AHT often 6–10 min. Common SLA 80% ≤30s.</div>
-    </div>
-    <div class="fieldcard">
-      <h4>Chat</h4>
-      <div class="row"><label>AHT (minutes / session)</label><input id="cAht" type="number" step="0.1" value="8.0" oninput="recompute()"></div>
-      <div class="row"><label>Concurrency (sessions/agent)</label><input id="cConc" type="number" step="0.5" value="3" oninput="recompute()"></div>
-      <div class="row"><label>Service level target %</label><input id="cSL" type="number" value="90" oninput="recompute()"></div>
-      <div class="row"><label>within (seconds)</label><input id="cThr" type="number" value="30" oninput="recompute()"></div>
-      <div class="hint">Concurrency cap ~3–4 (quality cliff). Common chat SLA 90% ≤30s.</div>
-    </div>
-    <div class="fieldcard">
-      <h4>Email / async</h4>
-      <div class="row"><label>Handle time (min / email)</label><input id="eAht" type="number" step="0.1" value="8.0" oninput="recompute()"></div>
-      <div class="row"><label>Response target (hours)</label><input id="eTarget" type="number" step="0.5" value="4" oninput="recompute()"></div>
-      <div class="row"><label>Starting backlog</label><input id="eBacklog" type="number" value="0" oninput="recompute()"></div>
-      <div class="hint">Handle time = agent <i>touch</i> time per email (drives FTEs). Response target = SLA (drives max backlog). Benchmark ~6–10 min touch — calibrate to OpenLoop before acting (see Method note; not the same as the command center's blended ~2.1 replies/agent-hr rate).</div>
-    </div>
-  </div>
-
-  <div class="sec">3 · Required staffing</div>
-  <div class="grid kpis" id="summaryCards"></div>
-
-  <div class="lbl" style="margin-top:22px;">By channel</div>
-  <table id="channelTable">
-    <thead><tr><th>Channel</th><th>Daily volume</th><th>Peak-hr volume</th><th>Peak concurrent agents</th><th>Proj. service level</th><th>FTEs (loaded)</th></tr></thead>
-    <tbody></tbody>
-  </table>
-  <div class="note" id="fteNote"></div>
-
-  <div class="sec">4 · Surge — intraday & backlog</div>
-  <div class="grid charts">
-    <div><div class="lbl">Voice agents needed by hour (Central Time)</div><div class="cbox"><canvas id="staffChart"></canvas></div></div>
-    <div><div class="lbl">Email backlog projection (14 days at planned FTEs)</div><div class="cbox"><canvas id="backlogChart"></canvas></div></div>
-  </div>
-  <div class="callout" id="backlogNote"></div>
-
-  <div class="sec">5 · Sensitivity & hiring</div>
-  <div class="grid charts">
-    <div>
-      <div class="lbl">Total FTEs vs demand (volume multiplier)</div>
-      <table id="sensTable"><thead><tr><th>Scenario</th><th>Daily contacts</th><th>Voice FTE</th><th>Chat FTE</th><th>Email FTE</th><th>Total FTE</th></tr></thead><tbody></tbody></table>
-    </div>
-    <div>
-      <div class="lbl">Hiring plan (annualized)</div>
-      <div class="fieldcard">
-        <div class="row"><label>Current headcount</label><input id="curHc" type="number" value="0" oninput="recompute()"></div>
-        <div class="row"><label>Annual attrition %</label><input id="attr" type="number" value="42" oninput="recompute()"></div>
-        <div class="row"><label>Ramp to productivity (weeks)</label><input id="ramp" type="number" value="6" oninput="recompute()"></div>
-      </div>
-      <div class="hint">Attrition &amp; ramp are <b>benchmark placeholders</b> — replace with OpenLoop/BPO-measured values before planning to them.</div>
-      <div class="callout" id="hireNote"></div>
-    </div>
-  </div>
-
-  <details>
-    <summary>Method &amp; assumptions (what this models, and what it deliberately includes)</summary>
-    <div class="note" id="methodNote"></div>
-  </details>
-
-  <div class="foot" id="foot"></div>
+ body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;
+      font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:#f7f6f3;color:#2b2a27}
+ .box{width:320px;padding:28px;background:#fff;border:1px solid #e3e0d8;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+ h1{margin:0 0 4px;font-size:16px;font-weight:600}
+ p.sub{margin:0 0 18px;font-size:13px;color:#7c776d}
+ input[type=password]{width:100%;box-sizing:border-box;padding:9px 10px;font-size:14px;
+      border:1px solid #d8d4ca;border-radius:6px;background:#fcfbf9}
+ input[type=password]:focus{outline:none;border-color:#1b7f5a;background:#fff}
+ button{width:100%;margin-top:10px;padding:9px;font-size:14px;font-weight:600;color:#fff;
+      background:#1b7f5a;border:0;border-radius:6px;cursor:pointer}
+ button:disabled{background:#9db9ad;cursor:default}
+ .err{margin-top:10px;font-size:13px;color:#b42318;min-height:18px}
+ .rem{margin-top:12px;font-size:12.5px;color:#7c776d;display:flex;align-items:center;gap:6px}
+</style></head><body>
+<div class="box">
+  <h1>PS Capacity Model</h1>
+  <p class="sub">Password required.</p>
+  <form id="f" autocomplete="on">
+    <input type="password" id="pw" placeholder="Passphrase" autocomplete="current-password" autofocus>
+    <label class="rem"><input type="checkbox" id="rem" checked> Remember on this device</label>
+    <button id="go" type="submit">Unlock</button>
+  </form>
+  <div class="err" id="e"></div>
 </div>
-
-<script src="chart.umd.min.js"></script>
+<script id="ct" type="text/plain">eyJzIjoiQ0hqS1Fyei8rT09GbUxnTWNTTmVpQT09IiwiaSI6InFoSmtSM0JQNWhtb1R3a3kiLCJjIjoiWmxDSENZRGp2cUV2MDcyTHlhK0FuNjdvUUl0c3hWK0h2eUtPSXdpZ0ZYSUU5OXFuYjBTMm84TFV5eWVRQ3d3QlBvYkViZUhYVEQyVDhZZlNFeWtGZ0UvamdGRk42M2RjM0kwTnhGVVRneXphb3RtL1dZYjJlZjJVRmtOaVFld0IxZElyRWlQek5oWU43YlRzSlh6VnZ2WmFoZ2FEaXkxRDduRUc5cXZYSDFOMjdjVUdqYmFEcVBNUmQ5aUp2d2htMlo5Q2hsbUQ5azBtNVdPUTIrZnk0RHlxSU9NY2Y5Rk9qazFWdE9lN2VXVTBUNm9ScHVPSkdkWDVSd21zSGRqVUhveVp1TVlIT01hZzN6VEtRUEtNMXcvMTVMNkg0WlVtb2ZGNzlxcW4yaGlGRGZMQ3haWWNucXIxeFpmQ05aVHh1aHZSc2svSTk2eVRvWFJOT3dnRk04REo0aDVNM0VRRzdHMUtuOFZCVnVJMVIweDdhdnM3aDQ3RXMrVlN5RUlEL0pOb0RtWENhSHlYbktCc1p4TVNNenZ3UituNHltN3JSVjZhZFl2TEx3TEdCS2swSzN1bjNJMVFCYjYvbVFMVjdubTZJM250ZFdDUlQ1VE43ejMzcFNOcnJMVGczeUtLdHF4eGU1RnhoM2NESmFnY014cXJjMEFBMzJvUVpRMkR2V0g3VUVmSVJHalEvR0pWWkpVcElta2g5dmIrc2QvKzV0cUhVQks1WXVPbys0VjJCbjBONHZvcTZ0RjlGSnZGbnRmcnJzempjSmJFNFlRUlVCV1RVMEorVE42ZjZkTGcrbndJTit4eGxCbC9IaW96N1RCWHNSMFJmU0YrbzJQVXBGYml5MVBKYjZlVzNISEF3MGtCM1RIVGlyeWJGTU9LVFBrNG9KSmdvaEE4Y0pOUzFnTGhKeTMraUh3anc2L2tzMGdBcUlhNTNwRjh0WlJpekRPVDJwcmVYcktnQUMxZVpvTGVqbjV1UmVwQXcwRW9lUmdLNTBIdWFPR09QSzhNWnh5S0oxRjJvTUNuQkhUdjBNOEpBMHNtdHYvMEg5Uml2YlFFOXlmbEdTRDROUktpU1B6TGdXRnVEbW91TC9DdkxwTFZRZnFLRHgrbjR6TS9WUWtPWTRsS1ZFUXlxL2RFSk9NdUxjbHNURWRESkZYb09hTk1ERmViRlkwdUEzd2ZsQzhQNEY3UER2OUd4YWRITEhpQ0xGRmx2WjhPa0NZSmZjOFEwcUVpcmN0dlJtcmd5NzZ6UitGcG03eEh2NHh2MjRKQTB2eHVkZVJqMEh3d0JCcFJ4aG9MZHloUzYyejBJTzdiT3c0ZDJtWHU0Y0Qwa1B6M1dRMmozUDJNVFNzMDgySmR2d3RBR3NNT0ZHeWluWEh4NVBSOEhSY0ZOZ0RRZS9SRnlmNG14c1IvMWFHV0JtckFSazNrc21oaGJLR3RXZDlLZGdTbkdheUhaZXhQbU9YWlNVOXpDbUNicklYYlpOYWhMMzd3bks5dnBOaUtrZGVER0xLa2pQYmpOcFEwN3FuTGFvVUJXODV5T0dtcXJPNnZ1TUR2ZUdyWTQxM0pRdytOVisyeWNBTzBDSGw4OWY2Q0d6WldrUEVPT3BNUFpRWE1LdFZTMFRKY2dKZ3pmWmgwcGhMclZlYXNFbWd6NSs3Vndkb29VWWVXMmtBRGYvSUh5QTJraTBvUlhQTHh6Qmt1MDdLVHJDZFBaZERUb0o3b1Ewd2U1UlI0WkN3ZVJDMUNCWER1VkcvaUpFNXVJVDhRNmtEV0NXMDd4RDFjOHFuWXRQSGxvWXRBaWQxSE5uSE9mdEZnQ3JZN3RUQURZclRQbjBHSjJGNFVINk0wS2NseFpRUWtvdFZVQStwUkFzN085clhscnF5MW9pbWxscU5sTlVrYURIcHFCd2JTVStlelJENUFlbGlzOTFjcFYrZCtxNVJzYVhCTlUyZDNZanZKbVRoOXNVVlovTC92ZU5vTWpGMW10bzdUbG1RZHIybGdJTDdXNklHa2xmN3RIUHRYcTlrZXZ0RWZyVTdIcFUzL2krUnp6eWpLaHB5d0JhT25YdDVwbnhHeURhMDhTRkZFN2k2WWdDQk8yWis1N2NZejVudnIvSlVocEVRVFFLUklCaDJtdXNQd2ppT3VXK2xlUEhoV3IwcUlHZGZWT3BGMFBhcTFOeUZmZy9iaEtGV2pRT3JENTlYWGtsN3V3RGgwQVpNVnhucUw2R2JZNFBrQXZ1aWwrdExndGt1SEpkYnlrTTh3TEVVdG1vd1YzQnl0SncwRHBnM3dOVThmclcwTGEwdnpvZWdlQ1RZTXBUbEZGVkVVZEdWNVJQa0xncVhhaHFCNEpkUGw1Z29nTEJvWnN2L3V4TnF4MVR5alExU1dLSS9GbGRENnFwZ21YaGZuTUVzWElXTHc3Qmp1czQ0ZjlOcnV3V204VSsyT3ZkR0MySy9DZ2k5a1NJeXJOMURjODN1RUtJL291S01zVERVZm9EMzAzSVZNR3ZlaDFkSXV1UjRFRVJidWZWU1pXQjRrZkVPUFVwb04yNE4yaFo2OHc2d2I5UzhBTFpIM0wzUVBJdUdUL0dxY0NLN1BGYzZHRWUzQXBrRG02RzdEYzQrQWtMU3FZU2s2ZFlySnFZNkJLNWpMMjIyVVFNdFMvSVBRbDVoaTB0eFhzVERETXNnVmJTcmtEVUNobGUyRGVTbklLWkF0NmMzRlgraEVia0EzcEhpYzVEQ1hjNVVnMXh4NFpDc0dOOUJnMzNxUWxNRHo2V2ZaRm5sYWV1YjR1bWk5Y3N3dkphS3FIeGplZ3ozS2tiZUM4VTk5dTA4ZXRObGkzQXFhRVk2UTc1VlEvZ0doak9wMDlQdDFWdG5QWDN6bDJnVk5VQjEwenNIZm1VN0ZqQitUTW9vU3dEQkx6L0F3dWJWSmpxL2pUeW5vREMzdkVLVGxvY1ZnTHU3UVl2N3ZBdElIZ3VKenJqSjJLWVd3S1hCSWhsOXlIT2I5aHF1aWlwMHY4K3VTdmlNUGNFUVhvWTMvSWJ0cW5Mdk5kcHlqVHZWeVExTEsyMlArQjQ2U0dWTi9jdkllOVUwSHBQOUNWb1BLd3NSWXdBUmE2dXZHUHVYT2hjNWNVSjZsaEg4RHkvQ1RpZDZhUnRRZVZWdVJhVEwrcnUwTWNUSG1QaDZCZFNHQ1l1T2h0RFQxQldBK2JPaW12NTRZeG9ic2VrSU5GcG1vRVU3ZGJpWHp0K1I2RWF4dk5OV3VOS0tLV2ttNzROcVFrSGFDbE11SWg2cUtYTHlpWHQxMlFWdFQxR1RzZXVaUTZXaHJxLzFYb2JDME53SXlBYnpQK2QyMncxVnQwSXpmOTBVY0FaWHQ1ak1tS3g3K3pWQUJ1TlVXQkkvQms4czN5SElzNFhxK3c2WCsxMWgvc0dHT2J6bWxtOEZLWHA4UDJxbzdDaitNNFRuclNQcTFjRWNJRXNGK2pLdEFyaVpYOVBxMHdmOW9lRnhic2QyQnJGRnV6WUZLUkNzVUxoTE1yK2tBTzJXTEZHL1JqeVlGMWsxSlN1YVVlZlhBd2c1VklzRUE0U3phbDhTVitzci9kay80NnZ4alhwZEd2eDlMTXdlbkhmUXZTWEpmdjV2UUpnT2x4dzlmN3VQc3REYlA5RjVxTHJUcWduTjJ2QUlRRjhHWGxiaEhUVHlyTXAydHp4ODN4RW5qNFFscUV1dnJhaFdMQ21rZXdDYjU0UnV6a3FYTXhNR2hLUEF5UlNuSjN0aU5ObGZPeDJ4TzdqWWdSSHFlV0VHaXV1dDdBSldaNHNrS240YUlzTkV0NEw1eHM4bzU2bDBKWGxyTWxLNmExUG81VU5lRStjcVg0SnJIa3ZqckhIak1hU0x5VC9qcVg5dlByU3VJME81aXdTdHliYjJVOEVzQXFldGR4TWR1Z1R1WGc4V2E0ZlU5QVFESzFad01IVTk2QnJjMTBUeXp2QVQrZjVkVnZtczFKY3ZtQ3FiYTNBcUFjejZCK3NUUGZVbzh6NUh4cFI5ZWh0NDVHYTRqNWdaOXlCbEJLMFM0eHBaWTd6V2R3elJtSkduV2dPVThZaVd3N3o3SHdodnpiVTVSdVpsZlhWTmdKYTNoamJ1ODVSSDAwNXIzbnZEVWN0b2p0RHlaME9rVExPczZYY1UzWFRjaGJqQnVZNTgwU2JxTHVvaDFoK00rMm5oL1NNS2pPOHRNOTExOVRVaDdMTnZ6NER2S0hiVnVGaC9HQWl3c3FwaDVRZUd3QTlqSlNsaXVXbFZUOFVwd1pxVFJuQyttZGNibnlwemRnSCtFUzVYY2poQjRkMFBoclZaOXBocGgvQ0JZclNzZzRReVB5WG9KK21UNlN4cTZ6d0FNeVB5UXhYRUJIQXhPNG5nRVh3VmxGdVZXNWV3dllrY0RFUGJGZ1k5dkFZUVdUTFBob094a04yZTdPSjhkMVkveEtXdlNrVUZPMXFTZVlzV2NiNXhFelpiTzgxWFkxTzltdEpnRzQxd0FMeno0aVg3K2J4ZEkwK2dIYy91RWZTbEp5K2FqUEZWdFFEQjJ0blRpcXdFZTV4UWEzMmxsekNnT2x3WnZ3TzZHaEFndkdZY0dtWlBtVDZPNllSM1lkcUwvdTF5dWVsMUtPamJ5SU4rUHJacS9PQzZ5QTdJcVZqYTc1UGg2U2F3UnZBUnNnQjVsOXJ5aHFoMWt6cTFaQURuTGFmekgreWRnUjFJUEcxT0h4NDVWb0wrRThzaFk1cVlyejVhSjZONjJETzMySC9HWm9Hc1JZM3FZcnJTRE1DZUJyYmdPdFVhVVFrRkJiUzVPNGVuQWtQcUg5b0VWVSszNFZxQmduOFRCYUp0aXAxelh0Wml2b21CLzZBYUNjS1plR2tJdG5PdTFyL09Sd3drSDdwM3BJVVlrNk5FNU5qKzR2MHR4Mjk5QXAwejJBcXVGQWJ1bEdMcFFyQ2xMU29waHhtdGpqV2tFalk4RGh5V2xJWWQ0djJ6YU9sOGhCTWFpTGhTeHBXWjAwR2VNUDYzQTBaMUxpaVdkLzFxMkdTYnJmdFNoaHc0NkpCOFhsVFMvQ1E2dG1ZL2kyNXMvQlNEMHkwcjU2QnBsZjlRODB4V0FYNHlHNUp6TXU2cUkrdnlGQkxUTXNyVFlla1NMWEE5NDFJL1V1L3ByMnlZTG1EY0o1YlVXdDljMG9aR2VBVXFTZE1ISWdybVgvWXVBT1dnZWl2U0dBcm4wbldsZHZuYlE2Q0xqZXV1WTRpaytsbS9HY2JrZXdNV09HNUlYMUxTd1liVEV2ZTd3Nll0NHlmMzNXUlZTMHBmZmxFUkRPTmQ4ajJlR25JSk9ob3plVExnTEsvTkYyRkJuc2pIbnR5c1o1Vk9ZSnJzcEpybzI1SnpIaHA1b1JBQW1yRHpiOFhtaG1vMkxxVFVEZWdIMWxLTVUvWGtyY0R1UUkvR0NPMm1FODJ0UUl6K3ZXd2owbFlBNDltWGk2ME1oZmcyRXo5TmRZcVVqOHZMNXJpM2JnVDB6bjM4NitmbW9UYmM2L3llTkN3amQwUWdKNUNVSW9CL21yanhueG54MERSY0xPdnVwQ0d1bHRlNFBkNkloUjNVdGZuSVJJWHNnWnNzOXF2WGlZVnJkblliM0RoTDg4d2JVQWtBeWZFbXh0RjBUOTVBbW92RHgxQS9GVVp1ejFlQmJaOEhoQkIzbFhKZEE2ME5lWERKU0k0ZW14dDg0UkVzdVZ5YjFneWdrNGxqSWJHM3hzTkU1cUdjQnNNbWIrN2o1WFdHUTRBU2pkK21Ma1Z6TzhiMWU5SUJZVmsxN1p4TFVxNlFLL1NPY1hRNE13VFExSDMyZnZtdHhITCtmRGtBVmRhN0wvVW9QWjIwTS9iS1dMbGZqVDV5N1dwQmExZnljUFN3Mi9rdjhyNnhsQ0hzNEREbk1zRTZjNW5HZFliWnVEOG1zR1ZFL1o5TTVOemJHTzB0NWJ1UmJGY1lCSDJaOTVKMTRjNXJyNm1jMmJhV1JHMUlxMHVrSUUrQk41ZTFKTHhnM3MyS0dOeG5IenJvUFRyV0QrWEh1cFVmMXRrbmNYdXh1anRiUXFGUEVibXBpdGhUSERWZUpJRHJ3ZWxyZjltR2p3SThMbk5wQ0pXTUVrNkNWTnN1YWJVRFc1ei8zdEtSYkFNRkRwNVFDRGxLWTlWSDRYOGVUM2hCQnN5cUpmZUJ3OXhzaGlwUkVybzZGR3pHOUhTMWNhMDM5SG1qbUV3SjJvTndyTi9EYUUyWExtMERkMG1Dd1hUQ1NqUEl5QmFkeFJLTXdJS2xxUG9UamZpM1YybW5pWjBqb3RuYXhPMGYrOFVoUWpBcXFJQU4rTzNHdUlpSnF3ZE5MSlAzOEFrNVVYWGc5NWRHcmNxVXY2VTY1SUxMNStZRVpZbjlNRnVDRXp2K2VvMWpzanU2OHJlMmwxT1R4ajRYMUdyNjlHNDZOR1NlMjZGayttVEFpT0FVd3JKS1I2OVRtVVFIVCt3VWhZL2ZTcW1rK2gxME8zZzZ3TWFmZ2tQWHJwdE9CWENLM2VvVXNzbW1neW5GWUNiREdVSFRqV2pUMzZyVEdFdzNXWUI4QmlKclJ4a1pvVUd6MDNXNFdIaktrV0EvTHk0cmh1K2Z2Z1NidWZvNkFOWUx6cmcraGlhT0dBNnM2OWpRK0d4bzNBajkrU1VITE5vcmQ4Q1prTmFHUER1K29JS3pFR04xTXBQcS8wWmIvRTgrcXpFL0JEWFNweEpQR2g4NWNNT1VrcG0weHAwSkc2TkQ4V3ZodS9LOVBKNW43eE5jOTQ0VU9YRU1Lei9lZUJ4MHFBaEVlOE1aYlhyR1AxMGZoSGlrWGVGd1dnTDRaNjFKNzZaK2t2NkVORktuNGdDYkcwdzR5NXduenJYSUY1V05hdndQZHlkS3pERlZEU05wbWJtbWRXN0g4dTYxcFpBY2swb0IwUER2NWw3M0JubDlIeTE5Y2FvRHdaamRIQnNNU0ZUMHBKNHBNajNxOTdWZlZZY29NeXlDZlltTHdzbHNzazRac1h3K2JVeitJOUx0S1ZWb1FJSzF0QlVHem41STFMZ3JQN0llTjdROW5IUXFyRGJydVRVWFYwUWM3MXcvM281MjY3NzFFdmE1a3JnekhuYzViUXFqN1pVb2pIQ0luYUVwT1BTb053RTU2eVI1dTBEcjVVbFlHOG9HR294dDBJV09JSjhReDVLWWNMQW82ZVBhbnhuU3Q4WVcvOEhCbVZTcG1rNGZGK0FNNXpFbDVBMWdnWjlYeFJqeTZxTnVPd0RLVVh1dUFtOTJ3R0dDV1hmcmdsNTJhSGhROFQwdUpTelJub0RsdTdqNEFidVIra0hsQ0FUZEZjdjFUa1pvcVRTS3ZYVEZpUUxKZUk1ZUpSVVdXMFJUVk9MSHpiTjNNVTVKTW0zNHVVZU9za0N4bWRUcG5YODNCUkRSZ1MyNllWYzNpRDllU3hNdjV6YUJQUmFBTkpJMVFGN1Rra0JQVFhmZWxoenNCSmFDMHltbUlxRXNONi9ZekNQUy90OW5vN1ZBeGlDTzQyb2cxZENBUXNMNGVKMVNVbFBybUZUc2VTSENpNHgrT0V2N2VoK3k3Nk56VVU0REx6TzFtblA4cXVSY1ZIZnJMSWxROHJ4bVVyTHE0UXN4NExvNFQ3eWxLZS9ibCs3MlE4VWpvMVE1THh4RkRtcG42YkhJclNUeXpwYkJ5WCsraVVZMTdmZzlPbUw1d1BpVjkzbnlIMUszajR1T20yZUxla0FnWVMxUEFqQm83RmMwUk02RHRYNHQ2eWwzYkhCR0JFM1ExVTFuUUFPdHlRZDkzSG9IZ1IvUnlwREJJQXR4OTkyUndqRzVxa2xNb3d3dmx6OVQzbWVncGgrczZ6RS8zb0tMY1NlNkJoQmgwVkZpT0xqZ3lXN3ErYjdOWDh1RktaY2hyMFJHRGttemFpY0J6VEdvcEE4czlQd3RYU1RsaUtVRFVzVlFPaDVraXlQRHF2Q0ZHNWRxTEFiUWdOVkVKMENsN203NXhQRVZHTUMxVndGekZBNXNtOXJlVnpMdG1BM2tKL2JkakZacHBob3orQVYrUnMrbWg0V3ZrbWVEa0wvOWdOMnFqSEovQlpvbTB3ejRIYmhGQmhqbjFxZE1kczByMnRSK2YyUDhINDNqZnhGWmV1OFRud1hXT3MyVkM0S1FnWlZWQUxpVEFjWEl0ZGNSa2ZwVENVbCtHMSs4cGxMcFBHbGZaZHk1YmdzUkwzRXFUTXJCckduc3dkZklYczk0NndBeW42T0E3R0k5TW9HSWQrU012dGRsVStzZGZweFNEVFowYm9aNHU2OUcvNGI3M2VWYTZrUHdSZHA2bjhtYzRQVGhjeTgxY0V2R0xHVzI0dzU0c0JoUGVEdG1YanpDM1N2dE5jRFdsRUVhaW5GdXJoYi9IUkpVd2hYZWtjTmdob2xjbzhCd1NjR2haNnhjcWh4RkxXU2NERmNCbEx6b0NlcE81bGYrcFpIaWYrdjRPMm1Ib2dxNGVtdjVwMDYwczlXQXZRUXBtVmxaK3h6dkMwdTFzYVdxUXdwNU9VVWRxZGVjTjNNM1JGY3dkalBDRU9ieVpDSVpqOWM4ODRYd2IvUURkblZiaWtpRHFVTUdYWWlmME1JbWNJdW9vZ0JoUklxYjdFOTVDaDlHZVJQVEhUcWdWNUNsZ0JxcGFyYTdZTmNTZGxOdi84eE9XVEZiM2luZ1lhN0syamE4TlBMUCsxb3V4eFhrY1ZJd1dhOVQ2bFl4RGNnM1FDVlVoNDdUZGRNYUp1OXIvU0xvVExLNGplQVErb2RkMTBCWkliejdQZ1R4TzNCN2dFVXlnWGp4S2poWkNNTStvS2dNd3NLRU92NGEzM2s4WGh5RG15Y08wcTBFY2pPYkVGMDZPcFZlQUU4dnQxaEJYVEI0Si9HQ1R3a3dvUklma1FTSDZzK1c5ZGNFeDZsRjdDL3VlNmcyS3Y0SGsvQkhKOFBZRUNaSFh2R2cxMVZpTUVkSnZ1S0JDVWdPMFlaT1pZRWwyc1djdnBUWXhSeFhKejBNNmxoSnVYMXRneEFSUnlheFN4T0JRTjFBRGliaFErU0dZMkF4S0d1a21YZkY5eU9HRlIwYjNTZWRTK3JuY1FIVHZLTXQ2RGJXYU1KYk9qaDR1YTVVc2w2dVgzbVhsNlIveWwrcjRxQ01NM1ZDTTF3SEx1K2IzbTE1NEpkWXpNMU11NW16bE41clRGdUtWTHhtWlNEZStVU3VSa2gwRm02ZnB4aWN1RnB6Z1FxNEJwNnZTdkpyNkE2aHBGU056SnhFN29zazEweTdvMFZLR0dXdFZwd01DdjNLdWhtbEs2ak0zVjQzd0ZaTDgxd3FFR0VBcjBQbngxRVpYNi83bTJyd2VoWDRZYXNtdU1hRkRaZStUTXdTWmI2ekVOblZxcU5YVCtXYW5uREI3ZTMrSlNpWnlhT3dMVGJGUGI4UnFXTHZzWWJ1N1JCa0Q4YWFScytrUTY4a0p4SUQ5M2ZvekZsQ29wNHZNRG9DV24vc3JEVXp5WUtydWptOHlKUWg5WkNFR0ErWldVWGk4MG96TFBQRDNvNnc1Q3R6WktsQ0xFcWhVTkdySHpqelNZZEY5Y0xGS1VrMG01cytOVkVodTNSWEMySW1mU1EyK292eTVnOWNEMkpnWG52czhLdzNLa2JWVy9JLzRIL3RIUDJtelc0VlZuOWgvdzVOTDEzWEl6TWlGcTVRbTZTWTN0K29hZkVtZXkxOGtsZ0RpSmMxQzdtYmZuU2VPSEhCUFlqZmUxWjg2N2FwakFYWVpRalo5em0xVnFmV255aENaZ203UWk4elVDNUV0UmZhVTQyNTZHRHFwT2tWc2FMSzBqVnNpTitYVmtWRHNOLy9oQW5yZFUwV1d3Snl4Nlh0L2kraU1tSzlHUk9sRDFlUksyRkVCT0xZNnFuc3B3UDVIZ2YwT3hhZ2JwRlBLOVRwT0k2ejJhK0M4MnB5VFYwamJvN3UzMHFaS3ZRY2xndEZXbkNuMmthSmsvOHRkblpMTHFxY1dGKzZyTE4wYkVXL2VVVXRsUHdSZWhLZHNDTG1ISDYzcksrbFdkbm1GcllkcFRKeFZPOXRKZG84cDRCdlZuVi9CcFp0dmh6WEF1Vk5aZmIyNm05bU93Q1A5Vyszd240THhTN05xMXZjSEdEMlhUSmtJTVBiOGFLMFp1V2JFUy9vTnpCSFRYR2RXOUxObEM0bm5Mc000dXBha29OUGZ6ZzJzUWxITk05dndPS0F1ZGZwbENpSldzQldhWHJrNEFBWWZ1ejNoZmFKQkpRYmxRK0Ezc3FaTzBIM3hLWlpYbGVKc2twUWtXckhnaWNqbkhwOExkdTkyMFBlVWt1Yk9jWDZneHNaTlNXRzhZN0tLSzdJWDI0Sm0wWFVJMm1lc0ZaNGE0TEZqK0pRVmhYZFhvbVVjdmV1UUFsR2puSnErV214RlZjSm9jZVowV2JrZnJOUzZrNUYvQnAvVElKcjJFcWJnczVwdzRZemVmeis1QmQxUGIzRFhFVklDZUtYQXBiYS90dWUzK0xRb1JGRWVLQTFJZWZiYlNGSXJzd1ZRTm1oV1p6YThOWk5XUStWeXVpUVNLMDJFUEFxKzczZ3AyUlVRdGxrRDllSldkU2NZVDB3bWFiVjFEOU5TUG84NlRrbUFQQm5RdElDT2NUSVFYcGVMQlhEcVpjTmVaRkplcTF5OTVRWVdXNmEvZFNMbDlwdXk1YkxIc1pZZW1aMUJoNGlMQk9KZW5naEtKa0hPcC8zNUx2QmpHYm4vM0hhSldhL0g1YmlWdGs5TFdmaVBuOXJUVUFKalJwK1VVajNMRkRJZ0FBZlFXNnFCN3BGWU1xdzdGWkZnOFBDZjRuSU82WXVHVXk0cHByaFFORkREVXdiTnQyUlI2RlliNjZ1d1BJNjYwRHl0YmJPWXdURUdxZW9hRHdwQTNtbkh2dVIvOUhPbWRnbUh0YzNKeHl2YnhTa0NYemNUbTN6YXlWdVdsK256N2puZzRxcUl3MU5uMEpsVThBb05ScDF4VHhYTVJFbTJzUjErUTh4SnFJbExQampMeGpKOXF6eFF1TnlLS1pxaXBPYndicmpEdjhET1VSazRQRmt4aFJaZ2tONkNBVWxpblBUa2tqWmYycUNiY1FBRmhGUGtjc2JxNy92TlZGTlg5TVZpeHNaKzRiU1lRZWRGeVhSTFg1WE5TeEQvWTQ5QkNwR0hZUFZMV1JxN1FiZVl3bityRzYwaEF3dkRnN1hSRVRiekFkRlRwYUhPOTdxU3Bia0VXaUpxV2pBSDljZFp1aGZvWFd2RHRZOG51UUZjU0I5NXpNSEJZZmZXZ3oycXdWbXJtS1VhT1pJempJKzFUT1dEU2YyUENZVlFQUVlsMnhtTkQ4dU5XVzlTa25XV1Z0aHZ5U0UwMGhuai9EdlR3czlySjRIVjNydDR4QTRFVitJU3lEYXN2KzJ0Z1p1NCtmci9PRGR6bzVQRDZ2M0pvbndXM1VYMTJXZG1oYWxYYkVWKzhaa0h1b3I5MXg1c2dydC9UT29WL0pBWHhETmF2UXc0ZGVwejJJbGVNd3ZjRVNEb3pQakc1Ym9hREdUZkRQSGdsV0hiSmNEOVZPTStzb0NNaEp3VkZyVGhOS2RFSDF6U3N4ZEJjcXdGanhJeDV0MWZJQTI3WGg4MzlaRVIrdFVSQnVmZFFFVGFnY3VJN1BOSzMxelp4VDBGNyswNjJ6aUZGdHFJN3ZrdXNZQ0x5OUVEWUFwdHlwcWE4WHl2OU1TQmQyRlVWdFZWOE9BYVN4Nm5SM2lzTnJpZDB4cmZzWmlqcVRBSmFBVklQVmVNZG96N3BzRlhHZ29yYzhJV0tKYTRqMVRoNWR3Vys2U3lxZ3pnNGpndTdxRmVKR2x2c3lNNmlFbURiVGhBZGFnNXFxa3cvdDN4UUczZGFPMFZEVk42azB2anlKMzBHeEZkQS9GeUFhbEFQVTdFdVdvNURDZW9XSjJrQTNYNGliL1VEbnBURlFaMGpNSHNVL0Y3TjlmaU80R0JLREFQR1hZZWMrQWh0bVRuNGFJS2lrV2k3eGlONDhKTEQ0b1NQYTdzSG5EbGlWTm1pNEhvZ2pkTHBaNERaVEVvajc3ejBlQmlIT0owMUN3VktRcEhjWUs0bkd5dTZDOWZVZmoyVEVvRjVmblhGM1RLak9zV3lmMnNWcDBHOGVIb0dvd3graFh2elhoRjNGZGVsK0sreEhQRWlPem83aWZvVWtqVXQ1aTZVNkh3WndUYTRRRXdGSVUrR1RlZjF3dnhqM3ZIWDRxUDZnWEhSZXVISUhDQVJwZnNlMkpya3dmVmoxZ0hGeEl0Wkx6Y3BiVythY1RiSURIQmxZc0h3RjlId2NDeFJSak4yRVVHNFBpdzhwYVhXdVBzY2ZvMjQ1d254L1U1YnhNRFN2NHZ4ZFFwSm1CblZrT3ZtV0FpMEVqV2dqbTZRMDVKRTJyRFZvbHFYckJHUmNhTnYxREN2VHJQVURTWUNkWURDY3ZhdkxpT2l6aGNwYW0rYkxENjFEYnUyQlppVU5UUjBzbzk4TDhuKy9QanlwN2FvVkN3T01SNFArUG1BUGNsNDdSOGQrT3FGWHB4MHVNcU9nR25EYm5uaWZUK28xcG9OM21NL1hmblVwUzRpb0c4bFNKYnozZUhXRE9yRzExSUR0d3FYdDlDYm9ZR2g1L3JYb2s0MzBEU3pCSGRGRVVKUjRXRVE1aDN3T0tNRXpBNlVjZ0htVDBKZXBuMEZzYVdHWWlYWGFUSFpFV0ZmSnV4ZG1HZFQ0anhFdDIxYjNhZU5wa050aUpDT0xNdlF0ZXgvRVg3a0tXSk5oVmdWb3JqMnlVcUlBdmtLK1cwdHdUYTRvM0w3MkdQdzVDaFE2K3JKdk5taDNoQlQ3cElDekV6dnozSzFRWFhja3VZU1MyMlN6ZzZtd3Q1OUE0WjVhQS9mWHBMVWF2aDI4OFc0QWtLZFdQc1NrVEQvb1JOU1ZEMkFUYlp0Tk1zUjNXRytLQUdQS09sT1FCTlpnT1NqZEhVcDF6V3l5aEtJamRhaEJKbXVxQVlVNWthNmkxd1JSZGNRZS82aUV1ekpFR3M2ZFIwdkd3ZnVCcHBYYzM3bk5tWVA0cldzTVd4cWRBOVExZEFpQnh3WEhoa096N1ZhU1dtZ1hNa0Q1bC9xZ2hWc0dZU2RXZXNPcFlaaTBUZnpKd2dHak9nbVBkRUtUS0krNU4xQ3hKU2RHTzRxMk56cmgvOVpiTmhIWXRGQ3dDeFc4T25KMUFZMTloOU5ydTZYY0ZnbjVOTEpxb3o2enFhRmh5SHZVR1RHeXBsa1ZBbVhkN3dMM2pOR1ZwcVowSm41TDFCY3JWeXdsVlR5OXRPYkRPMHd5cm9Mc3BYdUdyUzJDUFdRb0JXSW9xcmI3Zk1leGZLQzV6aHJxRVlOZmpFM0dmWDJ6bWlaWmFSa1l3dHhiNVN6N2VBQjlsYi94Njk2SVVXejR2YVhGem03Q1NrMElCNU1aMmxMOXJsQ2ZYZkVXbzhBY3dobk1JSTh4T1Vkc1pBejEyaWt3TGQwNVdENWtaZHRZNUk2VkMvK2JLbEZjVmJQSWdtM3NRL1YrL1RId0lmZ2ZJNFRCZ2puQTVvMkpwcmRDYXphL1k3a09CaGFWQTA5MWtqN0pyai81a0k0YlFYeHlCWGtiVENMdFZpMVVWTUZSV00zNFhaRHNyL3QzeHlEQnhGWVlGcUh4Q0dtVWcxRS8rem8yMy9WRkc5K2tVKzBDTlhHTjBNUXpTQlp6OTRlUkNKNHJUekRIcFFBRG9oMDFJNUlHTTB6VStCTXBjTUd3R3dIQkVJUlZ3N2NiNm9YOVNXSXgrdmRRWUcwNmY1NkpwQ1JlVVJkUGdWYmNZa2VrVXBxcGszcWk1YjBtRVdHVWNYWWVrb3NaR2I3RDlzdmsvWjJTWnU2VlRWenRRRFJ6NlVkZElWb1lJb3NkTjdxYlNWZWdYSTZPZlRnbjJHZGJIUjE5YUFzcDFwS0FTdTMzOTJOYk05UG5sTjFVMVpibDlPb1k2MXRScHArMXBFd1hvcEloUkVDUkdqOVBmVXFZL3lIckhadXlHR21iY0FWZXJJeGc4RVJ1K29PbmZLUlprWGVxNEFaZThNanlPNUMyL09HUStORUdZaWxTdGF5eTVINmdnUElTOUlVbVBlRVRFVVZkRHhiSzg0REhkM2VPLzFTNWpnZ2hpMlNoWGU0amcyQW42R3YzWFE5NjlBSHp2UFhtc3NpRm1jRVU5OVd2R1ArblY5LytVYVVyTkxqS2NiNGtTVFhxYitDMERKbVgycHR0UlQyckJ1cXQxc3FKZ28yUGY5eWtmcVhmaThkdkpGa3hsb0VrSitJd3pyd3A1ODVoNHNtRENTOVlPVHRmbWduNGlpOEZkaGZ6ODFsQWRIcVlMcEhjbHdjaFF0dmN1bmVHZjBpMFpDYVhmdDVnWmQrZWtVTGx3dm5xUk5PbzNRYzBSN295dHlSTnYzNXBCTGtVZXdJL2JaY1VDWEpWbjBtdWJCVmhiSVNwZ2pyR1BUVllUOVBONlFFVGMrV3BkSExXSE5LWElnWmdRZ21hRjhXbTNtT0xFcmg0aWUrQ2pIWTI2UkNSSGpIekdraExvSXB0bENqZmo0cUhkMUg1ZGV1Q21XSjFtTUhQMGVhVEFFTUVidGJ2a3FLRUlCVm91SzNKK0NYUE9sbUdqT1JobUwzZS9qeE10K0laZVJMNmlYQWc2U0ovd3RmNVQ1M1dxajhrNVorWmpqU045TFNtajZYNjhqMEZYa2ZLOUxhZTE5UXR6Mnd0VkNwODI4d3NGUTdGSSszODhWUGVQRjZqdUJkTWd2R1gzZ0hCMnVGLzVnUVF4Ni9yVlVLdWs4K2dmY2xNME1ZTFdVeDR1Vnc5Y3dIeHBBUnhtanU2VnNLN2NQYmhDcW4xc1QybW4xWFR1RklFdG9KaXpTazBsUjFkc0RxUGpnb00xUmR3Y2NXeEFET2dGbFJtT3JraEYrRTIwTXlhcEtkWU42cTArcW5veGZ4TEVBY0FhN082TEdvUm5qUkVQWVliTGNoYnMrVVlGNFF2RU13QXRENWM1WFd0bVZwRGEyenlBRVFBNkpYSGxuaE81dzhKamljWWZZTVdkZ2lUWDF5WGdjM0ZyT2tQeUFHNkhzZHZTdEh3eGlxUWZzTkttUUYwVU42TnI3aHJXV0ZNS3dRRjlmSHpQU1gvTUs3NXBQcjBuU1hXK1lDWmRneHBPa0pWTmhyNTQzcUNHR2hzSDFrQnZhQ3IveEF3UjRkMHQ2UjhITStXc21HRmg3dkxURFJoWGc4RjJraXR6bldxN1ZPUDF6MUhMZWFEeVN2RXFOTXYwV2JzK05VV0VoSWRhb1JsazE4YkRLZ1BQRnY0VWhXZWloQ3NxM0c3WkRrNVZSaGFIQWIyVzdBUDNrZWh3MTl3bnd4SDBnNG05Z3YrUmw4bXZuWEhLVzRpWnhNczFLcmxHdmdmSU9idFhxdFYvWFhXd3gwaGZUUDNjZlg4NjlyWlErKzdFaUNleUdNZlVxdHF3R3BkaXhrcmNVN2U2ZFZLK2MvbkE1VStCdTZzWEplODNXTHZKT2JxUGJQMHZDdXNvVk1HM2hlNnVXZC9vdGZJK214SHVtWm1veVNQN2R4UmlNL25jNlN3bkhlaXF4bmN5ZktacnJLOG5FdnlaMU13aGJyb0dndEFDajNMNDk2R0h3K0FVdTVFREtrVldXZXNqR3NJK1A5QkNHRlYyUURwUmdBamNLYnN6c1ZPbVpjWG01akg0Mkd2dkdXK2FzbUc1VEZiU3RPQ1cxQnVtT0J1N1NqTjNidHBTc28wdlJCOElud2wrNVcrQVA0ODN0cEg4VHRhbmZzdW84UVNWK0F2UHBZT0JDSVpiSzdxdklCNzNrQkllWTUvYjd6RG9Ta3JsUkJ2OGNqMStlcFlWUWVnR1gwQWlHMzVETTZpWTNUaUplQU4yV3ZTc25ZU21UWjdHL00vdGVCcDAxQ3loLzViQ1ZTVmJjU3p0bngwWDVEWUNldVRvL1oyZnJkbW1rZGNMRG1QaVBmRmVPSW1JZUNOTHhOeDdtZi9qTVlxWjJYVjZZSzdDYjBNU0YyZGJNRWVFcmNXZ293VnpadUF3SmVMVmRSL1FCeVM1ZlRPSStmNXBKUk5HVTJZTUx4cmlIbXliS3l1a09saWNMNWZsTnZ5MzBPYUhRNHZhNDdCcyt2S2JKY3dtK3lQbkR5RkxnUG5Eam9QUVp6U2xqYk9PSmU2TWd4RUZXSkpoTEhqWEQwbEwyNkUvc0thOUVsRkxsMml4a2pOL0lHUHNkZndFTFR0dmFpMEF1U3FGYURTSFlEUVd0K3ZlS0xxRXg4VGV3RDF3TDdCQkhVRHMydzlIMTRBWW02T05BcWFhcWVxQkdQL3RsWlhFODh3a2U0Unk3QmRob2J6WExucWZiZUNlZmpUcmZMVUlRdkxmUzcvL0J1WklDdURkL0xEcFNIa1lCRHlDODhNR1NSQkhSK2xCSVNENzJhUlhZeE9Fa01ZZ1lFSktNOFhiT29CcEpxQ0pZdW5qb2pzSjFKZDQxL3VGY2J1SDlkc3pjbUIwZmFSUXlNZnVWRDRxSjRGeVJkWTY3VzlQeHhtOWlkNURYaTFDUlZyWGJIR3I5NmYwSUpuU2FSV2dGTzI1K3EzRGtYdEFUSkxvYWpXOFJOUndidGhaZGtmakVJQ21iVU8rSFNrZE0raHhVZHRYTWJtQlAxQVRRMGFXbTJJSVFhU200SmJjRGpzZjdidlVHSFd1MkUra2hxUmY0QnVrWVRNVGU5bnE3VmNWdjNNdmwvclFVVmMxY3FxTXJ3MDdIaGNDaDVlaW1oc3lrR3JYTW1RVGU1emRIZ3pJRWc1KzVTMENzemNpc01LQzNnTWlOYzJBa2lTQmJRcXp2TkJaVjluMmx2alQ4b3RJbnZEd3lPY1E2M0NiSi83OWUvT2Jkbzl1TlM1aWxaL2lnUmhYa0IxbGdyaEV1RGVuTzIrSVNtdkVOaHVwcDdiU1QzaUprMWdTd2I1MjhPMmozZFYwZ1JBMnJlTmZPNkVVYkFhRTc5MHBhSWtCdHFWN1NwVll6a1Q0WG5IT1h1Rm92bUxseUpNSVR1MWgycjNnNDVCQy9TOWNyN1cvTU1ieTdydlUzSkg3U2RXKzU0WEhXakJJQmRyREpybFhFWUNhV2V6UWh6eVlyZjZBMFUyYkVuR2pRMmh0Qzh4VTVVN0lnU1p4SThOUGZSRjU0MFUvRG9HMzBIYkFHK1pqZHVnTGZacGNDZnA5NDlkc1o4ZDI2ck1VQ2RIZ0UzRjgvbjgwUi90alA4bVFoWVZMK0FMQno2K0Z5cHdwTjF1MFVzTXlUNmZ4MVFGVE5KalhZNWpPbkZoZmo1b0FXeSs3VVZLTGt0cWRyZ1Blai8xa3AzZUFORXhSbGVVYWJKZW4wZzhTRGpPdjB2ZGxIMFkyeWdwSnFtSHlmU3VhUUpTbk5kTVZyWVBMcERuZFE4eTQ3c0tGMXVKTzY3TUVwTnFKRjJON1E2d2xEc1FZc2lQVWprdDJrbXE0MDQvYVd4QzVMWUhDbDZ2ZHlrZDcrbGR4MmNkTjNZTG9NeUExYThzN24yMk1WN2xLNjNBV1JEOTduS05xbzVremdVTTlDbUpER0E0eWxlUi81SFJKSTNBVVpCQVk0WFE4VjJET21nQzJYbFFKalNDeTIxcDNoZUxWSXJ6cmVmdDJFQkRhOUhhZU1ITjZDQklXcW5TZ3JUY3RRM3loVjdpdEx2UTVtaUhuUDd6K3ZONDJpRisrQkN5dU1BOXN6dlczTkhFSmV3MVQ1UzcrNjJXT1NGOWpzMnI5OUE3RSs4dWhaQlJwNHZtU3hEWTNWUG55djUrck1iUWh0cXFlOExOUnJnZllIR29CbFVBMVV6NmIybVJ5VUQ0eUVQcEgySHlBM1ltL1oxaFdZazFhTXpwM2hpeTJiQ2krNkZPd0RPSTU1MkdSemRHSCtqZEhFWThqWk5ITUs4RUFMNWVVc1ZVR1YzR1JLN3lBSDhxM0VDTkJXNnVPUWF5K2tXeTgwSUliSTFJUXpzVUg5VkR5NFoySXFWaWhKbFgrZVdxWUFybnJ4RDhqZ2p2dVgwR2Y4V3hybWFYRkFqSkJpVVlUV1lpdDZybU1CTDFUWkhqSlRIenlSSmJSWXRiNmRVdVBZQXY0ZVVTWkJadmRxZzZObTQvQnViRGh2UXFyVDFiM1k4UzBGeTh1dzdkUC9DTEIwRmsxd0lBMjJ1bGpwVlhjOVp2V1Jmc0lTKzRWMFlGMjBoRFpEM2EySm13anJtVlBpZDRQcThBK0c2WXl6Wmx3TWZ1dWFCZUw3RjBLWHQwMjJ1V3pST3FDSEw2bnZ4N01sK2tycnQ0N253OEVvYVA3SGNiQW45bkdxdEg3VG03dlU4eUd6QzJJZXU3cmYwLy92R0szeWVPL0ZMWmFseEVxQTBCaTZZZXp0ZVFySlljQlMyQ2YzUWx3aW0xdEoyK25rL1VCeUhiaG1PRzRRRFg3b25Yd1FORlRqRlczZ2lZai9mMnpKT1VIOEY5K0o2a1VSV2NPa24vWSs0KzJvaHBKb0pRZVVSRFVSZGtTbUZkc1lvR0JtQWxwcVEySTEvNlkrY2UrcEduL21yT0J2ZnhuSE4rbnRxWXBJbDVEOFhsd1ZQbm5kK2dtM0VyR0lHckF5K2QrT0VTeGd3RUxKUzYxRTM5OVArRlVxVG9UYkNPUDBnc2syRmgxd1BKbGRiZjl6WWRZM3dYek5zbHV6b3o2UW96ZURvVzZzMmV5eEdFUlMvb2txME1YK2psNk50MENBekZkWkxtN1h1d3YxcFk1MDkya0pGWm45NXJwOFBwajdjZ0l6UTczd2Npb09vUUIzOThtN3oza1l2cVNFQ1BhU2VQN3ViOEZjK0VKdEhsMUZ6VDVzSytpeDh4WFFJc3BhV3ZBV2pvRnVUbTh0S0xqZGJqeFZZcGZlbzhrUVhkODdscXV0NDZBVnJlOThZUHliQkxkOFdFL0hHeEVTTURQbGhjaUJPdEIyRllzcG9BUFhGZHdOWjVRQUxWTGRkeXZFSnpwWktBdUNaTk9Bcnl3WktwcWUrZ1dvSEIvU3lyTFE4dWt2TVRLbUo4SEJTVlhqZkpJTFNsVE5hM2VGQTFxV1J4ZTZjOUpXU3U4cS9yQlBGbUlIT1NENWZxTXIrRGRGdHQxdWtyVlFIelBGcEpFd0FCNEo5Rlp4bXYzaC9Cb0ZRTzZLcUxpOHN0UWpHQnJYZHpwWkdlNjlqTFc0Z1ZEL1NFSEpuMWhVVUtVcVo5Y0Z6ZlZucWtsVmF3cGZDY254REt2ZVJUcVh1ODhGUGlJYkkzMCtGMnNoZjJ5T2NUdlh3eTdxd1lJZmZsRG1odnREeG5VYlpoeE1ZR2gyOUUyNHd0VTFrRURXcGl6NUpQeW1odW1PVnpqWDV2eW1TRGtiNlI4YmlkQXdJTTJ0R3BwazRHa09ZcTZCMGJrZEZtZFl4eWVBNGVzUGxYbDE0T0tyQW9mNFMrcElWK0FJQW1WRHhuSEV2dnZXME92NlAvNkxHaVk4czFXU3lleDZhVFJRdzdzMS9KYW8zWXNaSEsvL2tFZkR3aHdhY3o1R1ZhcVJDTW5JKzBMRUhUL3cwc3VDUDRGaFIrMGthWENpRTRnem1kZjV5QmdKbjdSYXYvZEVDdlBOd3FnTS9lR1NxV0NHVllRMjFLemJGRXpGenBBdGpJQ3dodlMyeVFHd2c4TXdZY3BhNU8wK1ZKU1ozcEpZR01SZWM4bWxTalRPSXZVY0ZoUjc1ZFpwNzdSc3ZzeXNSMndCWlN2Y3VMVnZreTNTUkhKN2wyR2liQ0VRanR6cnR1RW5FUXJTbzlncE5CN3FDQ3NhOW5iMmRQTi9jSmJhcVppdGdJYWJ6NTQ4Z1prT0Z2RkNZVEFNVG94QU9uNDNWR2F3S2JBZzBXVG5YcFgrM2Nyd1hjZkVYODhaNUV4SGVJUTJYTndDRDB2aDFjNFpKVFo1WG5CT1RlckQzMG52VjhtZ2I1dHdkcS90d1p0V0FKQkYwekpicm9qbklEdW1EZytsKzhpNWZnKyt1MVdkL3VocHZ3UURPOWJBd0FrMkZuWnB4V2FzNE1xK1VyYjFjc0doM3kxaUVsUkcxdFFYc1FPWk93THFONloxWGRkQnZaK1ZPK21GMVFobDJOV0o4S3ZwY25JUVZsSFlBclliVTRXM0pTdXhqdktQcE03WGFSSWIzQXNrWW92cW9ZV2ovSWNlOWdvWjlWVEsxVlE0TTlyaFZLemVGa0FFR2dXSk9pTGsxMVhkODVKSUFrcm9KR0diNDRGTmlUNGZYdVpPdmZyVlNxTFJaWjFPSW1WUEptVXVQN3pwS21RUW1GY0p2T1JkUWsvek43Mi9iQy9WdEgvSDlQZGkrd1RrOXJoakt1TFpuczIyS25sUCtXMEpQZWNDVWJHMEFmRkFkY3AyTU1LRVgzU01LdFl3bTdtWG41MmlpWU45alZ1SmhNWUt6ZG9EVEJZUmJURHdPNkVCc1h5aTNyVkd1SVdFTDVINngwY2h3YTZEL3RiTUJwTHZEb2dueG55c1lkS0FBaENvK1VuM1NLMWY1UUNCVXR1MXR0NDBFQWVmUFo0NHBLNEpJVHJzT0pSUEJ6MFpkK3lUWmlXbWRxS1JQZTd6ZXRkeGtoQlZrNlBWV1VOL3c1L3R1VUQxc1MvQS9OR1p4TkJ5dUJhNW1ZdkdmOURVbzNBVndXQU5qa1RZcWpNNmpvNlFha3RWM3g5MXBuUnl1WXlwMU5JbWlrSTdqWE5xZzhKSmxneStJU1BOUmN1KzVqVUt3bHFXNW4wRjk1ZGc2ZEtZSU81VVo1UEFSRFJOcDhGb1ZSS1BQbUREUU9QYnppaDNHdFN0V0s2bjMwOTlLNGJxbnNOZWFxSExad0kzaDFaTVF2bGE0WGJFZVhWMS9wRTRLU20rZjNZOVowbU9OcUp1WnB2c3pDVGJJODFMaHZPN2xiVWtDVzlPOWs3by9RQkxUcXVWTjlQQStYQXlMaVgvQjNsSkhxMDRsSkRQQkJtS1Rod1pRQkZxMVRwSjh0ckZpZmhBNFJZRDlxNVNiMEV0QWJ2ZkpKM0llblpndFY3VUtHVW5rN3cwTW8ycko3Qkh1aE5FUS9YdnBBeHlvNHo3QUNSNGZqVzZURU1sN0RFMklCSWhLWnpheUlaTUdnMXBneCsrRy9scDdRSXZNUzNNcFhmcHQ4TVRkNWk5V0FTa1cwVitYRFlxWmhZRUx4SXJwUkJ4c0VGcUI3UWIyZEw1ZXZCYlFOR3M2ZU9OSVJacHlKdzYvQ0NENVV1OTBCMzlUbWxrTVVQdHlQY1g1NU50Wm9ncEdZbGQxSUVJQUhLd00yd0owSjQ0WU1CV1ZDS1J1RXhhVXppWnFtdk4rL3pJWEs3RE1SR3dmQmxsWldJbTNiZG1uVmtHUWdsOHk3UXJWSi9wcXc5S1pXWFY2cFVQRHM1Z2Q5ZnNRRkQwOW9nQ1l3c1dZeHhYL1h2SW5KazJ1MnlPYTMxbDR5R3lGRmpycmlwOFMyWkpDTEFRN09vek9jaDNPL2d1MTI5c1FlaE1ucTBxb050RXhITzFHVXI1bmVxUktCRUNnbkZqbnVyc0UwbUtUbHlRNTVoOCtlVkY5TS9Jb01EUmY0M21GaWZremVPbkwvT0R3SGFIZ0Q5MXNxMGdHdkg3L1ovdW1Ud2V4cVA3RGZJeS9mWkxkQ2QyUTZJMjRDd25XNXByWHFZSVYwS1ZnZGhacmFKSVNNVHpsRTNtNFNNaHF1Z1pZNmVqbEx3ZW5LdUFmZGtNUVpHRElJQk8weTR0NGRoK0JQQ3dtRDVMU0oxZk53KzIxaC9Hekp5djJjQ1VCZHlJOWNGMzhyUFZRK0NyTkE2WHhTTnlyR3MwRjZPNENhRkprM05MUVlGbU1SYUs2Q1NqdG9XL2poa3Q2cEdoUDBtZkhBTFZFZUV0MTlvdU9sOGhzTEdLRHREZDFaUnNoZ0tLNElsbjFvbnkweGFWOFFFMjlxWGVkN3Z5MHMvYWNydWN3MHFvTnZlbGlhWGlQeWVTeFlzSW9MRStvYUVWZ2JKNDlROXkrVTQydTVvYy9qYkNha0tnYXhnWXFjOXNxS291aDRnaS9LeGJkR1Q2L0NURHgvNGhjblEvNGhLR3JuN3FMLzZXcVprbVNNRDh6cTlJakowclFHSE9wdWczUVlJT21HdVZGeC8vbEZyc1F4aXdPd1lsejJUdWYxZHlTZHlUTmo3ZmM4VXRVNldBdHBkNThobkRjcHN5K1FJTmI1Q1Bmcmt3UEg2enUyQ2liYmM3UEJBY2Fyc3dWa0dRVzM3cXdIRHVIS3ZlS3A0amgrVE9reXVVSGZqTkZNQ0JFQnhlSjZvekE4dmRXY1NqaXRIMlM1Zm54RXQ1Mk9UOW9CWSt3QTVjNHRpTmFQWnRUL1VOZmpRdDNXbFV0SStkMC8vdjRuR3duQ2N2L2hPSXRoeFA5OVB4RVZ1L3pjTGI1RFFqNE15QTMzbDY0aHp4V05hVCtnS1c5N2tOYndsc1pua0p1SWM5YzVJa1UrTmpETzZublFxVFVNc0dzR2dEWCsxd1BKTG5UR2Q2cm9GQlJlTVN5L0pCdnpzKy8yVHRmVzNrK1NQc1psSkpQWksvbFY2VTQxY0ZkbjVXMnZYZmNHQ1c4cVBZYnpoNWQzZSsyMjlvY0d3QldsNFdkR1l1SGZGUEYwVFJtcko5MlBDRWswODM3bm51Zmk4bC80dTJVZmExK201NEdER3hlL1ArdWlOZE5HSFMrU05aUlk0Wm9lTjYxcTRHSVlYZVNzVHRadHBzUURmVzczWUxvaHZkQ0xUSVJjZWQxWC81Sy9xSXVzWjFuUVdzVWd2N01lajU3cW9FVFJJL1FqWUcxN1YxQzZHaVd5eWYwRUhSdE1FWWxodDBFMGJ4M1VuNXpFVU9aM0NPMHFsUEdleUthSm5Cd0pFRmdDSCtMWjZXcUhhazRzY1lXUG1Vc1lVc2pHUFRFeHFLcTB0N1Z5ellTNlFHRDZxaXJtc0tVSUdpU3B2c2lHNitjRHZ2WEtjWXZGWUtoTDhRalJ0bjdDSG45VXRsQ3JLcVQrLzlSUWpyK0JDQ3lxMi85cWhibnErQnBJazMzRFNBRWFkMU15SU9PbC9TcW5aVkJ4MU85aVplalNZQmFoZGVycUlieUJqazZTZStPcVUzSTVpbjZXUlpKYVJuQ1M5V3l6RUFnR2JxNEVteG1aOHpCOUpNdk14cmMvUnlFSFZvcGxzRjhRbjNiNVBjVTUyb1NWYVd3MFkvR1lWYmNvRlQ4MlVqL0VLUWdLSFgzMnZJd2ZRdjMxem1jNUQvRTlWbGRPSXJ5aVZuVDRvSncwSWJBWUx5eHd5VlpGR0dJdi9leUNzSENjYndqS09vYWlpTlcrUXRLMHRuOFlWOXdZNUpMZU51cHlGTlUvRVRMRWRPamZtMkMrZXNGTE0wejBhcGhLQ1BUeWVnVUdJWk5HdWkxZUZIQXd6ZmVuQUdaUm5CSkswMHZIa1RxME1BdllCWGZER1NuRHU3d3BKdWVMOEJGM0hHcDk5Q2ZObkhSZVNVOUM0UUd1eXF0SW5VZEtLQ2Rad0Q4ODVpSEQrenlZczNRQSt6UTVLWHJ5MFIvUnpUN3QvMjBOdHdTZWU3MGpNRGhrV293V3g3UGtkUDJDaUFaOHBVMVlENWhFOG15RHdOcFEyU1gvMUJveEMvbG8rOEVlcHh4ZCtoNkJVODM2MWNvaExGRXVSZHVLdktlaWdUWUdobStEQUs5YXFNUVUvWUc2d0ZqMkR2UzVjSE0xTk5LWWs5MUVIVE9DdkMxTStXakdJcUU0VjJDc1FEeWNUZmk5VHBYZ1g0N1dFZmVOVk5mUjQxc0Y4L0Q4bVp1TjRSZzVzQmZrWTNYamZWMFhTYW5zK0kyYklsOXphaU82Y1VHUGhxWGorUGk4UUluUmJQTzR3NHZWWXczMG05TFhmZENCOC9UU0p6aEZlM1VUUEJ5WDRGa2huTHIzTkdWRWhJZ2pZY2ozYmRKbWU4NGd1bFRTem5ocUkvQlNLa3loenkzeklsSW5pbWpvS1JvaDI0bTlaNC8rZHhmb3lFZUF6TE1QWEhzQnlSb2Y4VUV0Z0xaVnlLUEdmZFlBcEc3azdCRnp5c2k1ZTY1ekNHbFRWUlFuZFh0OTZHc0VkQUdvMjJ0ZHQ1TWs5emp4VWIrRFlQLzlvcXNJYUpaQS9nQjRZVHJONFZNUDNseDVoWWJxMlFmMGltUm80MzJEejRtWFRiVlF3Zlg2TTRnVzc5Rk11STlFZi9Gb1BxOWZrRmx5eEN0Q1VRZjdOSys1UlNKS1ZSTGdvL29BbExaMEV3OVdqOXVXN1hiMUlRS0V6R3FaVXpMakxqbzluZGxkK2hlUlRKb2YzOXNENXptNENmejFSUFJnQTA5N09zMkFNbGx4eksrS3krU1pjQkoySXF6U1NQblBNdXZZQnQzbGZtelM3YjlEWHhUcm5jVEZPeWxYRzBXR1kydnN3UWZKMUtIcFhBMkhpRmNhQkcrMGVtVFpwMDJac1k3MWgxaU1CMHorbHFFbFFScWpCbllrNEZrQ2ljUmY3ZGkvQnlzeUo1Vnp1d3pnM0t0Vk10RDA3bi9XQmE4ODJjYXZCSFpKMVR2UTN5alc1Ylk0YUFVRXg3eHpWV3R0dmhTS0NlYXo3YXRxa3pqUGV5SGlwcTJpNDB2czRsS3czN2NBNGZrMEpCVkpvZ2xvOGlDQXpyRGxYSURJNDQxYjJMaERzTFBPMUU3dFNqNnpBZFlCVXZpbzlSRVVBTS8xTVpZbFIwRWFIMkZiN2dEWVNheFJkaFp5OG9kVEdmUE5MaE1waGFicjhUWW80VVU0elBLWVEzYnhHOU1XK01sc2RONFJ0TisrQ2JEa0FHbElMeVF0VW84NXVkVjlQbVYvcm9HVVlYdWxBTEVPSUhnNnFndDFaY0NTVzVtUGhERmh6ZVptV1BUNFRkMEFJMmFtaEx6ZFJZTURpSVB1QWNHelhrWmNqVjd5VWZXQjBDOFVUWEJiVEFRS0h5a1J5TjB3dXdJeW51Ym1qelM1WnNBNG1kTGpwL3NGa0lKV1ZjU3VDNjRPUUQ2Y0tQTS9SSStiR3BxdG5Wa0VURDVzbmdIVDFva2ZrZ01QQ2VKU1FoWUJ1MHEvTU1PSkRJNFROVWpMbW5lK05BNENTSXY5U3F2Mi9SQjhmamYwUlYxakZKdDZwUFZHaE5hOXJvb0piak1DRGxwQXRrdGlFQktZcEdlVDJNWHFNYjlxRjAyUHVRdXhLRVVvTWhnVTIrSXYwUkphWHFPVGNSbXpPamxVUUd6Y01FRk9DSTJIeEk0VEtDRkFLVVdhZ0JxbkgwM29RdFo5eHBrUXMrZU1yV0YxVmxRanBHUlptc1IzbUJXQ0RFSTg1MzAyM0pVbTYzRDB3V2xPM2x0dUgrZU1LQ1dIUE9uN3hSZzA1Uy9qODB6eFBZcFNINU5oRTR6aythNG5HMlJSbmZzYUV6TFJZVTlzajdhMkZJcjFLSHljSWtLNkx5WjgrdnZ1NDNOVEh5bHY5ZUNsZmZBMlVHcUE4NTRFMlUyTjdMTU5kSE9LeVppcjZENzVmQzZ5OGlUN2tGKzlHSFJzZWhWOU8rUzBWVDZHTzFLVDhiQ3NOYnZIZ3NidXkyYzlWWXZQOUpJcDVGZzJJUkV2R2pYUkpUMzZZZklDQ3ptdU5DbHViWitkOFdKczF6NFhaajdQZ3RmZmpyaWZITTh2MkNFNVJ4QkJsSkpnYUUwYUVSV1ZrbUJ3cVBreU9EUGxGSTZHRGIrRHVKUHB2WmRVTCt5b0dSSDVhMTVvTmxXSzdNTTRZYnFPT09pcytDTFRySjVNdTdTRXgybWJoOWtwcmluc3VzN2VuVm0rY2I5V0x6Q3VUaWhucmQ1UmIxRk9xZkRKdFBDZDg3WVdzRmdMMDI0WjZtb1BqTHlZMVB3NENoZEVkYkVuU0NhYWs5N1Q1UGJNMmJLaDlpNlJ2Sk0yVjhNNjEzTGV6YWt6U1FpQWhiYlIzMjFWa2dnb2s1bUY1K0FlSVRnbmNWMXM0bEJXeGJCckR3RFFqUTQ1SVpGUlRISVVvL04rM3dDL0ZsS0R6YWNBaHIxYUM3VDFjck5oMUE1em8ycm1zc3pJSEJQc2w3OVlFY3hpV0d5TTVTOWZaYUYwOTQ0WXMrTnFGcVllU05YeCtBR1lVTFpscEZHd2xRTGovcUpYTHdMWTB0eEFVMDI2eGdHUWJ1djNYaFQxdkNxQXpJc0ZzK0QvbFhyQkczRDc0Mkg3ZGh6TXNtclVwcmNTTE8vYklibFRkV3R4aGk1SUJlclNOS1ZIM05PeVpaeHVBTlF0V3QrL2d6MDhsa0lRbDh0RVRocWhIdjRpN2tFMldzVXpmODFVa1N0TE9RQVRxdXFlaUp2OXNWRExVL2trY1hGVEhZeU85c0d1L3NPZDR0ZGNtU0t0aDdVbVBmdnRWQlpRUWorQ0J2R1NleHE2MTZtTlQ1R0JkS0xLdVFCdHBWRVdhbTRzNXZ0RHNpVCs1MWNKQlh1SHJVQkFROU5sc1Q0eDNFbzZGRllScmpaRzR6eE5ST3VKaXhUOWhqYkZoM1RLejlwa0xlWGJrM2FoSmVleXBHaC9NTnk5TXo3RHVsS1ZEV1dBYTFsR2ZqWG9HOURoN2lWc3lYUHJiaWl1QkJsZHptajBvU0RacCt4OWR2ZjBIVGZlWGpUSW8xVmdZSUpPd1R4RzFGTm5qUTlNQWZrcDlQa2tFU2FBRXlzVXA0emhBbW0wY2phL3JOS01RTTFYUEtKa3hNTUp4NUNWNEw2eXF3emRWdFRDS3NOeDZ3aWt3b2pRNFp6S2hMYjM4eU42dUlSRDhQTE1DWkRlRXpYbDYzdkRNeHhoSERUZVdSeW9tdWJoK0xDaXFzVUhVQjlwL09jbW5JN1VaQk5aMmxXYk5KaWZSYVk3SEdSVXdCUzB3UWtHaDJWc0M0cFR5cGR1MSsyd2d0ZnZaOEUwYXAyQ2ZOSUl0dmppM0FYdTB4a0hhVVQ5bHRLdTVCYVNqVEhSWnM3SHB0Nk5NN3BycWJreWJDMHZobmR2NndROEl0THBDSXNNRVNsWGNrVWNyZUFNQVFDZ2NmSmZmMHZNZC9yL05xTk8yRVJucVFuSFhXc01vUjhyMlJEemZaWWZ4WG1JVkkydHA4QlpZcjREdHo3TUZMMEttL0xSaGZ6Wkd4bnN3WnBNQVd1UzNTYjdMNUdYS0lEYUpMTWJhNDAraFVNL2tFbzNjWUNlMWtIUnRLL2dtSnkrL3VNZFVsZHo1ZjJFUFZaSmFjeFUrRkJ1RVNzVlpCenduejdHS2JCeEVPSlZnK3ltSy9WSVI3dmhOT3ZSdmVaTlkwVVIvVFNtUTY5V3MwanU0L0VYTkZsNVJRWXZsNXBYeHJuNUZQODlWbUpPZmpQRUJuQkJMNmdZb282MVR1S3VYWm04dlBKUmJWTGVBaXhVQ3AxQmQ0c21FWUZkR0VjeWd5UnBWMVdQaUI2cmFpV0k5K3Y4UkRKZFhKKzFnMlp2ZVR1Q203TnhMNk1xRHlPMzY4Z09pQVhUUXZ0b0o3NWlueFo3cjJnYUxVNFdWMnRza3IyWmR1bVlmWGU1Vm83cG1rbFF2K0N4M2d2cjdQbEQ2M3F0WnNUcmNic08rOFB1bnlLeVRzdmFXdTBrNlhGQWVCRE0xa1ZjbDJUQk5PQjN1MDl1TGRVT0dlTGhqa1hsdW9Wcms5MGlrVzRURGttSFJ4bkFsR3VTajhyQVhvWDZIQ3M0VXUrN0tURElJS1JtNmFaWGwwS0hCYjBFU2I3QVRTMmtiL3VFZmRCZXkrSUROQkNSTmNUcmVDUTJxSndXL0dBOHUxSVdIdXdQVm85NDhsSFgxZStoSDJrMzhQQVFmeVVoWXhMSld0Ni9vSzZpQjU4VWMwQk1DZDhrUEl3S2g4NFdlNytJendTY3RFRzVKeFIwL2J6U0U0YmV2OG1jMW52VEJ5NzBlTFB5bWlxU0VKbWNUOThrRDl4cVd6bTIwNkNsVE5xcjVVYzBMd3IrUHorMkcrazY0TmxJVCtXUVVYTXBBdFhXWjBZMmZaZnlQV1NXc01reFJaZEptN0dqR1VLKzhZYXp2MFowM3h2SWI2RkJrM0RGbTArZTl2T3Q1VWZ4QmU5RGZYeWRXaHpaMHYrUjRwNUVRK1ZrRUQ3REphY0ROUGJOc2FWYnVEVThKT2pRNlBZU2xHUWVvUzZwRHYyTE44K3lEVmdGdktBaDQwdVM5SmZsVUkzU0tGazdNZkdxYzFkQlJNQk9wYUZwc2JiQUduQ1hZVXg2ZTI1RkpUQ1cvQXpKTXRpT0JaL3NBSjN3Vkh0WVd6TU5tVUZkVHJiSVhuMXZSeTJnQ28zcUNRTUcxc3hKcDlLRUVVTUhmeDdUOWxydXFVNGo5bmwyQmZUbTd2ZUg0MFpEdTRGMWtjVkJKUzRCUnh3Wm0zT0ovbXVCdFg4QVhwdjJDVnFkU0xyNjRkRERocTNDdUppam5OTzJqSzhUdHhGSnVONmNSMENQM2tvVnJFQWJ0cFlXMTljay94L3EzemZoeDNuOGtqZkVhVmxpWWZsYU1maTVMMHJpbjUzaXM5d0gzUlN4cGcwY09jUTJWeSs4a282UlRnNXVNd01FWWtHVUduR0hQenIxNndveHNEbUxrak1rQUNlMWFNWHU1OHZkNzl0cDJpYUdCOE9yeUM3ZmVTNTVFQmNRSDZzREJrUTR4Q0YyVDJac1FRRmhVZ0ladGN6VlQ1ditaRVVqRnJiTGZURnlUWEpLTVRvM0tBMXZpK2hlZ1phcXVJSGNmZGNyTDV0a3pzTHNUQU1KQ3JGaUI5eWVDVndNZkdJdmJTV2s5MDVqTGkwTEdqVmo2NHlDR0Z2STdPdWFtaUhTa0JJSU1IN0FoY2s5ZW01SWI5WlJ6bjlQdm9BcFM5bXR4MG0yS3VTbHhDZVk2akVTTlkvemVITkcvS3JMWWNlMUJBUjRuNFYyMkFVVVJZUWs5OUlER2FxY21vQnZzOUlReFlTcnJjZVVwUW5Xa0g3S0JQL05BWlA4MHdBUHZGZG1PeGRNNDh6d25GRmlxbytFQUdXcGdvdmRXWi9xanF2OUtmTXEvR3RYSTloVTBqNVhjbWlBTTFWOFVua1VoRFhYNGtrMlJCNWwwQWdWc3dSNm03RXFEQ3BrOXcvVVZwZ2xhcW5kaEp6MXRUSVh6S1lDZ05qUmF5TEhtZ2RjSHlLRXBZUUFsaGRFTlJjb0k1b05vbCtKdXk4dFRGUEFzTHdTVk5sb1duSUE3RytCQmNmbU9WT0VGLzJ5WmJFaG9NVy9UejdTWS9LTks3ZlV5QkhiZ2dHZ3BzSUUzamx6ckJxNHBqcXErT0s2bDF1eUd6UXJKZGpJRVl5d0x6MGFtVXlBVnlMdjJFU0N1Sm10TTFRbndkbUhxcE1DVFU0Z2JrNWFva2ZsdEx3Y0dLNGlZeE9iNnFTSTRiT2FjbGg3NnB1ZTJOMWxTK1p0L2orME1MbW1BdXcvQlJtQVk3R2UrUXRaR1RSVHJOOHV0S0twYm14Umd3ckRYOWIyRS9yd1Z1ZGJzRlozTzdJVnNKRmQxY0tqOUtIeVNMOG9OWmJyYjcyRUV1Y2JrR2ZFZHJpcGtZMC9rZXBGc0lOZ0hqbEx1Z0FDalgzNGtXYm1sbkJFUTZITXFzZ3lSaHcwT1JrcXNWYSt0Z3dXNTNnazh0bFZVTERKcXVLMG56eTJRcmJjUEJnbWZIeVRacS81S1lpcVBxcE81QkZlQTVuUU1YRDBSTEV5QWFuVlpMVndVN29EalJ6bE5kZnZwcUZUcXRTeisxT25PRFpPMlhYTWZZODNoOWpQOVN0N1E3SU0wUVl6aE1zS096QlhEaURzaU1kWHhidmczaG5ENXFiVEVyOElYSTdiMlN3ODlXdG9kbHk4OTR1K2NQMzN6WnBBN0NvbXdISnJ4Uks3cnFVQVlRTTQrcFJwazkrd2dLWEZtWldqUU96aFVTTVJYUU5oS2hTczgvbmNuYmRNRE1ha1NEb0N3SUZTaVJtZi9LdlJZSXcxZ0Q0d3BOWjM0Tk1TSmRPaENrSTVwREowczB4Q215bFRxcGszYlk0YnFmczEwdnZ5a3NJOTllY2ZEM054QnhDbmN4bHF6ZFo3cVUxL3l4WEJtLzN1emhCNVpjNk51TWloaUxIU3VWUkExdzZ3UnluVGF0SzYyMUpPbTdkaHpGMGFoQW01QTNmblA5dkFkMElqM0NmUi8yMU90ajJ5WE54aHNQSTYvYXJUWk95V3JSZnNVMkUrQk90RTF1M2pXTU1FN1Y5MzI5TkRuUXd2ZTVGVklQUks4M3NPdEx6bjZ3b2Y1L3FCQjQzR21GbkM4WEtLNnM2NElhM2Jmcjk2aDVIL1hvSC9IVWhLeld2ZG1nVG55WkZMWnRpT2hZNmJCU1N1cEJqVGFXaVZwM3c1MGJUQXZYZDlWVXJyUTRnRm5UdmdlcmhUOHhob3h0cWJaTHZlbjZlSUxLQ1dtUU1XT3pBY3J5Um5HYTd6WW1vN1Mya1QxMnh6bXI0MUlTZTVOS2FrTmU4eVdOek1mL3hrcERvS3RJQzk2RUF4VEtQTTFZTFQyMFRSMjh3Z3BGSzZyNGh0Q2FIOCtHOHR4MXQ2Sk1OaFR3d1kzQjlSTEtCZ244UjJyM1ROVFBoRXRvZUYyUkVTTmtNSDFsQmQrZDVmSG9iTmxSWGM0cHgxTUFRcmhEN3E2dksveE1ndWlWNUdLeTVBNkFqdE9hMVg5VUNoNWRvY3gwWGNVU0R5RkJQenVXYWYyTmw5UTNiWi9BTHZhOEJ1clhpaTI4MmE4UCt5L0JUVjFublVMZGlHVTg2ZytpenY5b0JQU1lhS0I5QVgzeWlZNXloOGxSb1BkeFZ0MkhZR0htREtVbjN1UUw0WlAwc0lTZmE4MUppUy9CVFpEVS9FUGpRaUJYeGJ6Q2luRURiYzZXRlBkQ3ZlcUMxbzVKa3F2amNNRGt0dG9KWWlyNFE0L1JsR3ZWYXplSS9QTVRmRFI3aUVscXpIVWIxV3JQdUFoZnEvVVI3ZlcyaU1uSkUrWldyajdsSUtiNnMrZ0lpSXFqcUk4RnZDeVlvVEFmVjQ1cHREbGgvZkdLdUNaS2sxbGxPVTFXSm5PYU8yREVJamZ3cnExb3NldTRGdVJuc1A0Vkpwb1pqdjZ5WVdCOWV0MEQ3cFU4TEMxa1dzV04wZHlGb3Nma2I1TGlJR21tbUFpamlWT3dIQ3VyYXBVRGxkd1RGRm5FSjZWdVpjQXNFWG9HQlJIK1hUNENSY3Zyd0xicjVXc1Bkb25OanV6NmpOdVpnOFZkOXRyYjRUSzJJbFpGbFgrN3grYjhiNTZqeXdMdEE5c1pTNVYvU3FSVlU4eEZmcHJaZUhYRVZ6VFNidStoWGFLYTJnK1E0bk5SQjZ1MitzWkFNakRvazlnUVJtV2F2Ym1jM1p6dGJCZVM3UXhzNXY5QmMwT3IvbCtScUJ3RHlIQkhZbmhac1lWZEN0MDNzVkJPeDRiSzlLREVGTHU0UmVOdG5HanQrSzRWOEoyMjFzQ1VOcVdCZTc5UlRhbmhqTm1FNi9wOFY2VjBSczkyT3VKb1ZBZlVnSEE3MDZaMWxiU2RUUkgrTlJnQnlybVdaNkpMSlNBUmRwb3BkR0NEejZ6eTZldzY1cnN1QmEwT3ZBNWRwdllIWHVpa01RM1VLd056ZkY2SHZNd2ZEajloTGt2bmJkVXpJSXU2NGo2cXpyZkZ2QjJGek50b0d4aHFnVTJ3M1hJQUZLMjBhOUtVNGFEbktXUFBSNnFQbllGTGZBL0oya3Q2azdDb0dpWlFDYWxxL0tCL0l4ZEowdWQwRkMzbThQTUxMM016cXR5eHdZQmtCMGJxeDFkREt3RWdqVXdRQi9GL0VVemZzUzRiMk1IbnFHOTBlSmx6d2tFdnlLaFMxVkRHbTllQXpPaGpJeU1SVW0zc2tvYS9FOVpvMGJjc2VNMU9aVGo1ZXJFWkNhZ3VKQVM0Zmx5MXQwSmtoYjh5alNIVzcyOTFSekM0NlNpMlVKOXlpZjFoQmRudmpZQmdDM2pxWklVYWpnam1YTXJ2Zk81NVdvbXdUaDJXeWoxTmovT2RxMGlWOXZjY24wa3FqSEFWWXdIaHRUMGI2SjNpNVRoV3RFYUdGUFp4T24vVDQvTkNUQzF5dnJwUS9vYkMvVk1vNlF4cmpMcTdwbWx3a29CL3dCUmMrNjBYY1liK25nRU1uNDVVU0RDOERwcWlkYW1GZUluZjRDdk9nb2FaeHdnMUF6dmlnZDBPSWZzK3dzeHBWdnFlaXNhVGNwTmR2ejhQbXZNTHVyQTgvTXM5YzRiSzB6NmpUaGl5SmUweFVCTmhrcGNhQStqQ3RyVW1VcU9vNjBsOC9jS0NYR3RyS3FOdHJWMEhucWY1YTJBRUNDMmIrdEJNOUJJaGJVdGVVYjJDV3ZQYTA0YnBaNVdkaXFoZWRFbW5EN1o4VkRJY3VlRmdHNlM0dWpEN2pRYUFITTVRbWNKS2RvbDRDWkpMUElsTnNUZC9tdng3YmZTTDBXekFtL1EvNGQ3dC85NEdHSlFDZitTNUtrWUFRNFF2NitIaTVwYTRFQzdTRGRMQVN2c3BIMGZiZW01ZGs3NGl6eFFUbldvdlBmYlA0YmdmU2N4TVNlYXFUQ1RuMC9pZVdHVEh3MTNMdzhuajV0OFZqeER2bFc2cDNQeGNCY2pNN1ZMbG5Bcy9OR3dpUWJUWGxaU2dFUFpqejlLSkRVUENvcG1KUVhLcGVIczFTbllxRC81R0ZwY29CR0M1dG9ibnlJZmJ3MVhmRklvNEN3bFg2RmJUN1oxcHZYNUhQUkF5enp0TGxVRS9jMExScFlBSzJmeFhGckxnejZrbVVvQkIzcUtQRUQ5UThUSHI3V3N1amVSaGIzQ1RaTE51cGRkcklwZVVrMFM4VDdyS3VmR2ZWK1BNclV1d25wakxpb2kxWTNYVWZEcHA3RCtoSWpqQllVVkJoakFJVUtlc0gyeHh5b2lzd3AzLzBWRFJTTkhrOHFxZ3lFSG96Wng1N1cwM1lhOTNqSDdTTVd0SG92M0QwQXdPVndOMWtMY0YzN1RCU2hPZ0JhNklZN2N3eEZNVktEZDVwQitjMmFIM3dpZElTZXB6VU8wRWd2dDZwbEpEdEdBN055NHczRkt6VWt3K1ZwV01pMUhaUXZtWlVUNldMUkxCSWRTU1FVUkUxdzBKdHJObGl2d0RDeGJpZmlyOUQ0bDdJT0YxckpWK3lha0JZZ0l4SzlEcWhCWWpZa0hVWmxaSkRPTklVSXNkUGp5T2pCR01ONnNlSTRqYVk0bGV4VHJIcTVOYlVjY1VzcGJkZEo3cEtDVldYMk5QS3BocWtzTElNRENHTVlTTHdsTjJ5TDZlV3BiQUVuenBMYm12eng3bkxPS2lsWFFCeTAyOHBWaEJDZ3I4RytIcnFFUnpJdDdWNXpoTW00L0FyeXIrK3MwWk1raE9hVVdhRWkyTjRkeFFhbXc2WnZIMytVUHRZeGNReFd3ZDdHeGlVTXp3dkw1SGRKQXZtd2MzWUxMT2NrcWhLVWpzdTNTQ0ovc2hTWWNsWXVUNGRKSzArcm5QTkhwNURkZkczVUN1aUJuZTNnUzA4bHFBS1BrTXMwNnJoN1ZTd0NyOU1kUnhIWlZnRW1VbFF4SkQxYVhKenZYUVl1cTNKM2VsZWl4S2U0clFXVy9iV08xQ1FzdWNTdE83RGoxb0lGcHNDU21WVC93QytCbnVvVmtrVldLOVVLbCtGamZGMnZmekVsdXpLSmc2c1JuQmx1NU5kNHZ1S0FFSjVqSk5FSlBzYnE5MHBRejQxWEVPQkRzVDd0YlVOTm9icm1ab2VoZWozRWtiZVVTWGE1bURzWGhrNGZvdnNYaTNGWEFRbXJsY05kNlBzMWxSbzdtMC9Sd2U2d2ZVUWtiK08xWk9lcnl0MmNHMlQrRk5GLzhOcldNUStZSzgyZjNWbVhqSXI2MlU2RjJUNm5MWms4WEpFd0NnSkt4UVltNFJPd2creDQ4ek0wNFNQck12NGxQSG1Hc1JKNExWWG8wNkhlZ1FwNko0OUdoMnJwaG0zZ3FCS0hJUmdER0VZaUpLRlRKaFBxTXhLMmV2L2dnQ1FKbysybThaUDczL3hzeFRtQ1NFYVVxTXpaK0JmVEpMdml0V01DbVA4ZU1JOXBpS2J2SzMxNHlLR29FQXVzRTh0bkxIWHVmMW5lN0dEeTJYb24xaDhXZHdhVzNNd3drd1FvVEwrUlQ3UGp6RFlkbS9PR3NLYldZc3pOdnlnOHdhbmZXYXZNbTIzSjVvSUFNVFJBb3VOZTlLYnljNHdDRGhubmtnY2c1dWRzMnlTQ2tnSU94UFNCNlJqNXFWUDVnMTErS05aL3pCZlJjNU1sWTVWMzJMaDcvcDhteEhDbE5BR3FkcW02djFxemE0b0VFQVRhSnNCM0EvMGdTQUFwbTBMRHAxOEkvSkpoSFZGdyt5bXBTcDJOYWtZN1hBZ3RWSm1Va3BKbFlrbDRyZ3ZLdm9jQW9jMjBCQUdYYVJmS1NBeXVZYzF6YUMvdm1WUkp5TlBjZlhSUWY1L2hZcUFvY05WMStvcFBOYzFEZUFHTnZvaHZWQVE1YTBKWVY5eFhxYllLUjZtajA4eG1XdlRWajRYWWFOdjhuRnZDdEdHZ1JLTDhPR09NYWNNWkhkKzRVZ1JCdExpMlpLVVovSEdTUHZwdkRDOXJneENkVzJGTVJrWFJjSkFvS1BRcHhSQXNEQkM5K0NLQ2F1aUlsY0J4VDExZHcwTWtlWlM5cHRUSUgrbnZIbCtTMmNUWmxUOXBSc1UrQU81ekZGVFUzYllhVWlXMzlBR2g5anM3TjJ1bE5RTXdhU1E1QWdNNS9RT0h5NG9YTVlIS1NqNmFCVnEyYW5PL3Y3eWsrZ1FhYnZOUHJqSmNnLzlWOExOZTB2eWhYaTQvQ1UvTGxEU2ZKN3JacDJ4K0JUVHN5SDVLcGgvemRwN0o3d0RxMHQvZHBXTENJRU1ZL3d6TDZIaEJDYTkwUndhNzBac2s5aytHV2p6UllGYW1vRFRaMjB1OE1Ld2hlQWM0QkxMSEJ2UjVvZWw1aUJBTjNoR1FEUlNZb1hSZEVOOGpsREV6M0FxKys1ZUNFR2JzZGdUNFR6K211NXdmMG93aUFaV25HMVdGOVVCY29FaW54Ynd4Z255akZCcmFQV1N2K2dxUVlCeUFPOVhKWWdhaklNQ1dJcVpYbHJza1Z6Zm8rbXpqR21aWUlKNFh3TVZCRlA3ZEw1K1hZUDBPN0xXVWpVR0I1L2pmWTdvb3BQQU04ZHZjWUI5T29vOW1XTCs4b29FWnlRdG80dk1MbWt0eUdhYVdici9XNk1TUUdqekpSNk9ickVOWU9NVkIzZDJqOWFNQ0F2V3dVeVBrN1Uyekhpcm8wWWdkSVNmQ21tenQxWHZaSUphekVjKzlINEN6VXlzeUo4SDdQVy9NZXBiRWh4eTBTVDdxdnFidlFaV2FybTU1Q2tTa3liUmxFc2l5S2RZVkZWOFZwZUt1Yzd4cG9UN3NMUlNVTFBSd0tOdjRyODRFZDluYUswSmxYOFdncGgxSTVPZkFLdmtsS2REdFk5T3orK0kxbFNERVhaYkd4M1QvbW1lVW9iRklaaFN5SGRFdHdpMW16ZmptdHVrdHh4VWhab3RWVSs5eVhRUzU0a0dNR0o1OXFTZjRZd1FDcTh1bmxhM1VaQXFCRThJUEEyZ1kranVjYmtEOERRN1VaL0tWTENEbFJpb2FJclNCalVEUDFyU0pEM2tyV2N2dmxPb0F4d05wejNPcmR3dEUzd2RGTVVZMGNMT3lXQTFPeElGVDZZL3kxY2dGOGJoNDlJNGNJVDZaeGNQWVJPQy9WVzFyR3N2SStZbWY2U29vd3Bjc0ZmZVhHa0hHL3RhY0prbnVScU5XQjFDM21GajFuWndjN01xMTlLeVhrcVVUSjJUMHZKb095N1IyaTZUb29OQ3NPc1B3Y1p3MGp0UkNoMldvUEhvM0REUVMvNFdYRlQ0SW52c3p3YlY3NmZteC9YOEM5Z3hwdHdlQkNVUEVFZXRiM1lVbUluSXdia3BuVk4reEtsZmw1d1VOMVhFd2JZck1SMEpkWGMyZTRkZ1dPcS9iVk5NdUJpREs1V1E1RmpKZmRUSWRFV3dGYzkvcWZud1hwSGQ4RjgzRHpJWEx1Wnh0Tlc5cXExNEpBR1RzdW9BbkxyYjF5ZFJ6WFRVQ01XZ0pScnA0c3NIdndLS1V6aEhHSUpSYWxjU1Z5S0xDakkwSWFhY3pmQUhmbkY2aTV5QVdjNHgyQTJmU2NoZ2hlTUc2MFFaQTJkOXh1TWZ6RU84ZEtNUnZFTUJEblFXUzlPUEh3MmYyd0o4bVVUMEhKanlFeGJyNW5rNjBpT2xkMGxxMElVcU1hSXNkVHZvb1BsTnFJY2tkamw1V3pyUHVFTUNERUdhZ25RZXdxOW0xbFoxdmNrcGd1elh5VnQvNHh0VWJoMm5YSU5Dc2VVVUpXU0dqYWh5WW56RkNOYnhCWnF6YmtjRXg0VWNZdU40azhxM3k1SW1WaXNOdEoxZmpReXpzaFcxNkFtb1U3M2tFNFVNRGxraEhNMm43K0U4LysyTlpnNWo5eks3S2FtUjJRQVJ3ZmtSZVRBcWtGQjF1K0k0cWtlQi9sWG1PWXRUTURrSHliR0lqNlBuRVp4N2ZXRzh2SEs1Qk04Wi9FaTR2cFBpZ2QzV2FNeXh1ZEtoV3BMNEtMQ1A5ODhwY3B1YmpTS2ZYY3lGejd6T0Y5Y3FLS3JweUNWTTJGN0ZmZmN1RnAySkNiSXBpZENJbFJGT0ZlNDJnUGVaSW1VTmsweFprVXNoRHhWTW5OS1ErY1AveU1TaCtiVTJuN2VyVFBzTDBpSTUzRlF5ZExrd1dYWWk5YXBRdUtJN3BYTHFGZWR1c1lrTTlHYUt4Q20zRUJBMjU4ci96emNSNXAyK2lFZnA1S21yLzBnSmZURkYzZEhabVhsYmNLTWtsRzlBOXpYRjFhczBvY1ZSYkhtL1lRSTB6KzFMZnpoWk5rTE01UC9kUUJ1WGplNUxuSzUvY2xSQ2MyTlBKU29BNy9nWEErT05Ja0M1SFFWUjRKcWRRRTlDdzdlZkgrT2RZWjE5eHY2aktuRlNXamordW1jMG16Q2hISmFGMnhjM0VEM2U3TlFtZHUyajExZks1dURFazBNUUd1Z2NzdWwvMHAzVGZBNzZCUElBU09tcTZIMDRwUXF3ZmdvZ0dCVHAyVXRkN1dlYlZ6QWdkckZTR0U0blorVEIxOGJsOTNrdFNad0FPVlhwWkp5SFhLT28zR0h0WEc1OWxZTkJ2NWpGanBoZGJQdDljYnhaenYwNUZ4cklJRlZNUno2NjVqeDA0aEhKV2tSdDVwVjlTNTFWUFRlV1BtVHh3RXdNbGFqYy9FVDNYSUpPWDlwaXE4UEhBRWgwSUNhU0pyczJQYTNnYi9VZ0JqOUl2Zk11OXArZjhXK01JVm0rNHZGei9COFBFTVAvNFBic1ZlNnRvdGhoZ1JMbUZEc2M0N044NG9DaSt2VGt4SFBxdE9zanJaVnR2ZWtSU0FKVXpMUmxocE80TzhKYmZ2ZTdxTUpGZzZzbmYvekNNakVkQ2lzMU12Q21KSjFsNUFQdWtvaUFGT2RoWUFpL3dCM1VWc0J2L0VlT0ZtaUhoaUZwWUpiUkNQYTRWVjQ5UGZpL3dXZHlnSFF5Z2NreHJkaU9GY3FqdjRtUVIzRVhJeUEyaWtEaGxaYjdLYVd4M0dOVlA5WEQ5TEkyb1VJNUorK0RvT1ZGeCthRVAvMzZHQWpTcHQ0N0twSzhvZHhMMnhMRUpQS3VmSWFINjJpdkZxNXdWVU1yeWZSZy82T3c3L2FJMW13WURaeXpEcDVaR2VFUlBuK1RHcmdONEs5OXBhcDlzWWdQWkdBUXppQkVNNzlLcEI5eHhjZnFIb09nK2pHVEtsYWpOdkFpQ2lhaEpwWGJVQmt2OG55UWJoMzlXamJFZmErYm5iU0syUm9ENmZLZllsT1dVdnBlYjlrdjBHOEptcGJvU0VxaHc1dkVnV0JzQVJTaXh1YUszN1kraFFWUVEvNVhyYStkVUxWV2VvdFIya1BPenYxUEY3aW5nRkRoVXlWd0pIQWNqZERHejN2amhEa0FHSW5aVEt0cllSaTczbGMzS0c1UDVtWUxzMjJySUx3OWcvZXc4QUl1eUZVSWIvVHZtRU1EbmhlRXRXRE1pQkNBa0JoOUlhMENZZW9scHR3dllTL3pYSWxYNUlETUg5cENaRldtYk5GaG1yVkFoSE5uNDdHSkVpbVlBT0F0OEdVUGFWODZaVW8waXlzN3BhN3lMNStSN2hvbCtyTW1LdUZXTmFHSXprc3NiVlFoT2NCN1dIN1pEZzNLczZETGRzT1VGVWV1QStZK2dUeUI1ck5Pd1djZTJSTEdtTW9SakZuV3RDUjZvOUp3NHVSZ3pqbXNlTlo2M0dNOUFodzA5dnVVQzRYMXBOSitrK2R2UTI5QVlkaldrOFMvNlFDcjhCUnNFQUNjS294TzE0MDVKT2VqVGxYY2hzY1NtT1lyY0R2M2Z0eWFuUGdrSktlckxKQXFIRWNYaFVSS25pMjIra2k3T3ppL0hLa21OS2tmbkd2RitPc0hLemJramR1NlJnTzF2dUhSc2xlSFBZSXdaNy9JVGNqd1JnRnA1UUVuU2Rua044K242NU1VdE9KWFdJSjQ4NnRhdzhaQ3BYSVZuVWRrc2dNbFp6ZEFJQ2gvRi9rYjlXNHg5bE56ZisvNFdXcGtNTUdhU3hERU9iZjN2TXNCVzQ3L0ZlODZobXlhQ1N4ak9neTcvNW5mRFZOb00wZnczb3ZrSmJuUVpQUjNKdWhCSGJ3NExZVWF6cTNPRXNxSGZtZlBTUExiUDR2b0RrNU1qdE1UZ2M4K1NJVE5Ia3pGMUxrYjZkN1ZrVE9rakVVTmdVRDhubkdCUXNEVHB4bDVYWmdhMldWL25MbWwyMFlFOHpJMGZKdDZmTUR0KytNUG9kSmRQMGxxRFdRbjZWUzBSZUR0RHBvanowM3A1ZlJHTGkzSUJicDZuSm53cUs5K3ZmcEplakMwSkN3NmJVd0Y4T0lpNytySFlQNGhmY2NTTGpheEM1NlJoY244blNnNE0yRkR6SzJiVmY5MVlRZ2NEMVVTOUg3VXdCSExPdzNNaFk1cWExNVRqa2V0UXRXZVFTK1pHV0ZUclFrVCtUOXhITXhEUXJIbDFNME9HSzFtMWc4RGJCWHN5SEFmNHVack5FdTRlZWpMenpSZEJEMXV3TUN4eU9XVWt5K2U5VjRXT3JOc2w1YTZSMFJtQTdNUGFoYWN6SytOb0owVEsyZlV4d08zeHpFQm1SRmhoU2lPRHozbDF4cmlFVW5kb0xyUWF1bUtFeDQ3NXFYZFhteXBnWXpOT2tsSkZKcTZWdDJlemo5R3dFaldIM0RONksvVWJTL2lxM0F1ZE1wTXdRUDRQbXVsV2ptOEIxMDM2ZlFGckR6a2tPYUM1RTNKN1Nza296dzhSQjViWEIyNlY3M2NtZDRrUy9WcDVIS0lWdThReE5GT1pXa2NIbmdRWFRod1JZRkIxOC9xeHhlcFlyaUp5d2RudVI4WUVUU1RTL05mUm95aSthZEJwdGFmWWhvekRxSXZEOFQ1ellXUEhNN21lT2xteWRwUmwwdDFYYktXVXBMYlRmclZuZHRZemVwQlhySWt3NWV5dW1waGMwa2JvY3BXbVNkT1dlQ09Wd3hLSE9FTUc4SXVqc3QzdmpzS0tnTjNsSWxvMjV1NGszTWhWV0pEQS9hQ0c3MWdybFhlWW05YVk5T0FoRFptcWRQdVFPRHdRSkwyUE45NVFJMm4xcUdzUVF0RTNsZFFnZ1k4Q3hpYURCazh4aXRDdlpuYm9LUUsySVoydXJJbmxpanUydXhJM0ZhV21oeEVIRnVYL0JJNG1JZEZWV3RaMUx2dm5vSlRmYkhEaTFNcDNuQkJqajVXclQxdU5tZlAvYTdHbHdoTUo2TGl2dlNOakgydzcza0d3SUtWWUNXbUljb0FUNDBERzNFM3lFc1dtNEx2LzZHb1FGaXl6NXR4Rll2T1I5bXp1NXlYc2ZCY0dRR0NNUmdYdzBLMm1TS2dNRzdSYXVrM0g0RGJsVTdLbkh1aWttVFB5eWVBd0w3ZTBrKzZ1VVBTbThQbVpYaDJacU1hYmJaWVVNMnVkMHFYd0RpS0I0bjUyZzRjanpvb0RzYXFseXpKT01JbThaVTlpeVZ1QlRZbktRK2FJdFB2bXRRdXpya2IxLzZTSUJ6S2Y4azFxQzR5NkVrWW5mMVdkZ0JuZXovV1BnZmRIQTVxZ1dDbTk4RjhHclQ1ckZwTWg3MTJyaFlpQ0RrSzdKeGNGSE1FUnREYnpqUCtGUzZLZ0NmcjU0T0RBR1VrdmZ2RGVBejZVcEwySkJyV0lzK2RKbHZ4RGZYMS9YNGUvZG8wM3B1UGxkOGt5NnV6cDVkWlQ5Z0hHUTVsampMSUo4MndrakFiYUhubklyTytTT013N2xwTzVYdDFyaVBGWUFjbmFjVVpaYUZBUlJ0eDNZOE5UeUZ0TG00Q3dvZVZFZSs2TURsd2ZGMU9BY01XSFljcCtCRDZ1Mi9UNStKekJ5bVo2UDNLOVJMMmlpMS9pS0IzOUFzUWxEZHl0eldub0pDZm9SQy9SM3NicDJXSUxIUjY4eTEwbWc4TTZKMU1BYXhsWGpoc2g4OHQra2JEeWcxbDNKT2lxSE56MC96SmszQW12OTNvOXpYTkRCb0IvOEw3ZWpOdUh4eHhSSnFxbVVuMlZ5ZmpEaDVHdDZwbXBKWk93MGhqclpuY2dBeDhIQ1IzQ2FzbGJ5eFNoZk4yRFpNc09PUmxqSUNjOE1jdTFWbHpWRDhabkhkNUhnaFBWOTJyRHViNzNrUjhlUUtxNjgxZnFqWFdjVjEyT21NYzNWSUN5K21UeHpFMEV1SjFVN2VKZ2FWVCt3Mm9LWHRjVDRrQWxDdE5jdXVWdDFUZ1A3RjZBaG1RckhPakdpWkxyc3BQdjRYeXpXeVRkcVNDQjRYS3FTQjBubU92cnNKWjlpbVZwQ0w0bnAwL0RTUWQ0QS9jWlNweUcxVmsrbFptdExnWlo2Um44dkFXSkZiTHd6VlA5WmRMdm9TRmtkZEMzSVM1dTVLU3FJbG00NHdKekpCUlc3QVFZdTBYU0graXBFOTFDTmFVcUJJei81YkZBc0VwQWZQVVVkVHBPZHdodnhwVEsxaGNIMXpkUnk4bHZiM0xRanczYUxWZ1JCYWtZeUxXYXEyYzMrcU1lNXU2SlN6N2RIdVRJV0pPNGVUR2lPbzl5VWg4SXNza3pRQWdta3BXZXQ4SG5zYzFOZERIdFBSa2ZKeGQyaklYL25lR2FnanRsNmdRcklvN1lNWWNZQzdwWDFxZnFzSnB3cDc3T2tBK1pScFpuM3VwalRmZFBOTnRxdkxTaEJtTGdBQWdjK0dxR2xQR1NldStRZzJhMVVtb0llbXpIZFo2VEtmRVh6d2xiUWk4VE0zUVVHWFk4d1VLMjBOREdPUXpudkFhZWNqMjkxUnZhcXVkQnUwZWd4ZWxtUDNKaTc4djV0SU96KzlXeGd6YW9TK3JSRk1FNWF1ek5qdWNmc29BWmdNY0xkeTlEQTJTdGRLY1hCUWh0SGtUWHlveU1QcjQ3aEVPQ1ZQYk1EcXpGeEtLZnU5b3FORERvTXM1WEZ2bmxVeVZQKzMwM0dwVGl0dVVVbDdnWjllMGQ5VXI2RExWa3lwcG5weWNlVGhnZWdFK1NOQmQrU0RZWWFkQTRNQmZwNWxvL25wM2VFMWt6T29teVlycDRJcTBId2Q3RTBlMmJaL0lhU0w5d1RIT09UZXFwVmFuYzF0S3FCeW4reEJlbEQxc29BWmx0N1BGc2pWeXZhZHo0R3A0MG9PQ1hKdXBxN3BCdjZIenJRSXREQ2YwWDM3SlNYZ0hheWhCL0ZnemdCdHB2TTc5QWxaR1FSV044Z2dZWmY1UFllRHZoOGVKSU5NMnZBWHNVVlB1Y1ZCOTNQczg5QVNPWlJBdFJnWGJkODN3Q0NwSTZGbFNnZlU4bGtMRld0OHo5ZFZNUHpJNWwrSmx0K3l1SmxkWHRreFExR3V1NjQwMTFWTURBOHk5L1JaRVhzaXREZVJGd2JIT0hiL1FXc3VwV0duVUpSK3grSjBUVXlFazA0K0dDLzdZWkV3N0NSeCtiWWl4ZktVSFdTcWtKVGRHTjdURHY5NjFVcVVpblJoRGpwNmVHM1IvdExaY2FES3owV2oyVmNwR3lLc3lqZU00a1NKbWVha0pCNUIvV2grZE1DdUtrUHczbFJjYkpHU2Q1aVVZVE1IYjN3VDByL3BtbGpGRWpCMm1sUnJUem9mY0tvdko2VXV3NmR5d0lLV09IdjNMVmpGa0h5UllhRDFYeG84eG5VR0RkWGpUSG1ucFFkRUwzS2RvZk8zaVRjWWpNaGY0TXBwRlBuUkNSVjN4bCtxY1hHTGJzTnliSk9yaEFwY2dFV1BKNXg5d1A2cGc2OWpLTFlWbVZkeFIvZFNlM3lIQW5jNXk2T0UzQ0FpRjkvcDhNdHJ4b0hJNlY1TXIzNXFCSFB5dEVvS1M4UjludTFSUldzVzJ6RXlWN0ZFMTU1OXZpdGZFKzVBcER0WGhZRlJnQ1E4cXJ1THJKZmdVNkROQW1GMWluOVZFb2FiV3FTU21FZ2VITzR1MGp3Q0NITjRHbXRiMGpYaGdjdCtuU3FSN2hocXNlck1rNlU2N3lYZ3U3eU8rb3B6N3VlRWRhb2ZZaDJZdERhUVNhWGtyV29GM2NUWE5vVEZmZE5qKytheVI4b2E4anAzVnpGeDhKekZONFNZb1IzT1FSaUpqa0J3TVRwNGlGeFd2UG5vSFA4cXo2SEdIZDRuS0V2TlgxZkRyWU9TdUlHN2RmNHR6YWFad01TLzYwK2JwT2M1TlI3N3pKOThkdExGS3h2blkxcnV5anM1MWJNaGY2NU4yT0loZE54SUJoMDl3ZWJuRUFLUG5qTWlsWFRVdWxSY2YvRWt6YmVJNEQySThRdFpOMjZ6SE9aNlh6SGZQaHRJNDdidk5hNDlGSEcvOFEzZFhZQ0VydXdYeStYVU4vM1RIUm0ycldoZGZYamxaM2VDNG1lNzVYYVlIQkkyS0Y2UnpQN3FtNEdHL0laSVpuL25UeTFWQ2N2bU4wbjJoMjdXUnFmdHN0Z1JvNTYyRkUwRFp6bTJDSk8rbVpCSWp6SDBFZWsyVUEyZXJScCtCRi93Y2RjWmF5NjZ4blAxTDU5TlVYTURVL2piZnlRMDRDc1B4SDJmZlZxbHV5bmtXQmJndzBFQ1VpZFI0K29ISEtPcEh1d29yMVRLM0F5b3VsUzZsU1ZuL2tqVDNKdVB3WEpnd01MaXVRUlZzNmloc2VabkowUm9PMGI0VjgyTkYzb1d4andNeStrUm02Y291SHlRSWl2SzRJMTcvQk9GY3RucEFmaTY0eXlQR0E1TmpzQ0NwVi9HZWVGZVl4Y0N4anVhMEdoK3RHdEViS0Nmeno2eDFWQWFONUlRcEhZcUVhVWpxUCtPOXpDTS92Mm10UHZrNDdZV2tneldNcVR2b2Fza1NJUnhONzZkZ01oWTRNdjZGQ0M5eDc4M3hwWWZXcktYVkxFdWtPKzJMRVJTcFNwbWlWZUZlYmx4OFVDTmNkSGxvTGVGZjN4dXZTdHVobnRIZEs1UWR5NGt6NDZhLzFrejBVZG80Z0gwZUJXR2VCTGwzaERaVUJGcERhL3U5Z0dINUE4SHhOWGZyZjI0QVJyMWFLZHR4aXJmT1ZMVW9SRmNvbnpLdmNUWjQxck5ZTUxJZTRWNGk5clg1TGsreU5PamU5b25yY21MQUwyYjcxekkzRFBHbHhDdFJaTUNxMk9kMmdjQXV1OXJ1NjJyVFBOcWo2b2luSFREU1pVSlE1QUpwcUIyUW5rNzFOQnVkNWRKbXd0aHVPT0JMMENva1FPNmI4bDBXMTBvakt1dUJMUGxIZGpGV3N1MVRUQmVFVTdVUWFlR2JQMUR2S1d5SDFmNXZXb1Evenhwd1BXaXZVbDROY2xoNzBBN1lMeGlPdlFJWllIdm5md1hmK2x2QndaMmtiK05CVTI5YUl5cG5oV0hiSVZSczRvZ09ST0lCWEV4U0czTi9Welp1WGZNRkkyME5wSnlWeSs0REEyS2twdVFkdDJGMXRCR256ZVViUlNVcS9kZm9YTVMwV2YwMDVGZ1o3dDJnUE05dTRtY2ZkNVAySktxKzNWUGRtVHZlQitLMndFWVpQWTNNZ0x3aXZ4em1wL25hSTdoNGo3WlhhQUpLZHphcElwZlF4dlRwUjl2Ny8yb0ZZanlLOEdGQXk2a3pGeVVXd2VRR3ppdnlKbE9zVGdHaHpjQzlyTFZoTlVvQjNVU2JGZjN0MGZhSzg2aDVOYjFLeDFGS3FHTnB0d0lSdFVFQnVHRWNiU3F6UDFSbmNEcjFFUkg4SEFscmcrdm5zdnFMT3NDSzU1ampyVExTeklsTlJzY2ZUV2pnL25uMFVYa2VSZm1hT0NVTEhEbzJGVFdCQWFoZzYycHVyaFk1cmVsZTgxTmphQTdjUllzQnIxR3Vvak1Rb1lkYlo3Wmc2WmJtUU1wczBVMSsybkVkWkdFUXpicGlObDNzZS90SlpQRTlhS0RDT1d2TVdYRVVvTFNUU0RvZ1VEZHpFRTF2SnNDUUdYRWllWVNhRG1DSVRDcTBwTHpYLzhtOGNqVkhYT0RUSXgrc2I4WVRpQWR0VDhOaEQxTHF3RkZVWjNhZ1FPbTlxYUVLZk15TG5abFIyd0pYaXFydEowbUhZdGxhbHV4WVJlZTZUVzd2ckpmdy9RU0VaRkZnWlZ1T2I5U3JTV2l1SjR2dWU2c1JIRUhoNDAzYWs2MjR4cFhMV1JVVmtvZEx2aHU5cWFXSzdwUlIxODhEUHJXbzVTbFBia1h1dXg2Q3hNMUliRTQyc3VLS0VZR3FHc3Z6VDJhb2lET2JFQUFTK3UwbDEvOHBQQlJEeGtUZDY0ZHRZQUwwTXF6NW11S3dnTzFMeVVpK2JzNHppUE1XL3UxWlZNa1doemx0Z2xVUGhiZld0WGs2RWFYaGtsSDRJVEkyT1VLUzR4RjF2T3Z1d0pqWUZPVjVlUWQ1M0t6WlZDYUJzUis1ZGtEOGVYaitxY3lwME1iZXJJSFZYTTFnckliUDJ2QWZ3QXk5VGhwTkU2Qkd2WS9ISUFJcGVKNkZ2TVgxNzdwMXI2VzJNMmdSbjRIc3FueG9yaWxrY3gyT2tWOTZ5MDBJL0dzWXdQeVo3T3o0RmxkcmZGd2daWFNnZCtsWWxobERLMUQzelcvUVNDSG54VHU0WHE2bGtYMXNKTzM1VmgxSGg3a1RsOExxRHorMU1rL01Nam1JbWVReGFDc0ZvemkvN3MxS2YrUEltZmc4dXBIU0dYbCtYN0FVTThCM0lmSzRBQloyaWc4emQxdG4yaWVmaXdSUjFPY3d4REhORFVvaGJseGQrR3RtNDFUUVhzeVhYQSt6VWFsVlM0U0JuTUQ1WkJGOXZEUzB0THg3eU9vNDhiT3NNNEgxUDBaNWJaQzc4ODJXaUdoZlFWcElyd2N3ZjBMM2RzMktVMDVoQ0tZbFVLbjRmUGxoZ2Y0R0pxNkRjWWxlRVlzZUZGM1l2c0paSlNIM0JJcXdGaUxWRnpQbWJnMHd2Z3FJQWZremtjT3BRSW95Z1RjODBOcGhxOXcyaVlaRVV1bjhGZis0REhnVjdnQ2ZKRTdRSWJ0NzJFVWp4S1I2V0tQNGdHQ2hvTUpnd1g0Mzc2VWNjQ3J1ZVhSd21rUlFSYkJwYUZCaUwxSmQrUVc2ZUhhNDRJOFVIYVNnbjJETTVwNko1T0FhSGZrL3dSYytVcnJlclJRVjhvR0FRTUNXbXhGNmlOcHZVb0JxS0ZVMGl6M1ZiUlBtcmUwOXE2UDFDZ25LZlg3RzE1bUxsZVB0VWd4WGxrNzAzQjVOaER6K0RLOUJCaUFPZFp3ZmxRZyt0bkFmRk1yZWp5eDdlNHB1cEFjK1NrOURLWENBR2Z2U2ZBNjN1Q0QrSStac0RqaXhGdEthWVJMK0FxYjZ0NE9XdElyT2RDWnREVVhuWHNTcnQ4T3c4WWhsQXB6TUFoOW5QalVXUklKYnRDRmh3SFdscEg1b3lTNk1LS05kWWFGL0tXYks4blFOUXZUQTI3bFFmRGZyQzRxRzhkL2FzcVhra2U1SWxRMmZSWkQraFFML0l1clgwdC9oVU1EdFZjamlreXgxRFJzcnduVWVGYXkwMUdPckROQXZCNTgvbDgvYi9RLy9rUnpQcm00VDFXYmx2bDBIQXZVMmdtQjJ2MHBTamh5ZjMvWmVLMzJ0eUdiRUxPRXo4MDZEekJCZ2ZWWUVpRnozTzJFRXhaa0JKZ0QwSGR3WnFZUjlKMGRidzZqQUo3UEN5YlB3RFIxNXB0M2xZR3o0MTBXN0NKbEI1Rnc1Rlo3aHpjVjZYa2ZDNlB1QVBNK2p4c1hhM1VUdk1Nd0plbW9zYzQrSnRoVjJTeVlTc3IveTFKMHVCbXJmSzZwTlZ3UVVYTzU3R2lWZ3dtWi9oR3E2ZkkzeCtUUk9IM1VhS1hTUU9ObmpDSTEybU4wUlhJYW1KUTA2VDhndUt6K2RLbXZ2T0tmUk9XNkJURkVjYmYyWVEzQ0dwaTU4TjBzbXh1NWxPa25zWVlVL2t0L21oRVNWaE9rNEJYRlNYSDdFaExmaGpoa1A2K082VzJxTjQzd3B3TGt4NThBNno2Q2pDNHp0ZGR6YmRGRUIzTkUrYnNzU2JDRE9Mb2NKdUV1eHlvd0RwMCtFZnpPV3huek9lc1pyblNtWXpuOTE4cnIzVEpTRFVhQmdLeitZTUJKYkZweVFlNmtxbzVYQ1d5WFFhTCtBU1JCTlY3NzYyelJscHk5NXJIMTY3Ri9Xc2orM09BTC9wNkU3OU9rNkVVYnBBNktFbXpCYitNL0YxT0tmTTVIUk5lUndQOXZpYkg1S2l4aGttWno4T1ZSZzVCTjJUQkJqR2pJN1AyVGZtbGl6QjBDWGU1YTQ2RTVDWjgwZDM2Smx5S0NyZWpvc29mSU40R0VvSjBZZ1N1Vk5LUWtaQWFEMVcxMnU4TlRqUm5wMEVoR1pjOVlCc1JuYmJLd2NLNGkvc2xUMTkvTHVZL0hEQkRqNnpYQUFhdzhGN0ZSOGdUUVRnSjlyNk9vRnNmNk5ybGZQalh2QUtHdHJQbGc5OUxTaGhEaWtqeUlhY0F2SzNOSXQyUUlOdzFGbWMyOFNlRDlqN1lPNnVVYmgwclQ0N3U0aDFPWExjcXlLR1B4Um9QcHlON3VaWVFhMkdzdU12Y21hNlFSVXZ5RXpnbW5PLzF3TGdSeGZoSlA5MTR4eXp3Wm1BeEFQQjZVVnRqRjNNczVORzV5bHhYU2VOZmlDaGYwWlpYWkQrakl4WlNETTVLanExQmVuKzU4V0xBZGV4K0dnVU9jUytPVWxGeFVFVVNWWERwK0lhWktnRFFwQlpoTlpkandUSFI4ZzV2cy9TaGhrZ0pEZVJRNnpscWNPYWxGNkZ5dzIrTXp6UWgzeGNKQmFWUEEzSEhsT3lsdEJGOE5SQmpvMituNWgwaTJ0TmJCWlR6aWVTTHYvazhpaHVodHJNZVBTcDY2bk82Sk9WTUxSQmpSb2FxVlZWM0tiKzcvM0pYZ2k0NTVPWjNoQ3k3S0U3dWtKYXRVa2ZaNmdxN0dZT2o0Vk1EZ2poQ0p4elo4WjFGSlg3VVZCb0RPandINlpFc0x2MlVTcWx0K3VDQkxJQm8yd0pHMFhxRlczMmdXWHNJN0w2TkVkUmxIQldmQ0Z3RTlBS1YreXNrc3psSkJqekk2SkFFUjN3OXdINWo5dmFUNUVyQWdYNGIrZ2l2d211NW1rMkk4ZUhubDJCSVlqb0l1dTFZdHUyNjJNT3FBbWtpb29xYnFzS3ZaN0J6aDBjZWZrbTNRR05hcHB5STI2VE1zdlNvK0piWjJaRFN6bld6alJrN3ZzcFV1eGt2OGJ4UnM0M0tSUDNJNlNzN2RwNEJxRkQ0RWt6czBDWnp2TUtDTzVVVnRSSE82K2NBWDBTU3VOUHhueks5Y0dITXV2eEtqdW5iL2tPU1FkYzQvdUltMDJGYTRhRmlOV290bFFHUEdTVy9FcUNrUVgxa3ZyRkpKWi9zWUkxeFowZ0N5UElQRE1JOVloZEZVRmxrb25FbXpvSHNPc2NtMTVmSGJveHlGdlFkM2JQMGtLZFhkeC94Y254K3p6elk2MzQ0OWIwR1RsRHp4RkZEM20wUG9XUDlQNnJuZld6TTZ0dUM5NDRRck0wVkpubnQwT2NWU2hoSmlpWWdnMkpkL2d6YVBtMUVTK0tGRkdDZHNFVHpjcVUvV0Z6aDRKa2I5emtCVVpDdkVNOE9hQ2hJMUZBMVhPUUxsSnJBSVQremF3cWpqWnR3V3hIelk0UVB3cUMyWktLbnlCZHBPV1dXV2tmT2ZFZ0xIVG1GbC9vM0J6bEdxVFB0Um5OWFpvSHZGQzhlZHNxNG1jY0lQM3ZTai9iZFdidkwyNlAwbm9DZEdOTHR1MHMxZ0hmNTlOK2JZUzhHR1dwV3NWYTNES0R5dUlUWFNmTGpmMUpjTUZKV3p0cGsrK092bll6OEU4SmFsQXVwQTFzVEhXNFFYZ2VYTlZFWnE3cEdVelRzcG9EQ0hXbGFkUXR5RGlDa0hZZVBUaFB1Vk9sVGx5SmZRbytQYUZFS0NiQ2NHbXpnYUtuVWZPeEMzZUJhdUhFemtvUW1vUFJCNTdXdDF0Q3JsNlZzaE9OSGFEWlB2MmxhZDJ0RGVFZXJYNktBaWJLTmIvcDQrT29OVUVWQm1WYk9HZ1NKSDVBR1Z0NkZzNGhsbmxoZytnWGNwZWVLa3N5OUZjRU5EVjZrWEVraDMyOFZ5QzBhdG1Kd25BSGhyRzlqbVZjbWd3NEM3ZkJFNHNFZmN0dDZPMnJYR1VFVGc4NEJvazJtWHVEOEJzQUFreGN6V1RiMEhoZ3FaR0tIM3RCQVlSVFkzalpkazExOWNTQ1l2WUdhRVBub0NubkRYV1crY2tFQk1tbHVtR0p0eWJ4c01Zb01MMTRYTXRFWExnQmRaRGs0emRCVk9ObzFZYTNoNE5tTUVRQWZjbnEySEo2enI0TXJ0WUROVmJJQ1B3c1J0SlJCSnc1bS96K0R0bGppbWlacm95YXBQTUh6U1JMSXNnSXAxc2VacHRTNWlhVTFQZGZGYUdSUFJQd2JMdEl5Z1RzOHcyNm84Mm1MMzYzcFJyQnJlcUlERFQwN1g0eFNYcnVlQmJ2N3pkbDdxREVhQzhnRWtqOUdtWEtIS3pEeDNWUUtpMXhBWi9WNXR2aTFIZzR0cFhaT1dOcHdDbHB1V1JrRVpjWTQ3ZEJPb1F2TEdBQU1zMHhYUU1pR01FK01MYmsra2psWWFuQWZxd2RIYmZyRmQrQ1N3amkvd1VNVytxUzhTU1gxdVpGeSswT2FweDV2WFoxK3U1VCtBcXBwMzBoZ2VacmZ3ZzhESjdId0prdjBobU1iblcxQ0lZTVhkTkNwSEhCVEJsTWNOTUcyV25xQ0VRbTBzNmJXUy9HbjhGUmdxMWZzTnkyYjlpUzdhczY1YnlrRDhJSlR6QVJwN1R2VVlueVZaRzU4bkNVOFdyVmZ4NTNFaERTNWxVbWxNaThBRHUzY0h0eFd5bkNxYzhvV1FycENCT1BsbWk1ZWs4dGo1a0xxUkdBSWRDbWljejJSc3QwcWVrNCtMZVpBQWM0V1ZZbHQzd094eXVqZlNYbXBCaUs0cUpIckdMNERZN2IxV29veVdENDlxVXJkOEorSk1oSEo3Zm9wSEFOTHBNRmlWYjNTM1puYURKcmw4cmFtbVN0RGtvbGxVRXBEVTIzajR4TE1MQ1RyZURmc1V5SlpCNkJyOTQ3MVJpTWdDYzNFeXFiZERhUEpnQStuRk9UY2l5M1dNT1NuNXFIOGdFd1d3czRIVDNoVzRxTmRwYzBaZnQ3OVloWWtNcTgwMjEzRkJscHBTMXRGUEVZaGdSd2FCaHdvVHl6NE9aeXhFWUJ1V1diV1cvSzd4T05WVm1OcWM4SmFQTks5dVl1ND0ifQ==</script>
 <script>
-// ============ Verified WFM math (calibrated + reference-checked) ============
-// Telehealth voice intraday distribution (Central Time), calibrated on real launch data; sums to 1.0.
-var INTRADAY_VOICE = [0.002580,0.000516,0.001032,0.000516,0.001548,0.003096,0.015480,0.034572,0.065015,0.077399,0.081011,0.094943,0.087719,0.097007,0.070175,0.079979,0.087203,0.057276,0.043860,0.040248,0.026832,0.019608,0.006192,0.006192];
-
-function offeredLoad(callsPerHr, ahtSec){ return callsPerHr*(ahtSec/3600); }
-function erlangB(A,N){ var B=1.0; for(var m=1;m<=N;m++){ B=(A*B)/(m+A*B); } return B; }
-function erlangC(A,N){ if(N<=A) return 1.0; var B=erlangB(A,N); var rho=A/N; return B/(1-rho*(1-B)); }
-function serviceLevel(callsPerHr,ahtSec,N,T){ var A=offeredLoad(callsPerHr,ahtSec); if(N<=A) return 0; var Pw=erlangC(A,N); var sl=1-Pw*Math.exp(-(N-A)*(T/ahtSec)); return Math.max(0,Math.min(1,sl)); }
-function asa(callsPerHr,ahtSec,N){ var A=offeredLoad(callsPerHr,ahtSec); if(N<=A) return Infinity; return erlangC(A,N)*ahtSec/(N-A); }
-// Minimum integer agents for targetSL within T sec, capped at maxOcc (0..1). Returns 0 if no load.
-function requiredAgents(callsPerHr,ahtSec,targetSL,T,maxOcc){
-  var A=offeredLoad(callsPerHr,ahtSec);
-  if(A<=0) return 0;
-  var N=Math.floor(A)+1;
-  var guard=0;
-  while(serviceLevel(callsPerHr,ahtSec,N,T)<targetSL){ N++; if(++guard>100000) break; }
-  if(maxOcc>0){ while(A/N>maxOcc) N++; }
-  return N;
-}
-
-var num=function(id){ return parseFloat(document.getElementById(id).value)||0; };
-var fmt=function(n){ return n.toLocaleString(undefined,{maximumFractionDigits:0}); };
-var fmt1=function(n){ return n.toLocaleString(undefined,{maximumFractionDigits:1}); };
-
-// Core compute for a given volume multiplier. Returns everything needed.
-function compute(volMult){
-  var mode=document.getElementById('mode').value;
-  var surge=num('surge')*(volMult===undefined?1:volMult);
-  // daily contacts (all channels)
-  var daily;
-  if(mode==='patients'){
-    var monthly=num('patients')*num('contactRate');
-    daily=monthly/30.4;
-  } else {
-    var v=num('volDirect'); var p=document.getElementById('volPeriod').value;
-    daily = p==='day'? v : (p==='week'? v/7 : v/30.4);
-  }
-  daily=daily*surge;
-  var mv=num('mixVoice')/100, mc=num('mixChat')/100, me=num('mixEmail')/100;
-  var dVoice=daily*mv, dChat=daily*mc, dEmail=daily*me;
-
-  var shrink=num('shrink')/100, maxOcc=num('maxOcc')/100;
-  var opStart=Math.max(0,Math.min(23,Math.round(num('opStart')))), opEnd=Math.max(opStart+1,Math.min(24,Math.round(num('opEnd'))));
-  var opDays=num('opDays'), shiftHrs=num('shiftHrs'), workDays=num('workDays');
-  var netProdHrsWk=shiftHrs*workDays*(1-shrink); // productive hrs per FTE per week
-  var netProdSecDay=shiftHrs*3600*(1-shrink);    // productive sec per FTE per day (email)
-
-  // ---- VOICE: per-hour Erlang across operating window ----
-  var vAhtSec=num('vAht')*60, vSL=num('vSL')/100, vThr=num('vThr');
-  var vAgentsByHour=new Array(24).fill(0);
-  var vInWindow=0;
-  for(var h=0;h<24;h++){
-    var frac=INTRADAY_VOICE[h];
-    var vol=dVoice*frac; // calls in that hour
-    if(h>=opStart && h<opEnd){
-      vInWindow+=vol;
-      vAgentsByHour[h]=requiredAgents(vol,vAhtSec,vSL,vThr,maxOcc);
+(function(){
+  var ITER=250000, KEY='psdash_pw_v1';
+  var E=document.getElementById('e'), F=document.getElementById('f'), PW=document.getElementById('pw'), GO=document.getElementById('go');
+  // WebCrypto only exists in a secure context. Opening this file over file:// silently has no
+  // crypto.subtle, which would otherwise look like "wrong password" forever.
+  if(!(window.crypto&&window.crypto.subtle)){ E.textContent='Needs https — open the hosted link, not a local copy.'; GO.disabled=true; return; }
+  var raw=document.getElementById('ct').textContent.trim();
+  function b64(s){ var b=atob(s), a=new Uint8Array(b.length); for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i); return a; }
+  var blob=JSON.parse(atob(raw)), salt=b64(blob.s), iv=b64(blob.i), ct=b64(blob.c);
+  async function unlock(pw, quiet){
+    try{
+      var km=await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+      var key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:ITER,hash:'SHA-256'},
+                km, {name:'AES-GCM',length:256}, false, ['decrypt']);
+      var pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:iv}, key, ct);   // GCM: wrong key throws, never garbage
+      var html=new TextDecoder().decode(pt);
+      if(document.getElementById('rem').checked) try{ localStorage.setItem(KEY,pw); }catch(_){}
+      document.open(); document.write(html); document.close();               // scripts in the payload run
+    }catch(err){
+      try{ localStorage.removeItem(KEY); }catch(_){}
+      if(!quiet){ E.textContent='Wrong passphrase.'; PW.value=''; PW.focus(); }
+      GO.disabled=false; GO.textContent='Unlock';
     }
   }
-  var vPeakAgents=Math.max.apply(null,vAgentsByHour);
-  var vPeakHourVol=dVoice*Math.max.apply(null,INTRADAY_VOICE.slice(opStart,opEnd));
-  var vAgentHrsDay=vAgentsByHour.reduce(function(a,b){return a+b;},0);
-  var vFTE = netProdHrsWk>0 ? (vAgentHrsDay*opDays)/netProdHrsWk : 0;
-  var vPeakSL = vPeakHourVol>0 ? serviceLevel(vPeakHourVol,vAhtSec,vPeakAgents,vThr) : 1;
-
-  // ---- CHAT: Erlang on concurrency-adjusted load, same intraday shape ----
-  var cAhtSec=num('cAht')*60, cConc=Math.max(1,num('cConc')), cSL=num('cSL')/100, cThr=num('cThr');
-  var cAhtEff=cAhtSec/cConc;
-  var cAgentsByHour=new Array(24).fill(0);
-  for(var h2=0;h2<24;h2++){
-    if(h2>=opStart && h2<opEnd){
-      var cvol=dChat*INTRADAY_VOICE[h2];
-      cAgentsByHour[h2]=requiredAgents(cvol,cAhtEff,cSL,cThr,maxOcc);
-    }
-  }
-  var cPeakAgents=Math.max.apply(null,cAgentsByHour);
-  var cPeakHourVol=dChat*Math.max.apply(null,INTRADAY_VOICE.slice(opStart,opEnd));
-  var cAgentHrsDay=cAgentsByHour.reduce(function(a,b){return a+b;},0);
-  var cFTE = netProdHrsWk>0 ? (cAgentHrsDay*opDays)/netProdHrsWk : 0;
-  var cPeakSL = cPeakHourVol>0 ? serviceLevel(cPeakHourVol,cAhtEff,cPeakAgents,cThr) : 1;
-
-  // ---- EMAIL: throughput FTE + backlog ----
-  var eAhtSec=num('eAht')*60, eTargetHrs=num('eTarget');
-  var eWorkSecDay=dEmail*eAhtSec;
-  var eCapPerFTEDay=netProdSecDay;                  // async: shrinkage is the haircut; no phone-style occupancy
-  var eFTEraw = eCapPerFTEDay>0 ? eWorkSecDay/eCapPerFTEDay : 0;
-  // email is deferrable; hire for weekly coverage (inflow lands opDays, FTEs work workDays)
-  var eFTE = eFTEraw * (opDays/Math.max(1,workDays));
-  var eDailyCap = Math.ceil(eFTE) * (Math.max(1,workDays)/Math.max(1,opDays)) * netProdSecDay / eAhtSec; // emails the hired team clears per operating day
-  // max backlog to hold response target (Little's Law): L = lambda * W, over the operating window
-  var eLambdaPerHr = (opEnd-opStart)>0 ? dEmail/(opEnd-opStart) : dEmail/13;
-  var eMaxBacklog = eLambdaPerHr*eTargetHrs;
-
-  return {daily:daily,dVoice:dVoice,dChat:dChat,dEmail:dEmail,
-    vPeakAgents:vPeakAgents,vPeakHourVol:vPeakHourVol,vFTE:vFTE,vPeakSL:vPeakSL,vAgentsByHour:vAgentsByHour,
-    cPeakAgents:cPeakAgents,cPeakHourVol:cPeakHourVol,cFTE:cFTE,cPeakSL:cPeakSL,
-    dEmailVol:dEmail,eFTE:eFTE,eCapPerFTEDay:eCapPerFTEDay/eAhtSec,eDailyCap:eDailyCap,eMaxBacklog:eMaxBacklog,eAhtSec:eAhtSec,netProdSecDay:netProdSecDay,maxOcc:maxOcc,
-    totalFTE:vFTE+cFTE+eFTE, opStart:opStart, opEnd:opEnd, vInWindow:vInWindow};
-}
-
-var staffChart, backlogChart;
-function recompute(){
-  // toggle demand inputs
-  var mode=document.getElementById('mode').value;
-  document.getElementById('patientInputs').style.display = mode==='patients'?'':'none';
-  document.getElementById('volumeInputs').style.display = mode==='volume'?'':'none';
-  // mix validation
-  var mixSum=num('mixVoice')+num('mixChat')+num('mixEmail');
-  document.getElementById('mixNote').innerHTML = (Math.abs(mixSum-100)>0.5)
-    ? '<span style="color:var(--red)">Channel mix totals '+mixSum+'% — should be 100%.</span>'
-    : 'Digital-health benchmark ≈ voice 50 / chat 20 / email 30.';
-
-  var r=compute(1);
-
-  // summary cards
-  var cards=[
-    ['Total FTEs','v',fmt1(r.totalFTE),'loaded (shrinkage-adjusted)'],
-    ['Voice FTEs','',fmt1(r.vFTE),'peak '+r.vPeakAgents+' concurrent'],
-    ['Chat FTEs','',fmt1(r.cFTE),'peak '+r.cPeakAgents+' concurrent'],
-    ['Email FTEs','',fmt1(r.eFTE),fmt(r.dEmailVol)+' emails/day'],
-    ['Daily contacts','',fmt(r.daily),'all channels']
-  ];
-  document.getElementById('summaryCards').innerHTML=cards.map(function(c){
-    return '<div class="card"><div class="k">'+c[0]+'</div><div class="v '+(c[0]==='Total FTEs'?'blue':'')+'">'+c[2]+'</div><div class="n">'+c[3]+'</div></div>';
-  }).join('');
-
-  // channel table
-  function slCls(sl,t){ return sl>=t?'grn':(sl>=t-0.1?'amb':'red'); }
-  var vt=num('vSL')/100, ct=num('cSL')/100;
-  var rows=[
-    ['Voice',r.dVoice,r.vPeakHourVol,r.vPeakAgents,'<td class="'+slCls(r.vPeakSL,vt)+'">'+Math.round(r.vPeakSL*100)+'%</td>',r.vFTE],
-    ['Chat',r.dChat,r.cPeakHourVol,r.cPeakAgents,'<td class="'+slCls(r.cPeakSL,ct)+'">'+Math.round(r.cPeakSL*100)+'%</td>',r.cFTE],
-    ['Email',r.dEmail,'—','—','<td>async</td>',r.eFTE]
-  ];
-  var tb=document.querySelector('#channelTable tbody');
-  tb.innerHTML=rows.map(function(x){
-    return '<tr><td>'+x[0]+'</td><td>'+fmt(x[1])+'</td><td>'+(typeof x[2]==='number'?fmt(x[2]):x[2])+'</td><td>'+(typeof x[3]==='number'?x[3]:x[3])+'</td>'+x[4]+'<td>'+fmt1(x[5])+'</td></tr>';
-  }).join('') + '<tr class="tot"><td>Total</td><td>'+fmt(r.daily)+'</td><td>—</td><td>—</td><td>—</td><td>'+fmt1(r.totalFTE)+'</td></tr>';
-
-  document.getElementById('fteNote').innerHTML='<b>FTEs (loaded)</b> = staff to hire, incl. '+num('shrink')+'% shrinkage. Voice/chat sized per-hour with Erlang C (occupancy capped '+num('maxOcc')+'%) then summed to agent-hours; email sized by throughput. Peak concurrent = busiest hour ('+(r.opStart)+':00–'+(r.opEnd)+':00 CT). <b>Note:</b> voice/chat size to the <b>peak day</b> you enter; email is deferrable, so it sizes to whatever daily rate you enter as a <b>sustained</b> average — enter your typical email/day, not the peak, or it will oversize email.';
-
-  // staff-by-hour chart
-  var labels=[]; for(var h=0;h<24;h++){ labels.push(((h%12)===0?12:h%12)+(h<12?'a':'p')); }
-  var vcfg={type:'bar',data:{labels:labels,datasets:[{label:'Agents',data:r.vAgentsByHour,backgroundColor:'#2a78d6',borderRadius:3,maxBarThickness:18}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:function(t){return t[0].label+' CT';},label:function(t){return t.raw+' agents';}}}},scales:{x:{grid:{display:false},ticks:{color:'#898781',font:{size:10},maxRotation:0,autoSkip:false,callback:function(v,i){return i%3===0?labels[i]:'';}}},y:{grid:{color:'rgba(137,135,129,0.2)'},ticks:{color:'#898781',precision:0}}}}};
-  if(staffChart){ staffChart.data.datasets[0].data=r.vAgentsByHour; staffChart.update(); } else { staffChart=new Chart(document.getElementById('staffChart'),vcfg); }
-
-  // backlog projection (14 days)
-  var days=14, open=num('eBacklog'), inflow=r.dEmailVol, cap=r.eDailyCap;
-  var series=[]; var openArr=[];
-  for(var d=0;d<days;d++){ var avail=open+inflow; var resolved=Math.min(avail,cap); open=Math.max(0,avail-resolved); openArr.push(Math.round(open)); series.push(d+1); }
-  var bcfg={type:'line',data:{labels:series,datasets:[{label:'Open backlog',data:openArr,borderColor:'#b42318',backgroundColor:'#b42318',borderWidth:2,tension:0.2,pointRadius:2},{label:'SLA max',data:series.map(function(){return Math.round(r.eMaxBacklog);}),borderColor:'#127a3e',borderWidth:1.5,borderDash:[6,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#52514e',font:{size:11},boxWidth:12}}},scales:{x:{grid:{display:false},title:{display:true,text:'day',color:'#898781',font:{size:10}},ticks:{color:'#898781'}},y:{grid:{color:'rgba(137,135,129,0.2)'},ticks:{color:'#898781',precision:0}}}}};
-  if(backlogChart){ backlogChart.data.labels=series; backlogChart.data.datasets[0].data=openArr; backlogChart.data.datasets[1].data=series.map(function(){return Math.round(r.eMaxBacklog);}); backlogChart.update(); } else { backlogChart=new Chart(document.getElementById('backlogChart'),bcfg); }
-  var trend = openArr[days-1] > openArr[0] ? '<span class="red">compounding — capacity below inflow; add email FTEs.</span>' : (openArr[days-1]<=r.eMaxBacklog? '<span class="grn">drains to within the SLA ceiling.</span>' : '<span class="amb">stable but above the SLA backlog ceiling — add capacity to drain it.</span>');
-  document.getElementById('backlogNote').innerHTML='<b>Email backlog</b>: daily capacity ≈ '+fmt(cap)+' vs inflow '+fmt(inflow)+'/day. SLA ceiling (Little\'s Law, '+num('eTarget')+'h) ≈ '+fmt(r.eMaxBacklog)+' open. Over 14 days it '+trend;
-
-  // sensitivity
-  var mults=[0.5,1,1.5,2,3];
-  var stb=document.querySelector('#sensTable tbody');
-  stb.innerHTML=mults.map(function(m){
-    var rr=compute(m);
-    var cls=m===1?' class="tot"':'';
-    return '<tr'+cls+'><td>'+(m===1?'Base':(m+'×'))+'</td><td>'+fmt(rr.daily)+'</td><td>'+fmt1(rr.vFTE)+'</td><td>'+fmt1(rr.cFTE)+'</td><td>'+fmt1(rr.eFTE)+'</td><td>'+fmt1(rr.totalFTE)+'</td></tr>';
-  }).join('');
-
-  // hiring
-  var netHc=r.totalFTE, cur=num('curHc'), attrition=num('attr')/100, ramp=num('ramp');
-  var growth=Math.max(0,netHc-cur), backfill=cur*attrition, gross=growth+backfill;
-  document.getElementById('hireNote').innerHTML='To reach <b>'+fmt1(netHc)+' FTEs</b> from '+fmt(cur)+' today: <b>'+fmt1(growth)+'</b> net new + <b>'+fmt1(backfill)+'</b> attrition backfill (@'+num('attr')+'%/yr) = <b>~'+Math.ceil(gross)+' hires</b> over the year. Start <b>'+ramp+' weeks</b> ahead of need (ramp to productivity); new hires deliver partial output while ramping.';
-
-  document.getElementById('methodNote').innerHTML=[
-    '<b>Voice</b> — Erlang C (M/M/N), numerically stable via the Erlang B recurrence; verified against the Call Centre Helper reference (200 calls/hr, 180s AHT, 80/20 → 14 agents). Sized per hour on the intraday curve, capped at the occupancy ceiling, summed to agent-hours, grossed up for shrinkage.',
-    '<b>Chat</b> — Erlang C on a concurrency-adjusted load (effective AHT = AHT ÷ concurrency). Cap concurrency ~3–4; beyond that quality/AHT degrade (not modeled as free capacity).',
-    '<b>Email</b> — async throughput (not Erlang): FTE = volume × handle-time ÷ productive seconds (async work carries no phone-style occupancy ceiling; shrinkage is the only haircut). Backlog projected day-by-day; SLA → max backlog via Little\'s Law (L = λ × target).',
-    '<b>Deliberately included</b> (things basic models miss): shrinkage, occupancy ceiling, chat concurrency, staffing to the intraday PEAK not the daily average, launch-surge multiplier, and ramp + attrition hiring lead time.',
-    '<b>Not yet modeled</b> (add when data lands): agent-efficiency/productivity, reason-for-contact-level AHT, abandonment (Erlang A), repeat-contact feedback loop, blended/skills-based routing. Intraday curve calibrated on real telehealth launch data (Central Time, measured once — re-derive per client; not auto-refreshed).'
-  ].map(function(s){return '• '+s;}).join('<br><br>');
-
-  document.getElementById('foot').textContent='Intraday curve calibrated on real telehealth launch data (Central Time). Erlang C reference-verified. Defaults are industry benchmarks — replace with your own AHT / contact-rate / efficiency data as it lands. All figures are planning estimates.';
-}
-
-function setV(id,val){ document.getElementById(id).value=val; }
-function loadPreset(which){
-  if(which==='launch'){
-    setV('mode','volume'); setV('volDirect','3000'); setV('volPeriod','day'); setV('surge','1.0');
-    setV('mixVoice','60'); setV('mixChat','5'); setV('mixEmail','35');
-    setV('opStart','6'); setV('opEnd','19'); setV('opDays','7'); setV('shiftHrs','8'); setV('workDays','5');
-    setV('shrink','30'); setV('maxOcc','85');
-    setV('vAht','8'); setV('vSL','80'); setV('vThr','30');
-    setV('cAht','8'); setV('cConc','3'); setV('cSL','90'); setV('cThr','30');
-    setV('eAht','8'); setV('eTarget','4'); setV('eBacklog','0');
-    setV('curHc','0'); setV('attr','42'); setV('ramp','6');
-  } else {
-    setV('mode','patients'); setV('patients','100000'); setV('contactRate','0.45'); setV('surge','1.0');
-    setV('mixVoice','50'); setV('mixChat','20'); setV('mixEmail','30');
-    setV('opStart','6'); setV('opEnd','19'); setV('opDays','7'); setV('shiftHrs','8'); setV('workDays','5');
-    setV('shrink','30'); setV('maxOcc','85');
-    setV('vAht','6'); setV('vSL','80'); setV('vThr','30');
-    setV('cAht','8'); setV('cConc','3'); setV('cSL','90'); setV('cThr','30');
-    setV('eAht','8'); setV('eTarget','4'); setV('eBacklog','0');
-    setV('curHc','0'); setV('attr','42'); setV('ramp','6');
-  }
-  recompute();
-}
-recompute();
+  F.addEventListener('submit', function(ev){
+    ev.preventDefault(); E.textContent=''; GO.disabled=true; GO.textContent='Unlocking\u2026';
+    setTimeout(function(){ unlock(PW.value, false); }, 10);   // let the button repaint before the ~0.5s KDF
+  });
+  var saved=null; try{ saved=localStorage.getItem(KEY); }catch(_){}
+  if(saved){ GO.disabled=true; GO.textContent='Unlocking\u2026'; setTimeout(function(){ unlock(saved, true); }, 10); }
+})();
 </script>
-</body>
-</html>
+<!--ENCRYPTED-PAGE-v1-->
+</body></html>
